@@ -28,7 +28,11 @@
 #define AssertSize(x, size)								static_assert(sizeof(x) == size, STRINGIZE(x) " structure has an invalid size.")
 #define STATIC_ASSERT_SIZE(struct, size)				static_assert(sizeof(struct) == size, "Size check")
 #define STATIC_ASSERT_OFFSET(struct, member, offset)	static_assert(offsetof(struct, member) == offset, "Offset check")
+#define XASSERT(x) if (x) MessageBoxA(HWND_DESKTOP, #x, "FATAL ERROR", MB_ICONERROR)
 
+#include "MinHook.h"
+
+#include "utils/vector.h"
 #include "game/structs.hpp"
 #include "utils/hooking.hpp"
 #include "utils/utils.hpp"

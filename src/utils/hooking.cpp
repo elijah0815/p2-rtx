@@ -164,4 +164,20 @@ namespace utils
 	{
 		hook::redirect_jump(reinterpret_cast<void*>(place), stub);
 	}
+
+
+	// #
+	// #
+
+	void* cinterface::get_interface(const HMODULE hmodule, const char* const sz_object)
+	{
+		if (const auto addr = GetProcAddress(hmodule, "CreateInterface"); addr)
+		{
+			if (const auto pfCreateInterface = reinterpret_cast<void* (*)(const char*, int*)>(addr); pfCreateInterface)
+			{
+				return pfCreateInterface(sz_object, nullptr);
+			}
+		}
+		return nullptr;
+	}
 }

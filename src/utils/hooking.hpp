@@ -3,8 +3,8 @@
 #define HOOK_JUMP true
 #define HOOK_CALL false
 
-#define HK_JUMP Detours::X86Option::USE_JUMP
-#define HK_CALL Detours::X86Option::USE_CALL
+#define HOOK_RETN_PLACE_DEF(NAME)		DWORD (NAME) = 0u;
+#define HOOK_RETN_PLACE(NAME, OFFSET)	(NAME) = (OFFSET);
 
 namespace utils
 {
@@ -20,7 +20,6 @@ namespace utils
 		hook(DWORD place, void* stub, bool useJump = true) : hook(reinterpret_cast<void*>(place), stub, useJump) {}
 		hook(DWORD place, DWORD stub, bool useJump = true) : hook(reinterpret_cast<void*>(place), reinterpret_cast<void*>(stub), useJump) {}
 		hook(DWORD place, void(*stub)(), bool useJump = true) : hook(reinterpret_cast<void*>(place), reinterpret_cast<void*>(stub), useJump) {}
-
 		~hook();
 
 		hook* initialize(void* place, void* stub, bool useJump = true);
@@ -92,4 +91,75 @@ namespace utils
 
 		std::mutex stateMutex;
 	};
+
+
+	// #
+	// #
+
+	class vtable
+	{
+	public:
+		bool init(const void* table)
+		{
+			m_base_pointer_ = (unsigned int**)(table);
+			while ((*m_base_pointer_)[m_size_])
+			{
+				m_size_ += 1u;
+			}
+
+			m_originals_ = std::make_unique<void* []>(m_size_);
+			return (m_base_pointer_ && m_size_);
+		}
+
+		bool hook(void* place, const unsigned int index)
+		{
+			if (m_base_pointer_ && m_size_)
+			{
+				return (MH_CreateHook((*reinterpret_cast<void***>(m_base_pointer_))[index], place, &m_originals_[index]) == MH_STATUS::MH_OK);
+			}
+
+			return false;
+		}
+
+		template<typename FN>
+		FN original(const unsigned int index) const
+		{
+			return reinterpret_cast<FN>(m_originals_[index]);
+		}
+
+	private:
+		unsigned int**				m_base_pointer_ = nullptr;
+		unsigned int				m_size_ = 0u;
+		std::unique_ptr<void* []>	m_originals_ = { };
+	};
+
+
+	// #
+	// #
+
+	class cinterface
+	{
+	public:
+		template<typename T>
+		T get(const char* const sz_module, const char* const sz_object)
+		{
+			if (const auto hmodule = GetModuleHandleA(sz_module); hmodule)
+			{
+				if (auto* interface_ret = get_interface(hmodule, sz_object); interface_ret)
+				{
+					return static_cast<T>(interface_ret);
+				}
+				
+				MessageBoxA(HWND_DESKTOP, sz_object, "Failed to find interface:", MB_ICONERROR);
+				return NULL;
+			}
+
+			return NULL;
+		}
+
+	private:
+		void* get_interface(HMODULE hmodule, const char* sz_object);
+	};
+
+	inline cinterface module_interface;
 }

@@ -234,6 +234,7 @@ workspace "p2-rtx"
 
     disablewarnings {
 		"4239",
+		"4369",
 		"4505",
 		"4996",
 		"6001",

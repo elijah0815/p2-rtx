@@ -1,5 +1,4 @@
 #define ARR_SIZE(x) (sizeof(x) / sizeof(x[0]))
-#define M_PI				3.14159265358979323846f
 
 namespace utils
 {

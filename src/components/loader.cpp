@@ -9,6 +9,9 @@ namespace components
 	{
 		loader::mem_allocator_.clear();
 		loader::_register(new main_module());
+		loader::_register(new model_render());
+
+		XASSERT(MH_EnableHook(MH_ALL_HOOKS) != MH_STATUS::MH_OK);
 	}
 
 	void loader::uninitialize()
