@@ -8,7 +8,8 @@ namespace components
 		main_module();
 		~main_module() = default;
 		const char* get_name() override { return "main_module"; }
-	
+
+		static inline std::uint64_t framecount = 0u;
 	private:
 	};
 }

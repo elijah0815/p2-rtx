@@ -8,4 +8,12 @@ namespace game
 	DWORD materialsystem_module = 0u;
 	DWORD engine_module = 0u;
 	DWORD client_module = 0u;
+
+	const float identity[4][4] =
+	{
+		{ 1.0f, 0.0f, 0.0f, 0.0f },
+		{ 0.0f, 1.0f, 0.0f, 0.0f },
+		{ 0.0f, 0.0f, 1.0f, 0.0f },
+		{ 0.0f, 0.0f, 0.0f, 1.0f }
+	};
 }

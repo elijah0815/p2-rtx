@@ -25,37 +25,30 @@ namespace components
 		}
 	}
 
-	const float identity[4][4] =
-	{
-		{ 1.0f, 0.0f, 0.0f, 0.0f },
-		{ 0.0f, 1.0f, 0.0f, 0.0f },
-		{ 0.0f, 0.0f, 1.0f, 0.0f },
-		{ 0.0f, 0.0f, 0.0f, 1.0f }
-	};
-
 	// CViewRender::RenderView
 	void xx(/*void* renderer*/)
 	{
-		void* enginerender = reinterpret_cast<void*>(ENGINE_BASE + 0x60F880);
+		//void* enginerender = reinterpret_cast<void*>(ENGINE_BASE + 0x60F880);
+		auto enginerender = game::get_engine_renderer();
 
-		const VMatrix* view = call_virtual<12, const VMatrix*>(enginerender);
+		// old - works
+		//const VMatrix* view = call_virtual<12, const VMatrix*>((void*)enginerender);
+		//const VMatrix* pProjectionMatrix = view + 1; // Increment the pointer to get to the projectionMatrix
 
-		// Increment the pointer to get to the projectionMatrix
-		const VMatrix* pProjectionMatrix = view + 1;
-
-		//static DWORD* backEndDataOut_ptr = (DWORD*)(0x174F970);  // backendEndDataOut pointer
-		//const auto out = reinterpret_cast<game::GfxBackEndData*>(*game::backEndDataOut_ptr);
-		IDirect3DDevice9* dev = reinterpret_cast<IDirect3DDevice9*>(*(DWORD*)(RENDERER_BASE + 0x179F38));
+		//IDirect3DDevice9* dev = reinterpret_cast<IDirect3DDevice9*>(*(DWORD*)(RENDERER_BASE + 0x179F38));
+		const auto dev = game::get_d3d_device();
 
 		float colView[4][4] = {};
-		rowMajorToColumnMajor(view->m[0], colView[0]);
+		rowMajorToColumnMajor(enginerender->m_matrixView.m[0], colView[0]);
 
 		float colProj[4][4] = {};
-		rowMajorToColumnMajor(pProjectionMatrix->m[0], colProj[0]);
+		rowMajorToColumnMajor(enginerender->m_matrixProjection.m[0], colProj[0]);
 
-		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&identity));
+		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 		dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(colView));
 		dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(colProj));
+
+		main_module::framecount++; // used for debug anim
 
 	}
 
@@ -145,11 +138,11 @@ namespace components
 
 		// works but no gunmodel and broken stuff
 #ifdef XXX
-		HOOK_RETN_PLACE(xxx_retn, ENGINE_BASE + 0xE6CFB);
 		utils::hook(ENGINE_BASE + 0xE6CF6, xxx_stub).install()->quick();
+		HOOK_RETN_PLACE(xxx_retn, ENGINE_BASE + 0xE6CFB);
 #endif
 
-		HOOK_RETN_PLACE(yyy_retn, CLIENT_BASE + 0x1ECB8A);
 		utils::hook(CLIENT_BASE + 0x1ECB85, yyy_stub).install()->quick();
+		HOOK_RETN_PLACE(yyy_retn, CLIENT_BASE + 0x1ECB8A);
 	}
 }

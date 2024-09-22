@@ -1,5 +1,6 @@
 #pragma once
 #include "utils/function.hpp"
+#include "game/structs.hpp"
 
 #define RENDERER_BASE			game::shaderapidx9_module
 #define STUDIORENDER_BASE		game::studiorender_module
@@ -15,4 +16,11 @@ namespace game
 	extern DWORD materialsystem_module;
 	extern DWORD engine_module;
 	extern DWORD client_module;
+
+	extern const float identity[4][4];
+
+	// CRender gRender
+	inline components::CRender* get_engine_renderer() { return reinterpret_cast<components::CRender*>(ENGINE_BASE + 0x60F880); }
+
+	inline IDirect3DDevice9* get_d3d_device() { return reinterpret_cast<IDirect3DDevice9*>(*(DWORD*)(RENDERER_BASE + 0x179F38)); }
 }

@@ -3,8 +3,8 @@
 #define HOOK_JUMP true
 #define HOOK_CALL false
 
-#define HOOK_RETN_PLACE_DEF(NAME)		DWORD (NAME) = 0u;
-#define HOOK_RETN_PLACE(NAME, OFFSET)	(NAME) = (OFFSET);
+#define HOOK_RETN_PLACE_DEF(NAME)		DWORD (NAME) = 0u
+#define HOOK_RETN_PLACE(NAME, OFFSET)	(NAME) = (OFFSET)
 
 namespace utils
 {

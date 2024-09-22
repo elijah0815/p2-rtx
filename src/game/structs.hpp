@@ -78,6 +78,22 @@ namespace components
 		MATERIAL_NO_PREVIEW_IMAGE = 0x2,
 	};
 
+	enum MaterialPrimitiveType_t : __int32
+	{
+		MATERIAL_POINTS = 0x0,
+		MATERIAL_LINES = 0x1,
+		MATERIAL_TRIANGLES = 0x2,
+		MATERIAL_TRIANGLE_STRIP = 0x3,
+		MATERIAL_LINE_STRIP = 0x4,
+		MATERIAL_LINE_LOOP = 0x5,
+		MATERIAL_POLYGON = 0x6,
+		MATERIAL_QUADS = 0x7,
+		MATERIAL_SUBD_QUADS_EXTRA = 0x8,
+		MATERIAL_SUBD_QUADS_REG = 0x9,
+		MATERIAL_INSTANCED_QUADS = 0xA,
+		MATERIAL_HETEROGENOUS = 0xB,
+	};
+
 	enum ImageFormat : int
 	{
 		IMAGE_FORMAT_DEFAULT = 0xFFFFFFFE,
@@ -181,6 +197,12 @@ namespace components
 	struct VMatrix
 	{
 		float m[4][4];
+	};
+
+	struct VPlane
+	{
+		Vector m_Normal;
+		float m_Dist;
 	};
 
 	struct QAngle
@@ -878,10 +900,10 @@ namespace components
 		Vector origin;
 		QAngle angles;
 		IClientRenderable* pRenderable;
-		model_t* pModel;
-		matrix3x4_t* pModelToWorld;
-		matrix3x4_t* pLightingOffset;
-		Vector* pLightingOrigin;
+		const model_t* pModel;
+		const matrix3x4_t* pModelToWorld;
+		const matrix3x4_t* pLightingOffset;
+		const Vector* pLightingOrigin;
 		int flags;
 		int entity_index;
 		int skin;
@@ -969,5 +991,399 @@ namespace components
 		void* m_pVModel; // virtualmodel_t
 		// ...
 	};
+
+	struct WorldListLeafData_t
+	{
+		unsigned __int16 leafIndex;
+		__int16 waterData;
+		unsigned __int16 firstTranslucentSurface;
+		unsigned __int16 translucentSurfaceCount;
+	};
+
+	struct WorldListInfo_t
+	{
+		int m_ViewFogVolume;
+		int m_LeafCount;
+		bool m_bHasWater;
+		WorldListLeafData_t* m_pLeafDataList;
+	};
+
+	struct VisOverrideData_t
+	{
+		Vector m_vecVisOrigin;
+		float m_fDistToAreaPortalTolerance;
+		Vector m_vPortalCorners[4];
+		bool m_bTrimFrustumToPortalCorners;
+		Vector m_vPortalOrigin;
+		Vector m_vPortalForward;
+		float m_flPortalRadius;
+	};
+
+	enum MotionBlurMode_t : __int32
+	{
+		MOTION_BLUR_DISABLE = 0x1,
+		MOTION_BLUR_GAME = 0x2,
+		MOTION_BLUR_SFM = 0x3,
+	};
+
+	struct __declspec(align(4)) CViewSetup
+	{
+		int x;
+		int m_nUnscaledX;
+		int y;
+		int m_nUnscaledY;
+		int width;
+		int m_nUnscaledWidth;
+		int height;
+		int m_nUnscaledHeight;
+		bool m_bOrtho;
+		float m_OrthoLeft;
+		float m_OrthoTop;
+		float m_OrthoRight;
+		float m_OrthoBottom;
+		bool m_bCustomViewMatrix;
+		matrix3x4_t m_matCustomViewMatrix;
+		float fov;
+		float fovViewmodel;
+		Vector origin;
+		QAngle angles;
+		float zNear;
+		float zFar;
+		float zNearViewmodel;
+		float zFarViewmodel;
+		float m_flAspectRatio;
+		float m_flNearBlurDepth;
+		float m_flNearFocusDepth;
+		float m_flFarFocusDepth;
+		float m_flFarBlurDepth;
+		float m_flNearBlurRadius;
+		float m_flFarBlurRadius;
+		int m_nDoFQuality;
+		MotionBlurMode_t m_nMotionBlurMode;
+		float m_flShutterTime;
+		Vector m_vShutterOpenPosition;
+		QAngle m_shutterOpenAngles;
+		Vector m_vShutterClosePosition;
+		QAngle m_shutterCloseAngles;
+		float m_flOffCenterTop;
+		float m_flOffCenterBottom;
+		float m_flOffCenterLeft;
+		float m_flOffCenterRight;
+		__int8 m_bOffCenter : 1;
+		__int8 m_bRenderToSubrectOfLargerScreen : 1;
+		__int8 m_bDoBloomAndToneMapping : 1;
+		__int8 m_bDoDepthOfField : 1;
+		__int8 m_bHDRTarget : 1;
+		__int8 m_bDrawWorldNormal : 1;
+		__int8 m_bCullFrontFaces : 1;
+		__int8 m_bCacheFullSceneState : 1;
+	};
+
+	struct IRender_vtbl;
+	struct IRender
+	{
+		IRender_vtbl* vftable;
+	};
+
+	struct IRender_vtbl
+	{
+		void(__thiscall* FrameBegin)(IRender*);
+		void(__thiscall* FrameEnd)(IRender*);
+		void(__thiscall* ViewSetupVis)(IRender*, bool, int, const Vector*);
+		void(__thiscall* ViewDrawFade)(IRender*, unsigned __int8*, IMaterial*);
+		void(__thiscall* DrawSceneBegin)(IRender*);
+		void(__thiscall* DrawSceneEnd)(IRender*);
+		void* (__thiscall* CreateWorldList)(IRender*); // IWorldRenderList
+		void(__thiscall* BuildWorldLists)(IRender*, void*, WorldListInfo_t*, int, const VisOverrideData_t*, bool, float*); // IWorldRenderList
+		void(__thiscall* DrawWorldLists)(IRender*, void*, void*, unsigned int, float); // IMatRenderContext - IWorldRenderList
+		const Vector* (__thiscall* ViewOrigin)(IRender*);
+		const QAngle* (__thiscall* ViewAngles)(IRender*);
+		const CViewSetup* (__thiscall* ViewGetCurrent)(IRender*);
+		const VMatrix* (__thiscall* ViewMatrix)(IRender*);
+		const VMatrix* (__thiscall* WorldToScreenMatrix)(IRender*);
+		float(__thiscall* GetFramerate)(IRender*);
+		float(__thiscall* GetZNear)(IRender*);
+		float(__thiscall* GetZFar)(IRender*);
+		float(__thiscall* GetFov)(IRender*);
+		float(__thiscall* GetFovY)(IRender*);
+		float(__thiscall* GetFovViewmodel)(IRender*);
+		bool(__thiscall* ClipTransform)(IRender*, const Vector*, Vector*);
+		bool(__thiscall* ScreenTransform)(IRender*, const Vector*, Vector*);
+		void(__thiscall* Push3DView0)(IRender*, void*, const CViewSetup*, int, ITexture*, VPlane*, ITexture*); // IMatRenderContext
+		void(__thiscall* Push3DView1)(IRender*, void*, const CViewSetup*, int, ITexture*, VPlane*); // IMatRenderContext
+		void(__thiscall* Push2DView)(IRender*, void*, const CViewSetup*, int, ITexture*, VPlane*); // IMatRenderContext
+		void(__thiscall* PopView)(IRender*, void*, VPlane*); // IMatRenderContext
+		void(__thiscall* SetMainView)(IRender*, const Vector*, const QAngle*);
+		void(__thiscall* ViewSetupVisEx)(IRender*, bool, int, const Vector*, unsigned int*);
+		void(__thiscall* OverrideViewFrustum)(IRender*, VPlane*);
+		void(__thiscall* UpdateBrushModelLightmap)(IRender*, model_t*, IClientRenderable*);
+		void(__thiscall* BeginUpdateLightmaps)(IRender*);
+		void(__thiscall* EndUpdateLightmaps)(IRender*);
+		bool(__thiscall* InLightmapUpdate)(IRender*);
+	};
+
+	struct CRender_vtbl;
+	struct __declspec(align(8)) CRender : IRender
+	{
+		//CRender_vtbl* vftable;
+		float m_yFOV;
+		long double m_frameStartTime;
+		float m_framerate;
+		float m_zNear;
+		float m_zFar;
+		VMatrix m_matrixView;
+		VMatrix m_matrixProjection;
+		VMatrix m_matrixWorldToScreen;
+		//CUtlStack<CRender::ViewStack_t, CUtlMemory<CRender::ViewStack_t, int> > m_ViewStack;
+		//int m_iLightmapUpdateDepth;
+	};
+
+	struct CRender_vtbl
+	{
+		void(__thiscall* FrameBegin)(IRender*);
+		void(__thiscall* FrameEnd)(IRender*);
+		void(__thiscall* ViewSetupVis)(IRender*, bool, int, const Vector*);
+		void(__thiscall* ViewDrawFade)(IRender*, unsigned __int8*, IMaterial*);
+		void(__thiscall* DrawSceneBegin)(IRender*);
+		void(__thiscall* DrawSceneEnd)(IRender*);
+		void* (__thiscall* CreateWorldList)(IRender*); // IWorldRenderList
+		void(__thiscall* BuildWorldLists)(IRender*, void*, WorldListInfo_t*, int, const VisOverrideData_t*, bool, float*); // IWorldRenderList
+		void(__thiscall* DrawWorldLists)(IRender*, void*, void*, unsigned int, float); // IWorldRenderList - IWorldRenderList
+		const Vector* (__thiscall* ViewOrigin)(IRender*);
+		const QAngle* (__thiscall* ViewAngles)(IRender*);
+		const CViewSetup* (__thiscall* ViewGetCurrent)(IRender*);
+		const VMatrix* (__thiscall* ViewMatrix)(IRender*);
+		const VMatrix* (__thiscall* WorldToScreenMatrix)(IRender*);
+		float(__thiscall* GetFramerate)(IRender*);
+		float(__thiscall* GetZNear)(IRender*);
+		float(__thiscall* GetZFar)(IRender*);
+		float(__thiscall* GetFov)(IRender*);
+		float(__thiscall* GetFovY)(IRender*);
+		float(__thiscall* GetFovViewmodel)(IRender*);
+		bool(__thiscall* ClipTransform)(IRender*, const Vector*, Vector*);
+		bool(__thiscall* ScreenTransform)(IRender*, const Vector*, Vector*);
+		void(__thiscall* Push3DView0)(IRender*, void*, const CViewSetup*, int, ITexture*, VPlane*, ITexture*); // IMatRenderContext
+		void(__thiscall* Push3DView1)(IRender*, void*, const CViewSetup*, int, ITexture*, VPlane*); // IMatRenderContext
+		void(__thiscall* Push2DView)(IRender*, void*, const CViewSetup*, int, ITexture*, VPlane*); // IMatRenderContext
+		void(__thiscall* PopView)(IRender*, void*, VPlane*); // IMatRenderContext
+		void(__thiscall* SetMainView)(IRender*, const Vector*, const QAngle*);
+		void(__thiscall* ViewSetupVisEx)(IRender*, bool, int, const Vector*, unsigned int*);
+		void(__thiscall* OverrideViewFrustum)(IRender*, VPlane*);
+		void(__thiscall* UpdateBrushModelLightmap)(IRender*, model_t*, IClientRenderable*);
+		void(__thiscall* BeginUpdateLightmaps)(IRender*);
+		void(__thiscall* EndUpdateLightmaps)(IRender*);
+		bool(__thiscall* InLightmapUpdate)(IRender*);
+	};
+
+	enum StreamSpec_t : __int32
+	{
+		STREAM_DEFAULT = 0x0,
+		STREAM_SPECULAR1 = 0x1,
+		STREAM_FLEXDELTA = 0x2,
+		STREAM_MORPH = 0x3,
+		STREAM_UNIQUE_A = 0x4,
+		STREAM_UNIQUE_B = 0x5,
+		STREAM_UNIQUE_C = 0x6,
+		STREAM_UNIQUE_D = 0x7,
+		STREAM_SUBDQUADS = 0x8,
+	};
+
+	struct __declspec(align(8)) VertexStreamSpec_t
+	{
+		unsigned __int64 iVertexDataElement;
+		StreamSpec_t iStreamSpec;
+	};
+
+	struct CPrimList
+	{
+		int m_FirstIndex;
+		int m_NumIndices;
+	};
+
+	struct MeshDesc_t : VertexDesc_t, IndexDesc_t
+	{
+	};
+
+	struct CMeshBase : IMesh
+	{
+	};
+
+	struct CMeshBase_vtbl
+	{
+		int(__thiscall* VertexCount)(IVertexBuffer*);
+		unsigned __int64(__thiscall* GetVertexFormat)(IVertexBuffer*);
+		bool(__thiscall* IsDynamic)(IVertexBuffer*);
+		void(__thiscall* BeginCastBuffer)(IVertexBuffer*, unsigned __int64);
+		void(__thiscall* EndCastBuffer)(IVertexBuffer*);
+		int(__thiscall* GetRoomRemaining)(IVertexBuffer*);
+		bool(__thiscall* Lock)(IVertexBuffer*, int, bool, VertexDesc_t*);
+		void(__thiscall* Unlock)(IVertexBuffer*, int, VertexDesc_t*);
+		void(__thiscall* Spew0)(IVertexBuffer*, int, const VertexDesc_t*);
+		void(__thiscall* ValidateData0)(IVertexBuffer*, int, const VertexDesc_t*);
+		void(__thiscall* SetPrimitiveType)(IMesh*, MaterialPrimitiveType_t);
+		void(__thiscall* Draw0)(IMesh*, CPrimList*, int);
+		void(__thiscall* Draw1)(IMesh*, int, int);
+		void(__thiscall* SetColorMesh)(IMesh*, IMesh*, int);
+		void(__thiscall* CopyToMeshBuilder)(IMesh*, int, int, int, int, int, void*); // CMeshBuilder
+		void(__thiscall* Spew1)(IMesh*, int, int, const MeshDesc_t*);
+		void(__thiscall* ValidateData1)(IMesh*, int, int, const MeshDesc_t*);
+		void(__thiscall* LockMesh)(IMesh*, int, int, MeshDesc_t*, void*); // MeshBuffersAllocationSettings_t
+		void(__thiscall* ModifyBegin)(IMesh*, int, int, int, int, MeshDesc_t*);
+		void(__thiscall* ModifyEnd)(IMesh*, MeshDesc_t*);
+		void(__thiscall* UnlockMesh)(IMesh*, int, int, MeshDesc_t*);
+		void(__thiscall* ModifyBeginEx)(IMesh*, bool, int, int, int, int, MeshDesc_t*);
+		void(__thiscall* SetFlexMesh)(IMesh*, IMesh*, int);
+		void(__thiscall* DisableFlexMesh)(IMesh*);
+		void(__thiscall* MarkAsDrawn)(IMesh*);
+		void(__thiscall* DrawModulated)(IMesh*, const Vector4D*, int, int);
+		unsigned int(__thiscall* ComputeMemoryUsed)(IMesh*);
+		void* (__thiscall* AccessRawHardwareDataStream)(IMesh*, unsigned __int8, unsigned int, unsigned int, void*);
+		void* (__thiscall* GetCachedPerFrameMeshData)(IMesh*); // ICachedPerFrameMeshData
+		void(__thiscall* ReconstructFromCachedPerFrameMeshData)(IMesh*, void*); // ICachedPerFrameMeshData
+		void(__thiscall* BeginPass)(CMeshBase*);
+		void(__thiscall* RenderPass)(CMeshBase*, const unsigned __int8*);
+		bool(__thiscall* HasColorMesh)(CMeshBase*);
+		bool(__thiscall* HasFlexMesh)(CMeshBase*);
+		bool(__thiscall* IsUsingVertexID)(CMeshBase*);
+		VertexStreamSpec_t* (__thiscall* GetVertexStreamSpec)(CMeshBase*);
+		void(__thiscall * CMeshBase_destructor)(CMeshBase*);
+	};
+
+	struct CBaseMeshDX8 : CMeshBase
+	{
+		bool m_bMeshLocked;
+		unsigned __int64 m_VertexFormat;
+	};
+
+	struct CBaseMeshDX8_vtbl
+	{
+		int(__thiscall* VertexCount)(IVertexBuffer*);
+		unsigned __int64(__thiscall* GetVertexFormat)(IVertexBuffer*);
+		bool(__thiscall* IsDynamic)(IVertexBuffer*);
+		void(__thiscall* BeginCastBuffer)(IVertexBuffer*, unsigned __int64);
+		void(__thiscall* EndCastBuffer)(IVertexBuffer*);
+		int(__thiscall* GetRoomRemaining)(IVertexBuffer*);
+		bool(__thiscall* Lock)(IVertexBuffer*, int, bool, VertexDesc_t*);
+		void(__thiscall* Unlock)(IVertexBuffer*, int, VertexDesc_t*);
+		void(__thiscall* Spew0)(IVertexBuffer*, int, const VertexDesc_t*);
+		void(__thiscall* ValidateData0)(IVertexBuffer*, int, const VertexDesc_t*);
+		void(__thiscall* SetPrimitiveType)(IMesh*, MaterialPrimitiveType_t);
+		void(__thiscall* Draw0)(IMesh*, CPrimList*, int);
+		void(__thiscall* Draw1)(IMesh*, int, int);
+		void(__thiscall* SetColorMesh)(IMesh*, IMesh*, int);
+		void(__thiscall* CopyToMeshBuilder)(IMesh*, int, int, int, int, int, void*); // CMeshBuilder
+		void(__thiscall* Spew1)(IMesh*, int, int, const MeshDesc_t*);
+		void(__thiscall* ValidateData1)(IMesh*, int, int, const MeshDesc_t*);
+		void(__thiscall* LockMesh)(IMesh*, int, int, MeshDesc_t*, void*); // MeshBuffersAllocationSettings_t
+		void(__thiscall* ModifyBegin)(IMesh*, int, int, int, int, MeshDesc_t*);
+		void(__thiscall* ModifyEnd)(IMesh*, MeshDesc_t*);
+		void(__thiscall* UnlockMesh)(IMesh*, int, int, MeshDesc_t*);
+		void(__thiscall* ModifyBeginEx)(IMesh*, bool, int, int, int, int, MeshDesc_t*);
+		void(__thiscall* SetFlexMesh)(IMesh*, IMesh*, int);
+		void(__thiscall* DisableFlexMesh)(IMesh*);
+		void(__thiscall* MarkAsDrawn)(IMesh*);
+		void(__thiscall* DrawModulated)(IMesh*, const Vector4D*, int, int);
+		unsigned int(__thiscall* ComputeMemoryUsed)(IMesh*);
+		void* (__thiscall* AccessRawHardwareDataStream)(IMesh*, unsigned __int8, unsigned int, unsigned int, void*);
+		void* (__thiscall* GetCachedPerFrameMeshData)(IMesh*); // ICachedPerFrameMeshData
+		void(__thiscall* ReconstructFromCachedPerFrameMeshData)(IMesh*, void*); // ICachedPerFrameMeshData
+		void(__thiscall* BeginPass)(CMeshBase*);
+		void(__thiscall* RenderPass)(CMeshBase*, const unsigned __int8*);
+		bool(__thiscall* HasColorMesh)(CMeshBase*);
+		bool(__thiscall* HasFlexMesh)(CMeshBase*);
+		bool(__thiscall* IsUsingVertexID)(CMeshBase*);
+		VertexStreamSpec_t* (__thiscall* GetVertexStreamSpec)(CMeshBase*);
+		void(__thiscall * CMeshBase_destructor)(CMeshBase*);
+		void(__thiscall* SetVertexFormat)(CBaseMeshDX8*, unsigned __int64, bool, bool);
+		bool(__thiscall* IsExternal)(CBaseMeshDX8*);
+		void(__thiscall* SetMaterial)(CBaseMeshDX8*, IMaterial*);
+		void(__thiscall* GetColorMesh)(CBaseMeshDX8*, const IVertexBuffer**, int*);
+		void(__thiscall* HandleLateCreation)(CBaseMeshDX8*);
+		MaterialPrimitiveType_t(__thiscall* GetPrimitiveType)(CBaseMeshDX8*);
+		void* (__thiscall* GetVertexBuffer)(CBaseMeshDX8*); // CVertexBuffer
+		void* (__thiscall* GetIndexBuffer)(CBaseMeshDX8*); // CIndexBuffer
+		bool(__thiscall* NeedsVertexFormatReset)(CBaseMeshDX8*, unsigned __int64);
+		bool(__thiscall* HasEnoughRoom)(CBaseMeshDX8*, int, int);
+		void(__thiscall* PreLock)(CBaseMeshDX8*);
+	};
+
+	struct __declspec(align(8)) CMeshDX8 : CBaseMeshDX8
+	{
+		void* m_pVertexBuffer; // CVertexBuffer
+		void* m_pIndexBuffer; // CIndexBuffer
+		CMeshDX8* m_pColorMesh;
+		int m_nColorMeshVertOffsetInBytes;
+		unsigned __int64 m_fmtStreamSpec;
+		void* m_pVertexStreamSpec; // CArrayAutoPtr
+		void* m_pVbTexCoord1; // CVertexBuffer
+		IDirect3DVertexBuffer9* m_arrRawHardwareDataStreams[1];
+		void* m_pFlexVertexBuffer; // CVertexBuffer
+		bool m_bHasRawHardwareDataStreams;
+		bool m_bHasFlexVerts;
+		int m_nFlexVertOffsetInBytes;
+		int m_flexVertCount;
+		MaterialPrimitiveType_t m_Type;
+		_D3DPRIMITIVETYPE m_Mode;
+		unsigned int m_NumIndices;
+		unsigned __int16 m_NumVertices;
+		bool m_IsVBLocked;
+		bool m_IsIBLocked;
+		int m_FirstIndex;
+		const char* m_pTextureGroupName;
+	};
+	STATIC_ASSERT_OFFSET(CMeshDX8, m_Type, 0x4C);
+
+	struct CMeshDX8_vtbl
+	{
+		int(__thiscall* VertexCount)(IVertexBuffer*);
+		unsigned __int64(__thiscall* GetVertexFormat)(IVertexBuffer*);
+		bool(__thiscall* IsDynamic)(IVertexBuffer*);
+		void(__thiscall* BeginCastBuffer)(IVertexBuffer*, unsigned __int64);
+		void(__thiscall* EndCastBuffer)(IVertexBuffer*);
+		int(__thiscall* GetRoomRemaining)(IVertexBuffer*);
+		bool(__thiscall* Lock)(IVertexBuffer*, int, bool, VertexDesc_t*);
+		void(__thiscall* Unlock)(IVertexBuffer*, int, VertexDesc_t*);
+		void(__thiscall* Spew0)(IVertexBuffer*, int, const VertexDesc_t*);
+		void(__thiscall* ValidateData0)(IVertexBuffer*, int, const VertexDesc_t*);
+		void(__thiscall* SetPrimitiveType)(IMesh*, MaterialPrimitiveType_t);
+		void(__thiscall* Draw0)(IMesh*, CPrimList*, int);
+		void(__thiscall* Draw1)(IMesh*, int, int);
+		void(__thiscall* SetColorMesh)(IMesh*, IMesh*, int);
+		void(__thiscall* CopyToMeshBuilder)(IMesh*, int, int, int, int, int, void*); // CMeshBuilder
+		void(__thiscall* Spew1)(IMesh*, int, int, const MeshDesc_t*);
+		void(__thiscall* ValidateData1)(IMesh*, int, int, const MeshDesc_t*);
+		void(__thiscall* LockMesh)(IMesh*, int, int, MeshDesc_t*, void*); // MeshBuffersAllocationSettings_t
+		void(__thiscall* ModifyBegin)(IMesh*, int, int, int, int, MeshDesc_t*);
+		void(__thiscall* ModifyEnd)(IMesh*, MeshDesc_t*);
+		void(__thiscall* UnlockMesh)(IMesh*, int, int, MeshDesc_t*);
+		void(__thiscall* ModifyBeginEx)(IMesh*, bool, int, int, int, int, MeshDesc_t*);
+		void(__thiscall* SetFlexMesh)(IMesh*, IMesh*, int);
+		void(__thiscall* DisableFlexMesh)(IMesh*);
+		void(__thiscall* MarkAsDrawn)(IMesh*);
+		void(__thiscall* DrawModulated)(IMesh*, const Vector4D*, int, int);
+		unsigned int(__thiscall* ComputeMemoryUsed)(IMesh*);
+		void* (__thiscall* AccessRawHardwareDataStream)(IMesh*, unsigned __int8, unsigned int, unsigned int, void*);
+		void* (__thiscall* GetCachedPerFrameMeshData)(IMesh*); // ICachedPerFrameMeshData
+		void(__thiscall* ReconstructFromCachedPerFrameMeshData)(IMesh*, void*); // ICachedPerFrameMeshData
+		void(__thiscall* BeginPass)(CMeshBase*);
+		void(__thiscall* RenderPass)(CMeshBase*, const unsigned __int8*);
+		bool(__thiscall* HasColorMesh)(CMeshBase*);
+		bool(__thiscall* HasFlexMesh)(CMeshBase*);
+		bool(__thiscall* IsUsingVertexID)(CMeshBase*);
+		VertexStreamSpec_t* (__thiscall* GetVertexStreamSpec)(CMeshBase*);
+		void(__thiscall * CMeshBase_destructor)(CMeshBase*);
+		void(__thiscall* SetVertexFormat)(CBaseMeshDX8*, unsigned __int64, bool, bool);
+		bool(__thiscall* IsExternal)(CBaseMeshDX8*);
+		void(__thiscall* SetMaterial)(CBaseMeshDX8*, IMaterial*);
+		void(__thiscall* GetColorMesh)(CBaseMeshDX8*, const IVertexBuffer**, int*);
+		void(__thiscall* HandleLateCreation)(CBaseMeshDX8*);
+		MaterialPrimitiveType_t(__thiscall* GetPrimitiveType)(CBaseMeshDX8*);
+		void* (__thiscall* GetVertexBuffer)(CBaseMeshDX8*); // CVertexBuffer
+		void* (__thiscall* GetIndexBuffer)(CBaseMeshDX8*); // CIndexBuffer
+		bool(__thiscall* NeedsVertexFormatReset)(CBaseMeshDX8*, unsigned __int64);
+		bool(__thiscall* HasEnoughRoom)(CBaseMeshDX8*, int, int);
+		void(__thiscall* PreLock)(CBaseMeshDX8*);
+	};
+
 }
 

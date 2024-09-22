@@ -9,8 +9,8 @@ namespace components
 		namespace DrawModelExecute
 		{
 			constexpr uint32_t Index = 19u;
-			using FN = void(__fastcall*)(void*, void*, void*, const DrawModelState_t*, const ModelRenderInfo_t*, matrix3x4_t*);
-			void __fastcall Detour(void* ecx, void* edx, void* oo, const DrawModelState_t* state, const ModelRenderInfo_t* pInfo, matrix3x4_t* pCustomBoneToWorld);
+			using FN = void(__fastcall*)(void*, void*, void*, const DrawModelState_t&, const ModelRenderInfo_t&, matrix3x4_t*);
+			void __fastcall Detour(void* ecx, void* edx, void* oo, const DrawModelState_t& state, const ModelRenderInfo_t& pInfo, matrix3x4_t* pCustomBoneToWorld);
 		}
 
 		typedef unsigned short ModelInstanceHandle_t;
