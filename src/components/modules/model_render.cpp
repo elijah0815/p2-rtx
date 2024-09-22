@@ -117,6 +117,11 @@ namespace components
 		D3DMATRIX s_tc_transform = {};
 		DWORD s_tc_stage = NULL;
 	}
+
+	namespace unkunk
+	{
+		IDirect3DVertexShader9* s_shader = nullptr;
+	}
 	
 
 	IDirect3DVertexShader9* saved_shader_unk = nullptr;
@@ -159,36 +164,11 @@ namespace components
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
 				dev->GetVertexShader(&saved_shader_unk);
 				dev->SetVertexShader(nullptr);
-				dev->GetTransform(D3DTS_WORLD, &saved_world_mtx_unk);
+				//dev->GetTransform(D3DTS_WORLD, &saved_world_mtx_unk);
 
-				float mtx[4][4] = {};
-				mtx[0][0] = game::identity[0][0];
-				mtx[0][1] = game::identity[0][1];
-				mtx[0][2] = game::identity[0][2];
-				mtx[0][3] = game::identity[0][3];
-
-				mtx[1][0] = game::identity[1][0];
-				mtx[1][1] = game::identity[1][1];
-				mtx[1][2] = game::identity[1][2];
-				mtx[1][3] = game::identity[1][3];
-
-				mtx[2][0] = game::identity[2][0];
-				mtx[2][1] = game::identity[2][1];
-				mtx[2][2] = game::identity[2][2];
-				mtx[2][3] = game::identity[2][3]; 
-
-				mtx[3][0] = game::identity[3][0];
-				mtx[3][1] = game::identity[3][1];
-				mtx[3][2] = 0.0f;
-				mtx[3][3] = game::identity[3][3];
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mtx));  
+				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 			}
 
-			// 0x240003 = terrain / displacement
-			// 0x40001 = SKY - cant find fitting fvf format
-			// 0x40003 = ????
-			// 0x40005 = Fx Billboards - light beams etc
-			// 0x40007 = UI?
 
 			// transporting beams
 			else if (mesh->m_VertexFormat == 0x80005) // stride 0x20
@@ -200,7 +180,7 @@ namespace components
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 
 				dev->GetTransform(D3DTS_TEXTURE0, &beamtransport::s_tc_transform);
-				dev->GetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, &beamtransport::s_tc_stage);
+				//dev->GetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, &beamtransport::s_tc_stage);
 
 				// tc scroll
 				D3DXMATRIX ret = beamtransport::s_tc_transform;
@@ -214,7 +194,7 @@ namespace components
 			else if (mesh->m_VertexFormat == 0x80001)
 			{
 				// tc @ 12
-				dev->SetFVF(D3DFVF_XYZ | D3DFVF_TEX2); // missing 4 bytes at the end here
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_TEX2 | D3DFVF_TEXCOORDSIZE3(1)); // missing 4 bytes at the end here - fixed with tc2 size 3?
 				dev->GetVertexShader(&laserplatform::s_shader);
 				dev->SetVertexShader(nullptr);
 
@@ -238,10 +218,11 @@ namespace components
 				mtx[3][1] = game::identity[3][1];
 				mtx[3][2] = 0.0f; //sinf((float)main_module::framecount * 0.05f) * 40.0f;
 				mtx[3][3] = game::identity[3][3];
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+
+				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 
 				dev->GetTransform(D3DTS_TEXTURE0, &laserplatform::s_tc_transform);
-				dev->GetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, &laserplatform::s_tc_stage);
+				//dev->GetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, &laserplatform::s_tc_stage);
 
 				// tc scroll
 				D3DXMATRIX ret = laserplatform::s_tc_transform;
@@ -250,6 +231,64 @@ namespace components
 				dev->SetTransform(D3DTS_TEXTURE0, &ret);
 				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
 			}
+
+			else if (mesh->m_VertexFormat == 0x80003)
+			{
+				dev->GetVertexShader(&unkunk::s_shader);
+				bool swing = false;
+
+				if (mesh->m_Mode == D3DPT_TRIANGLELIST)
+				{
+					// tc @ 12
+					//dev->SetFVF(D3DFVF_XYZW | D3DFVF_NORMAL | D3DFVF_TEX1 |
+					//	D3DFVF_TEXCOORDSIZE2(0) | // tc0 uses 2 floats
+					//	//D3DFVF_TEXCOORDSIZE2(1) | // tc1 uses 2 floats
+					//	D3DFVF_TEXCOORDSIZE1(1)); // tc2 uses 1 float
+
+					dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1 | D3DFVF_TEXCOORDSIZE2(0));
+					dev->SetVertexShader(nullptr);
+
+					//swing = true;
+				}
+				if (mesh->m_Mode == D3DPT_TRIANGLESTRIP)
+				{
+					dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1 | D3DFVF_TEXCOORDSIZE2(0));
+					dev->SetVertexShader(nullptr);
+				}
+
+				float mtx[4][4] = {};
+				mtx[0][0] = game::identity[0][0];
+				mtx[0][1] = game::identity[0][1];
+				mtx[0][2] = game::identity[0][2];
+				mtx[0][3] = game::identity[0][3];
+
+				mtx[1][0] = game::identity[1][0];
+				mtx[1][1] = game::identity[1][1];
+				mtx[1][2] = game::identity[1][2];
+				mtx[1][3] = game::identity[1][3];
+
+				mtx[2][0] = game::identity[2][0];
+				mtx[2][1] = game::identity[2][1];
+				mtx[2][2] = game::identity[2][2];
+				mtx[2][3] = game::identity[2][3];
+
+				mtx[3][0] = game::identity[3][0];
+				mtx[3][1] = game::identity[3][1];
+				mtx[3][2] = swing ? (sinf((float)main_module::framecount * 0.05f) * 2.0f) : 0.0f;
+				mtx[3][3] = game::identity[3][3];
+
+				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+
+				//dev->GetTransform(D3DTS_TEXTURE0, &laserplatform::s_tc_transform);
+				//
+				//// tc scroll
+				//D3DXMATRIX ret = laserplatform::s_tc_transform;
+				//ret(3, 1) = (float)main_module::framecount * 0.01f;
+
+				//dev->SetTransform(D3DTS_TEXTURE0, &ret);
+				//dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
+			}
+
 			else if (mesh->m_VertexFormat == 0x40001) // sky
 			{
 				int zz = 1;
@@ -333,6 +372,7 @@ namespace components
 			dev->SetTransform(D3DTS_TEXTURE0, &beamtransport::s_tc_transform);
 			dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);//beamtransport::s_tc_stage);
 		}
+
 		if (laserplatform::s_shader)
 		{
 			dev->SetVertexShader(laserplatform::s_shader);
@@ -341,6 +381,13 @@ namespace components
 
 			dev->SetTransform(D3DTS_TEXTURE0, &laserplatform::s_tc_transform);
 			dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE); //laserplatform::s_tc_stage);
+		}
+
+		if (unkunk::s_shader)
+		{
+			dev->SetVertexShader(unkunk::s_shader);
+			dev->SetFVF(NULL);
+			unkunk::s_shader = nullptr;
 		}
 	}
 
