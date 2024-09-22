@@ -32,7 +32,7 @@
 
 #include "MinHook.h"
 
-#include "utils/vector.h"
+#include "utils/vector.hpp"
 #include "game/structs.hpp"
 #include "utils/hooking.hpp"
 #include "utils/utils.hpp"

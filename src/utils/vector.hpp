@@ -460,3 +460,26 @@ struct Vertex_t
 	Vector2D m_Position;
 	Vector2D m_TexCoord;
 };
+
+namespace utils::vector
+{
+	inline void AngleVectors(const Vector vAngles, Vector* vForward)
+	{
+		float sp, sy, cp, cy;
+
+		const float flX = DEG2RADF(vAngles.x);
+		sp = ::sinf(flX);
+		cp = ::cosf(flX);
+
+		const float flY = DEG2RADF(vAngles.y);
+		sy = ::sinf(flY);
+		cy = ::cosf(flY);
+
+		if (vForward)
+		{
+			vForward->x = (cp * cy);
+			vForward->y = (cp * sy);
+			vForward->z = -sp;
+		}
+	}
+}

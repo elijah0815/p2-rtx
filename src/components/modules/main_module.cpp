@@ -1,6 +1,6 @@
 #include "std_include.hpp"
 
-// -novid -disable_d3d9_hacks -limitvsconst -disallowhwmorph -no_compressed_verts -maxdxlevel 90 -dxlevel 90 +sv_cheats 1 +mat_fullbright 1  +mat_queue_mode 0 +mat_softwarelighting 1 +mat_softwareskin 1 +mat_phong 1 +mat_parallaxmap 0 +mat_frame_sync_enable 0 +mat_fastnobump 1 +mat_disable_bloom 1 +mat_dof_enabled 0 +mat_displacementmap 0 +mat_drawflat 1 +mat_normalmaps 0 +mat_normals 0 +sv_lan 1 +map devtest
+// -novid -disable_d3d9_hacks -limitvsconst -disallowhwmorph -no_compressed_verts -maxdxlevel 90 -dxlevel 90 +sv_cheats 1 +developer 1 +r_ShowViewerArea 1 +mat_fullbright 1  +mat_queue_mode 0 +mat_softwarelighting 1 +mat_softwareskin 1 +mat_phong 1 +mat_parallaxmap 0 +mat_frame_sync_enable 0 +mat_fastnobump 1 +mat_disable_bloom 1 +mat_dof_enabled 0 +mat_displacementmap 0 +mat_drawflat 1 +mat_normalmaps 0 +mat_normals 0 +sv_lan 1 +map devtest
 
 namespace components
 {
@@ -144,5 +144,15 @@ namespace components
 
 		utils::hook(CLIENT_BASE + 0x1ECB85, yyy_stub).install()->quick();
 		HOOK_RETN_PLACE(yyy_retn, CLIENT_BASE + 0x1ECB8A);
+
+
+
+		// anti cull:
+		// 0x1D125D -> mov     byte ptr [edi+330h], 0 to 1 (cviewrenderer->m_bForceNoVis)
+		// engine.dll + 0xE64E0 -> jmp - freeze
+		// engine.dll + 0xE65DA -> nop 2
+
+		utils::hook::set<BYTE>(ENGINE_BASE + 0xE68F8, 0xEB);
+		utils::hook::nop(ENGINE_BASE + 0xE69C3, 2);
 	}
 }
