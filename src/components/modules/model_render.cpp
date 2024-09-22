@@ -96,13 +96,19 @@ namespace components
 	// #
 	// #
 
-	IDirect3DVertexShader9* saved_shader_mdl = nullptr;
-	D3DMATRIX saved_world_mtx_mdl = {};
+	namespace worldmodel
+	{
+		IDirect3DVertexShader9* s_shader = nullptr;
+		D3DMATRIX s_world_mtx = {};
+	}
 
-	IDirect3DVertexShader9* saved_shader_terrain = nullptr;
-	D3DMATRIX saved_world_mtx_terrain = {};
-
-	
+	namespace beamtransport
+	{
+		IDirect3DVertexShader9* s_shader = nullptr;
+		D3DMATRIX s_world_mtx = {};
+		D3DMATRIX s_tc_transform = {};
+		DWORD s_tc_stage = NULL;
+	}
 
 	namespace laserplatform
 	{
@@ -134,7 +140,7 @@ namespace components
 		else if (og_model_shader && stride == 64) // players - viewmodel
 		{
 			// mesh->m_VertexFormat always 0x51087
-			dev->GetVertexShader(&saved_shader_mdl);
+			dev->GetVertexShader(&worldmodel::s_shader);
 			dev->SetVertexShader(nullptr);
 
 			// tc start @ 44
@@ -187,35 +193,21 @@ namespace components
 			// transporting beams
 			else if (mesh->m_VertexFormat == 0x80005) // stride 0x20
 			{
-				//wrapper->device->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX8);
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX2);
-				dev->GetVertexShader(&saved_shader_terrain);
+				dev->GetVertexShader(&beamtransport::s_shader);
 				dev->SetVertexShader(nullptr);
-				//dev->SetFVF(NULL);
-
-				/*float mtx[4][4] = {};
-				mtx[0][0] = game::identity[0][0];
-				mtx[0][1] = game::identity[0][1];
-				mtx[0][2] = game::identity[0][2];
-				mtx[0][3] = game::identity[0][3];
-
-				mtx[1][0] = game::identity[1][0];
-				mtx[1][1] = game::identity[1][1];
-				mtx[1][2] = game::identity[1][2];
-				mtx[1][3] = game::identity[1][3];
-
-				mtx[2][0] = game::identity[2][0];
-				mtx[2][1] = game::identity[2][1];
-				mtx[2][2] = game::identity[2][2];
-				mtx[2][3] = game::identity[2][3];
-
-				mtx[3][0] = game::identity[3][0];
-				mtx[3][1] = game::identity[3][1];
-				mtx[3][2] = 0.0f;
-				mtx[3][3] = game::identity[3][3];*/
+				
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 
-				//wrapper->device->GetTransform(D3DTS_WORLD, &saved_world_mtx_terrain);
+				dev->GetTransform(D3DTS_TEXTURE0, &beamtransport::s_tc_transform);
+				dev->GetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, &beamtransport::s_tc_stage);
+
+				// tc scroll
+				D3DXMATRIX ret = beamtransport::s_tc_transform;
+				ret(3, 1) = (float)main_module::framecount * 0.0015f;
+
+				dev->SetTransform(D3DTS_TEXTURE0, &ret); 
+				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
 			}
 
 			// laser platforms
@@ -251,10 +243,9 @@ namespace components
 				dev->GetTransform(D3DTS_TEXTURE0, &laserplatform::s_tc_transform);
 				dev->GetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, &laserplatform::s_tc_stage);
 
-				
+				// tc scroll
 				D3DXMATRIX ret = laserplatform::s_tc_transform;
-				ret(3, 1) += (float)main_module::framecount * 0.01f;
-				//ret(1, 1) = 0.25f;
+				ret(3, 1) = (float)main_module::framecount * 0.01f;
 
 				dev->SetTransform(D3DTS_TEXTURE0, &ret);
 				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
@@ -324,28 +315,32 @@ namespace components
 			wrapper->device->SetFVF(NULL);
 			saved_shader_unk = nullptr;
 			wrapper->device->SetTransform(D3DTS_WORLD, &saved_world_mtx_unk);
-		}
-		else*/ if (saved_shader_mdl)
+		}*/
+
+		if (worldmodel::s_shader)
 		{
-			dev->SetVertexShader(saved_shader_mdl);
+			dev->SetVertexShader(worldmodel::s_shader);
 			dev->SetFVF(NULL);
-			saved_shader_mdl = nullptr;
+			worldmodel::s_shader = nullptr;
 		}
-		else if (/*!BasePlayer::og_shader && !BasePlayer::og_bsp_shader &&*/ saved_shader_terrain)
+
+		if (beamtransport::s_shader)
 		{
-			dev->SetVertexShader(saved_shader_terrain);
+			dev->SetVertexShader(beamtransport::s_shader);
 			dev->SetFVF(NULL);
-			saved_shader_terrain = nullptr;
-			//wrapper->device->SetTransform(D3DTS_WORLD, &saved_world_mtx_terrain);
+			beamtransport::s_shader = nullptr;
+
+			dev->SetTransform(D3DTS_TEXTURE0, &beamtransport::s_tc_transform);
+			dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);//beamtransport::s_tc_stage);
 		}
-		else if (laserplatform::s_shader)
+		if (laserplatform::s_shader)
 		{
 			dev->SetVertexShader(laserplatform::s_shader);
 			dev->SetFVF(NULL);
 			laserplatform::s_shader = nullptr;
 
 			dev->SetTransform(D3DTS_TEXTURE0, &laserplatform::s_tc_transform);
-			dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, laserplatform::s_tc_stage);
+			dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE); //laserplatform::s_tc_stage);
 		}
 	}
 
