@@ -4,14 +4,14 @@ namespace components
 {
 	IDirect3DVertexShader9* og_model_shader = nullptr;
 
-	void __fastcall table_hooks::DrawModelExecute::Detour(void* ecx, void* edx, void* oo, const DrawModelState_t& state, const ModelRenderInfo_t& pInfo, matrix3x4_t* pCustomBoneToWorld)
+	void __fastcall tbl_hk::model_renderer::DrawModelExecute::Detour(void* ecx, void* edx, void* oo, const DrawModelState_t& state, const ModelRenderInfo_t& pInfo, matrix3x4_t* pCustomBoneToWorld)
 	{
 		const auto dev = game::get_d3d_device();
 		dev->GetVertexShader(&og_model_shader);
 		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 
 		// MODELFLAG_MATERIALPROXY | MODELFLAG_STUDIOHDR_AMBIENT_BOOST
-		if (pInfo.flags == 0x80000011)
+		if (pInfo.flags == 0x80000011 || pInfo.flags == 0x11)
 		{
 			VMatrix mat = {};
 			mat.m[0][0] = pInfo.pModelToWorld->m_flMatVal[0][0];
@@ -31,7 +31,7 @@ namespace components
 			mat.m[3][2] = pInfo.pModelToWorld->m_flMatVal[2][3];
 			mat.m[3][3] = game::identity[3][3];
 
-			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m)); 
+			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m));
 		}
 
 		//else if (pInfo.flags != 9 && pInfo.flags != 2049 && pInfo.flags != 0x80000009 && pInfo.flags != 0x1)
@@ -93,7 +93,7 @@ namespace components
 
 			//D3DXMATRIX out = {};
 			//D3DXMatrixMultiply(&out, reinterpret_cast<const D3DXMATRIX*>(&game::identity), reinterpret_cast<const D3DXMATRIX*>(mat.m));
-			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mat.m)); 
+			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mat.m));
 
 			//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mat.m));
 
@@ -103,7 +103,7 @@ namespace components
 			//BasePlayer::og_shader = nullptr;
 		}
 
-		table_hooks::table.original<FN>(Index)(ecx, edx, oo, state, pInfo, pCustomBoneToWorld);
+		tbl_hk::model_renderer::table.original<FN>(Index)(ecx, edx, oo, state, pInfo, pCustomBoneToWorld);
 
 		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 		dev->SetFVF(NULL);
@@ -114,7 +114,6 @@ namespace components
 			og_model_shader = nullptr;
 		}
 	}
-
 
 	// #
 	// #
@@ -160,7 +159,6 @@ namespace components
 	IDirect3DVertexShader9* saved_shader_unk = nullptr;
 	D3DMATRIX saved_world_mtx_unk = {};
 
-	
 
 	void cmeshdx8_renderpass_pre_draw(CMeshDX8* mesh)
 	{
@@ -170,9 +168,9 @@ namespace components
 		UINT ofs = 0, stride = 0;
 		dev->GetStreamSource(0, &b, &ofs, &stride);
 
- 		if (og_model_shader && mesh->m_VertexFormat == 0xa0003 /*stride == 48*/) // player model - gun - grabable stuff
+		if (og_model_shader && mesh->m_VertexFormat == 0xa0003 /*stride == 48*/) // player model - gun - grabable stuff
 		{
-			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX6); 
+			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX6);
 			dev->SetVertexShader(nullptr); // vertexformat 0x00000000000a0003
 
 			/*float mtx[4][4] = {};
@@ -196,15 +194,14 @@ namespace components
 			mtx[3][2] = sinf((float)main_module::framecount * 0.05f) * 10.0f;
 			mtx[3][3] = game::identity[3][3];
 			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));*/
-
 		}
 		else if (og_model_shader) // should be stride 30
 		{
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3);
 			dev->SetVertexShader(nullptr); // vertexformat 0x00000000000a0003
 
-			D3DMATRIX mtx;
-			dev->GetTransform(D3DTS_WORLD, &mtx);
+			//D3DMATRIX mtx;
+			//dev->GetTransform(D3DTS_WORLD, &mtx);
 
 			/*float mtx[4][4] = {};
 			mtx[0][0] = game::identity[0][0];
@@ -226,14 +223,14 @@ namespace components
 			mtx[3][1] = game::identity[3][1];*/
 			//mtx.m[3][2] = sinf((float)main_module::framecount * 0.05f) * 10.0f;
 			//mtx[3][3] = game::identity[3][3];
-			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+			//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
 
-			int zz = 1;
+			//int zz = 1;
 		}
 		else
 		{
 			// world geo? - floor / walls
-			if (mesh->m_VertexFormat == 0x2480033) 
+			if (mesh->m_VertexFormat == 0x2480033)
 			{
 				// tc @ 24
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
@@ -250,7 +247,7 @@ namespace components
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX2);
 				dev->GetVertexShader(&ff_beamtransport::s_shader);
 				dev->SetVertexShader(nullptr);
-				
+
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 
 				dev->GetTransform(D3DTS_TEXTURE0, &ff_beamtransport::s_tc_transform);
@@ -260,7 +257,7 @@ namespace components
 				D3DXMATRIX ret = ff_beamtransport::s_tc_transform;
 				ret(3, 1) = (float)main_module::framecount * 0.0015f;
 
-				dev->SetTransform(D3DTS_TEXTURE0, &ret); 
+				dev->SetTransform(D3DTS_TEXTURE0, &ret);
 				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
 			}
 
@@ -370,7 +367,6 @@ namespace components
 				dev->GetVertexShader(&ff_billboard::s_shader);
 				dev->SetVertexShader(nullptr);
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity)); // 0x6c0005 influences this one here???
-
 			}
 
 			// no clue what 0x6c0005 is
@@ -386,8 +382,6 @@ namespace components
 
 				dev->GetTexture(0, &ff_fxrelated::s_texture);
 				//dev->SetTexture(0, nullptr);
-
-				
 			}
 			//else if (mesh->m_VertexFormat == 0x6c0005) // ??
 			//{
@@ -479,21 +473,22 @@ namespace components
 	}
 
 	HOOK_RETN_PLACE_DEF(cmeshdx8_renderpass_pre_draw_retn_addr);
+
 	void __declspec(naked) cmeshdx8_renderpass_pre_draw_stub()
 	{
 		__asm
-		{
+			{
 			pushad;
-			push	esi; // CMeshDX8
-			call	cmeshdx8_renderpass_pre_draw;
-			add		esp, 4;
+			push esi; // CMeshDX8
+			call cmeshdx8_renderpass_pre_draw;
+			add esp, 4;
 			popad;
 
 			// og code
-			mov     ecx, [esi + 0x4C]; 
-			test    ecx, ecx;
-			jmp     cmeshdx8_renderpass_pre_draw_retn_addr;
-		}
+			mov ecx, [esi + 0x4C];
+			test ecx, ecx;
+			jmp cmeshdx8_renderpass_pre_draw_retn_addr;
+			}
 	}
 
 
@@ -537,7 +532,7 @@ namespace components
 			ff_beamtransport::s_shader = nullptr;
 
 			dev->SetTransform(D3DTS_TEXTURE0, &ff_beamtransport::s_tc_transform);
-			dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);//beamtransport::s_tc_stage);
+			dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE); //beamtransport::s_tc_stage);
 		}
 
 		if (ff_laserplatform::s_shader)
@@ -566,36 +561,222 @@ namespace components
 	}
 
 	HOOK_RETN_PLACE_DEF(cmeshdx8_renderpass_post_draw_retn_addr);
+
 	void __declspec(naked) cmeshdx8_renderpass_post_draw_stub()
 	{
 		__asm
-		{
-			mov     ecx, [esi + 0x50];
-			push    ecx;
-			push    eax;
-			call    edx; // DrawIndexedPrimitive
+			{
+			mov ecx, [esi + 0x50];
+			push ecx;
+			push eax;
+			call edx; // DrawIndexedPrimitive
 
 			pushad;
-			call	cmeshdx8_renderpass_post_draw;
+			call cmeshdx8_renderpass_post_draw;
 			popad;
 
-			jmp     cmeshdx8_renderpass_post_draw_retn_addr;
+			jmp cmeshdx8_renderpass_post_draw_retn_addr;
+			}
+	}
+
+
+	// ##########################
+	// ##########################
+
+	IDirect3DVertexShader9* og_bmodel_shader = nullptr;
+	namespace ff_brushmodels
+	{
+		IDirect3DVertexShader9* s_shader = nullptr;
+		IDirect3DBaseTexture9* s_texture;
+	}
+
+	void __fastcall tbl_hk::bmodel_renderer::DrawBrushModelEx::Detour(void* ecx, void* o1, IClientEntity& baseentity, model_t& model, const Vector& origin, const QAngle& angles, DrawBrushModelMode_t mode)
+	{
+		tbl_hk::model_renderer::table.original<FN>(Index)(ecx, o1, baseentity, model, origin, angles, mode);
+	}
+
+	/*
+	void __fastcall tbl_hk::model_renderer::DrawModelExecute::Detour(void* ecx, void* edx, void* oo, const DrawModelState_t& state, const ModelRenderInfo_t& pInfo, matrix3x4_t* pCustomBoneToWorld)
+	{
+		const auto dev = game::get_d3d_device();
+		dev->GetVertexShader(&og_model_shader);
+		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+
+		// MODELFLAG_MATERIALPROXY | MODELFLAG_STUDIOHDR_AMBIENT_BOOST
+		if (pInfo.flags == 0x80000011)
+		{
+			VMatrix mat = {};
+			mat.m[0][0] = pInfo.pModelToWorld->m_flMatVal[0][0];
+			mat.m[1][0] = pInfo.pModelToWorld->m_flMatVal[0][1];
+			mat.m[2][0] = pInfo.pModelToWorld->m_flMatVal[0][2];
+
+			mat.m[0][1] = pInfo.pModelToWorld->m_flMatVal[1][0];
+			mat.m[1][1] = pInfo.pModelToWorld->m_flMatVal[1][1];
+			mat.m[2][1] = pInfo.pModelToWorld->m_flMatVal[1][2];
+
+			mat.m[0][2] = pInfo.pModelToWorld->m_flMatVal[2][0];
+			mat.m[1][2] = pInfo.pModelToWorld->m_flMatVal[2][1];
+			mat.m[2][2] = pInfo.pModelToWorld->m_flMatVal[2][2];
+
+			mat.m[3][0] = pInfo.pModelToWorld->m_flMatVal[0][3];
+			mat.m[3][1] = pInfo.pModelToWorld->m_flMatVal[1][3];
+			mat.m[3][2] = pInfo.pModelToWorld->m_flMatVal[2][3];
+			mat.m[3][3] = game::identity[3][3];
+
+			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m));
+			*/
+
+	// flags 0x40000000 = shadow?
+	void __fastcall tbl_hk::bmodel_renderer::DrawBrushModelArray::Detour(void* ecx, void* o1, void* o2, int nCount, const BrushArrayInstanceData_t& pInstanceData, int nModelTypeFlags)
+	{
+		const auto dev = game::get_d3d_device();
+		dev->GetVertexShader(&og_bmodel_shader);
+		//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+
+		VMatrix mat = {}; 
+		mat.m[0][0] = pInstanceData.m_pBrushToWorld->m_flMatVal[0][0];
+		mat.m[1][0] = pInstanceData.m_pBrushToWorld->m_flMatVal[0][1];
+		mat.m[2][0] = pInstanceData.m_pBrushToWorld->m_flMatVal[0][2];
+
+		mat.m[0][1] = pInstanceData.m_pBrushToWorld->m_flMatVal[1][0];
+		mat.m[1][1] = pInstanceData.m_pBrushToWorld->m_flMatVal[1][1];
+		mat.m[2][1] = pInstanceData.m_pBrushToWorld->m_flMatVal[1][2];
+
+		mat.m[0][2] = pInstanceData.m_pBrushToWorld->m_flMatVal[2][0];
+		mat.m[1][2] = pInstanceData.m_pBrushToWorld->m_flMatVal[2][1];
+		mat.m[2][2] = pInstanceData.m_pBrushToWorld->m_flMatVal[2][2];
+
+		mat.m[3][0] = pInstanceData.m_pBrushToWorld->m_flMatVal[0][3];
+		mat.m[3][1] = pInstanceData.m_pBrushToWorld->m_flMatVal[1][3];
+		mat.m[3][2] = pInstanceData.m_pBrushToWorld->m_flMatVal[2][3];
+		mat.m[3][3] = game::identity[3][3];
+
+		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m));
+ 
+
+		tbl_hk::bmodel_renderer::table.original<FN>(Index)(ecx, o1, o2, nCount, pInstanceData, nModelTypeFlags);
+
+
+		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+		dev->SetFVF(NULL);
+
+		if (og_bmodel_shader)
+		{
+			dev->SetVertexShader(og_bmodel_shader);
+			og_bmodel_shader = nullptr;
+		}
+	}
+
+	void cmeshdx8_renderpassforinstances_pre_draw(CMeshDX8* mesh)
+	{
+		const auto dev = game::get_d3d_device();
+
+		IDirect3DVertexBuffer9* b = nullptr;
+		UINT ofs = 0, stride = 0;
+		dev->GetStreamSource(0, &b, &ofs, &stride);
+
+		if (og_bmodel_shader && mesh->m_VertexFormat == 0x2480033) // THIS
+		{
+			// tc @ 24
+			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
+			dev->SetVertexShader(nullptr);
+		}
+		else if (og_model_shader)
+		{
+			if (mesh->m_VertexFormat == 0xa2183)
+			{
+				int x = 0;
+			}
+		}
+		else 
+		{
+			// metal door right = 0xa2183
+			if (mesh->m_VertexFormat == 0xa2183) // entities - not brushmodel
+			{
+				dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_NORMAL | D3DFVF_TEX4 | D3DFVF_TEXCOORDSIZE1(3));
+				dev->GetVertexShader(&ff_brushmodels::s_shader);
+				dev->SetVertexShader(nullptr);
+			}
+			else
+			{
+				int xx = 1;
+			}
+		}
+
+		int zz = 1;
+	}
+
+	void cmeshdx8_renderpassforinstances_post_draw()
+	{
+		const auto dev = game::get_d3d_device();
+
+		// restore shader if we set it top null right before drawing in the func above
+		if (ff_brushmodels::s_shader)
+		{
+			dev->SetVertexShader(ff_brushmodels::s_shader);
+			dev->SetFVF(NULL);
+			ff_brushmodels::s_shader = nullptr;
+		}
+	}
+
+	HOOK_RETN_PLACE_DEF(cmeshdx8_renderpassforinstances_pre_draw_retn_addr);
+
+	void __declspec(naked) cmeshdx8_renderpassforinstances_pre_draw_stub()
+	{
+		__asm
+		{
+			// og code
+			call eax;
+
+			pushad;
+			push ecx; // CMeshDX8
+			call cmeshdx8_renderpassforinstances_pre_draw;
+			add esp, 4;
+			popad;
+
+			// og code
+			mov ecx, [ebp - 4];
+			mov edx, [esi + 0x148];
+			push eax;
+			push 0;
+			push 0;
+			push ecx;
+			push edi;
+			call edx; // DrawIndexedPrimitive
+
+			pushad;
+			call cmeshdx8_renderpassforinstances_post_draw;
+			popad;
+
+			jmp cmeshdx8_renderpassforinstances_pre_draw_retn_addr;
 		}
 	}
 
 
-
 	model_render::model_render()
 	{
-		table_hooks::_interface = utils::module_interface.get<table_hooks::IVModelRender*>("engine.dll", "VEngineModel016");
+		tbl_hk::model_renderer::_interface = utils::module_interface.get<tbl_hk::model_renderer::IVModelRender*>("engine.dll", "VEngineModel016");
 
-		XASSERT(table_hooks::table.init(table_hooks::_interface) == false);
-		XASSERT(table_hooks::table.hook(&table_hooks::DrawModelExecute::Detour, table_hooks::DrawModelExecute::Index) == false);
+		XASSERT(tbl_hk::model_renderer::table.init(tbl_hk::model_renderer::_interface) == false);
+		XASSERT(tbl_hk::model_renderer::table.hook(&tbl_hk::model_renderer::DrawModelExecute::Detour, tbl_hk::model_renderer::DrawModelExecute::Index) == false);
 
 		utils::hook(RENDERER_BASE + 0xAD23, cmeshdx8_renderpass_pre_draw_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(cmeshdx8_renderpass_pre_draw_retn_addr, RENDERER_BASE + 0xAD28);
 
 		utils::hook(RENDERER_BASE + 0xADF5, cmeshdx8_renderpass_post_draw_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(cmeshdx8_renderpass_post_draw_retn_addr, RENDERER_BASE + 0xADFC);
+
+		// brushmodels - cubes - etc - CMeshMgr::RenderPassForInstances
+		// A56D
+
+		tbl_hk::bmodel_renderer::_interface = utils::module_interface.get<tbl_hk::bmodel_renderer::IVRenderView*>("engine.dll", "VEngineRenderView013");
+
+		XASSERT(tbl_hk::bmodel_renderer::table.init(tbl_hk::bmodel_renderer::_interface) == false);
+		XASSERT(tbl_hk::bmodel_renderer::table.hook(&tbl_hk::bmodel_renderer::DrawBrushModelEx::Detour, tbl_hk::bmodel_renderer::DrawBrushModelEx::Index) == false);
+		XASSERT(tbl_hk::bmodel_renderer::table.hook(&tbl_hk::bmodel_renderer::DrawBrushModelArray::Detour, tbl_hk::bmodel_renderer::DrawBrushModelArray::Index) == false);
+
+		utils::hook(RENDERER_BASE + 0xA56D, cmeshdx8_renderpassforinstances_pre_draw_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(cmeshdx8_renderpassforinstances_pre_draw_retn_addr, RENDERER_BASE + 0xA581);
 	}
 }
+

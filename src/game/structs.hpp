@@ -63,6 +63,13 @@ namespace components
 		MATERIAL_VAR_VERTEXFOG = 0x80000000,
 	};
 
+	enum DrawBrushModelMode_t : __int32
+	{
+		DBM_DRAW_ALL = 0x0,
+		DBM_DRAW_OPAQUE_ONLY = 0x1,
+		DBM_DRAW_TRANSLUCENT_ONLY = 0x2,
+	};
+
 	enum MaterialPropertyTypes_t : int
 	{
 		MATERIAL_PROPERTY_NEEDS_LIGHTMAP = 0x0,
@@ -197,6 +204,14 @@ namespace components
 	struct VMatrix
 	{
 		float m[4][4];
+	};
+
+	struct colorVec
+	{
+		unsigned int r;
+		unsigned int g;
+		unsigned int b;
+		unsigned int a;
 	};
 
 	struct VPlane
@@ -477,6 +492,52 @@ namespace components
 		float radius;
 		KeyValues* m_pKeyValues;
 		$827FC955A655E715E2ACE31D316F483B ___u10;
+	};
+
+	enum ShaderStencilOp_t : __int32
+	{
+		SHADER_STENCILOP_KEEP = 0x1,
+		SHADER_STENCILOP_ZERO = 0x2,
+		SHADER_STENCILOP_SET_TO_REFERENCE = 0x3,
+		SHADER_STENCILOP_INCREMENT_CLAMP = 0x4,
+		SHADER_STENCILOP_DECREMENT_CLAMP = 0x5,
+		SHADER_STENCILOP_INVERT = 0x6,
+		SHADER_STENCILOP_INCREMENT_WRAP = 0x7,
+		SHADER_STENCILOP_DECREMENT_WRAP = 0x8,
+		SHADER_STENCILOP_FORCE_DWORD = 0x7FFFFFFF,
+	};
+
+	enum ShaderStencilFunc_t : __int32
+	{
+		SHADER_STENCILFUNC_NEVER = 0x1,
+		SHADER_STENCILFUNC_LESS = 0x2,
+		SHADER_STENCILFUNC_EQUAL = 0x3,
+		SHADER_STENCILFUNC_LEQUAL = 0x4,
+		SHADER_STENCILFUNC_GREATER = 0x5,
+		SHADER_STENCILFUNC_NOTEQUAL = 0x6,
+		SHADER_STENCILFUNC_GEQUAL = 0x7,
+		SHADER_STENCILFUNC_ALWAYS = 0x8,
+		SHADER_STENCILFUNC_FORCE_DWORD = 0x7FFFFFFF,
+	};
+
+	struct ShaderStencilState_t
+	{
+		bool m_bEnable;
+		ShaderStencilOp_t m_FailOp;
+		ShaderStencilOp_t m_ZFailOp;
+		ShaderStencilOp_t m_PassOp;
+		ShaderStencilFunc_t m_CompareFunc;
+		int m_nReferenceValue;
+		unsigned int m_nTestMask;
+		unsigned int m_nWriteMask;
+	};
+
+	struct  BrushArrayInstanceData_t
+	{
+		matrix3x4_t* m_pBrushToWorld;
+		const model_t* m_pBrushModel;
+		Vector4D m_DiffuseModulation;
+		ShaderStencilState_t* m_pStencilState;
 	};
 
 	struct studiohdr_t
@@ -767,6 +828,16 @@ namespace components
 		bool(__thiscall* WasReloadedFromWhitelist)(IMaterial*);
 	};
 
+	struct VisibleFogVolumeInfo_t
+	{
+		int m_nVisibleFogVolume;
+		int m_nVisibleFogVolumeLeaf;
+		bool m_bEyeInFogVolume;
+		float m_flDistanceToWater;
+		float m_flWaterHeight;
+		IMaterial* m_pFogVolumeMaterial;
+	};
+
 	struct IMesh : IVertexBuffer, IIndexBuffer
 	{
 	};
@@ -893,6 +964,31 @@ namespace components
 		unsigned __int8(__thiscall* OverrideAlphaModulation)(IClientRenderable*, unsigned __int8);
 		unsigned __int8(__thiscall* OverrideShadowAlphaModulation)(IClientRenderable*, unsigned __int8);
 		void* (__thiscall* GetClientModelRenderable)(IClientRenderable*); // IClientModelRenderable
+	};
+
+	struct ColorRGBExp32
+	{
+		unsigned __int8 r;
+		unsigned __int8 g;
+		unsigned __int8 b;
+		char exponent;
+	};
+
+	struct dlight_t
+	{
+		int flags;
+		Vector origin;
+		float radius;
+		ColorRGBExp32 color;
+		float die;
+		float decay;
+		float minlight;
+		int key;
+		int style;
+		Vector m_Direction;
+		float m_InnerAngle;
+		float m_OuterAngle;
+		const IClientRenderable* m_pExclusiveLightReceiver;
 	};
 
 	struct __declspec(align(4)) ModelRenderInfo_t
@@ -1385,5 +1481,89 @@ namespace components
 		void(__thiscall* PreLock)(CBaseMeshDX8*);
 	};
 
+	const struct CBaseHandle
+	{
+		unsigned int m_Index;
+	};
+
+
+	struct IHandleEntity_vtbl;
+	struct IHandleEntity
+	{
+		IHandleEntity_vtbl* vftable;
+	};
+
+	struct IHandleEntity_vtbl
+	{
+		void(__thiscall * IHandleEntity_destructor)(IHandleEntity*);
+		void(__thiscall* SetRefEHandle)(IHandleEntity*, const CBaseHandle*);
+		const CBaseHandle* (__thiscall* GetRefEHandle)(IHandleEntity*);
+	};
+
+	struct IClientUnknown : IHandleEntity
+	{
+	};
+
+	struct IClientNetworkable_vtbl;
+	struct IClientNetworkable
+	{
+		IClientNetworkable_vtbl* vftable;
+	};
+
+	struct IClientNetworkable_vtbl
+	{
+		IClientUnknown* (__thiscall* GetIClientUnknown)(IClientNetworkable*);
+		//void(__thiscall* Release)(IClientNetworkable*);
+		//ClientClass* (__thiscall* GetClientClass)(IClientNetworkable*);
+		//void(__thiscall* NotifyShouldTransmit)(IClientNetworkable*, ShouldTransmitState_t);
+		//void(__thiscall* OnPreDataChanged)(IClientNetworkable*, DataUpdateType_t);
+		//void(__thiscall* OnDataChanged)(IClientNetworkable*, DataUpdateType_t);
+		//void(__thiscall* PreDataUpdate)(IClientNetworkable*, DataUpdateType_t);
+		//void(__thiscall* PostDataUpdate)(IClientNetworkable*, DataUpdateType_t);
+		//void(__thiscall* OnDataUnchangedInPVS)(IClientNetworkable*);
+		//bool(__thiscall* IsDormant)(IClientNetworkable*);
+		//int(__thiscall* entindex)(IClientNetworkable*);
+		//void(__thiscall* ReceiveMessage)(IClientNetworkable*, int, bf_read*);
+		//void* (__thiscall* GetDataTableBasePtr)(IClientNetworkable*);
+		//void(__thiscall* SetDestroyedOnRecreateEntities)(IClientNetworkable*);
+	};
+
+	struct IClientThinkable_vtbl;
+	struct IClientThinkable
+	{
+		IClientThinkable_vtbl* vftable;
+	};
+
+	struct IClientThinkable_vtbl
+	{
+		IClientUnknown* (__thiscall* GetIClientUnknown)(IClientThinkable*);
+		void(__thiscall* ClientThink)(IClientThinkable*);
+		struct CClientThinkHandlePtr* (__thiscall* GetThinkHandle)(IClientThinkable*);
+		void(__thiscall* SetThinkHandle)(IClientThinkable*, struct CClientThinkHandlePtr*);
+		void(__thiscall* Release)(IClientThinkable*);
+	};
+
+	struct IClientEntity : IClientUnknown, IClientRenderable, IClientNetworkable, IClientThinkable
+	{
+	};
+
+	struct IClientEntity_vtbl
+	{
+		void(__thiscall * IHandleEntity_destructor)(IHandleEntity*);
+		void(__thiscall* SetRefEHandle)(IHandleEntity*, const CBaseHandle*);
+		const CBaseHandle* (__thiscall* GetRefEHandle)(IHandleEntity*);
+		void* (__thiscall* GetCollideable)(IClientUnknown*); // ICollideable
+		IClientNetworkable* (__thiscall* GetClientNetworkable)(IClientUnknown*);
+		IClientRenderable* (__thiscall* GetClientRenderable)(IClientUnknown*);
+		IClientEntity* (__thiscall* GetIClientEntity)(IClientUnknown*);
+		struct C_BaseEntity* (__thiscall* GetBaseEntity)(IClientUnknown*);
+		IClientThinkable* (__thiscall* GetClientThinkable)(IClientUnknown*);
+		void* (__thiscall* GetClientAlphaProperty)(IClientUnknown*); // IClientAlphaProperty
+		const Vector* (__thiscall* GetAbsOrigin)(IClientEntity*);
+		const QAngle* (__thiscall* GetAbsAngles)(IClientEntity*);
+		void* (__thiscall* GetMouth)(IClientEntity*); // CMouthInfo
+		bool(__thiscall* GetSoundSpatialization)(IClientEntity*, void*); // SpatializationInfo_t
+		bool(__thiscall* IsBlurred)(IClientEntity*);
+	};
 }
 
