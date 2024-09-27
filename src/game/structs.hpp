@@ -1565,5 +1565,32 @@ namespace components
 		bool(__thiscall* GetSoundSpatialization)(IClientEntity*, void*); // SpatializationInfo_t
 		bool(__thiscall* IsBlurred)(IClientEntity*);
 	};
+
+	struct MeshBoneRemap_t
+	{
+		int m_nActualBoneIndex;
+		int m_nSrcBoneIndex;
+	};
+
+	struct MeshInstanceData_t
+	{
+		int m_nIndexOffset;
+		int m_nIndexCount;
+		int m_nBoneCount;
+		MeshBoneRemap_t* m_pBoneRemap;
+		matrix3x4_t* m_pPoseToWorld;
+		const ITexture* m_pEnvCubemap;
+		MaterialLightingState_t* m_pLightingState;
+		MaterialPrimitiveType_t m_nPrimType;
+		const IVertexBuffer* m_pVertexBuffer;
+		int m_nVertexOffsetInBytes;
+		const IIndexBuffer* m_pIndexBuffer;
+		const IVertexBuffer* m_pColorBuffer;
+		int m_nColorVertexOffsetInBytes;
+		ShaderStencilState_t* m_pStencilState;
+		Vector4D m_DiffuseModulation;
+		int m_nLightmapPageId;
+	};
+
 }
 

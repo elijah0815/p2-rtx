@@ -33,34 +33,7 @@ namespace components
 
 			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m));
 		}
-
-		//else if (pInfo.flags != 9 && pInfo.flags != 2049 && pInfo.flags != 0x80000009 && pInfo.flags != 0x1)
-		//{
-		//	// 0x1 surv manager
-		//	// 2049 other surv?
-
-		//	VMatrix mat = {};
-		//	mat.m[0][0] = pInfo.pModelToWorld->m_flMatVal[0][0];
-		//	mat.m[1][0] = pInfo.pModelToWorld->m_flMatVal[0][1];
-		//	mat.m[2][0] = pInfo.pModelToWorld->m_flMatVal[0][2];
-
-		//	mat.m[0][1] = pInfo.pModelToWorld->m_flMatVal[1][0];
-		//	mat.m[1][1] = pInfo.pModelToWorld->m_flMatVal[1][1];
-		//	mat.m[2][1] = pInfo.pModelToWorld->m_flMatVal[1][2];
-
-		//	mat.m[0][2] = pInfo.pModelToWorld->m_flMatVal[2][0];
-		//	mat.m[1][2] = pInfo.pModelToWorld->m_flMatVal[2][1];
-		//	mat.m[2][2] = pInfo.pModelToWorld->m_flMatVal[2][2];
-
-		//	mat.m[3][0] = pInfo.pModelToWorld->m_flMatVal[0][3];
-		//	mat.m[3][1] = pInfo.pModelToWorld->m_flMatVal[1][3];
-		//	mat.m[3][2] = pInfo.pModelToWorld->m_flMatVal[2][3];
-		//	mat.m[3][3] = game::identity[3][3];
-
-		//	dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m)); 
-		//}
-		//else if (pInfo.flags == 2049 || pInfo.flags == 0x80000009 || pInfo.flags == 9)
-		if (pInfo.pModel->radius == 37.3153992f) // models/weapons/v_portalgun.mdl
+		else if (pInfo.pModel->radius == 37.3153992f) // models/weapons/v_portalgun.mdl
 		{
 			VMatrix mat = {};
 			mat.m[0][0] = game::identity[0][0];
@@ -91,16 +64,11 @@ namespace components
 			mat.m[3][1] = fwd[1];
 			mat.m[3][2] = fwd[2];
 
-			//D3DXMATRIX out = {};
-			//D3DXMatrixMultiply(&out, reinterpret_cast<const D3DXMATRIX*>(&game::identity), reinterpret_cast<const D3DXMATRIX*>(mat.m));
 			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mat.m));
-
-			//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mat.m));
-
-
-			//dev->SetVertexShader(nullptr);
-			// this will render the viewmodel using shaders but its stuck at 0 0 0
-			//BasePlayer::og_shader = nullptr;
+		}
+		else
+		{
+			int y = 0;
 		}
 
 		tbl_hk::model_renderer::table.original<FN>(Index)(ecx, edx, oo, state, pInfo, pCustomBoneToWorld);
@@ -156,9 +124,17 @@ namespace components
 		IDirect3DBaseTexture9* s_texture;
 	}
 
+	namespace ff_unkmeshtype01
+	{
+		IDirect3DVertexShader9* s_shader = nullptr;
+		IDirect3DBaseTexture9* s_texture;
+	}
+
 	IDirect3DVertexShader9* saved_shader_unk = nullptr;
 	D3DMATRIX saved_world_mtx_unk = {};
 
+	IDirect3DVertexShader9* og_bmodel_shader = nullptr;
+	Vector model_org_offset = {};
 
 	void cmeshdx8_renderpass_pre_draw(CMeshDX8* mesh)
 	{
@@ -168,64 +144,58 @@ namespace components
 		UINT ofs = 0, stride = 0;
 		dev->GetStreamSource(0, &b, &ofs, &stride);
 
-		if (og_model_shader && mesh->m_VertexFormat == 0xa0003 /*stride == 48*/) // player model - gun - grabable stuff
+		Vector* model_org = reinterpret_cast<Vector*>(ENGINE_BASE + 0x50DA90);
+		VMatrix* model_to_world_mtx = reinterpret_cast<VMatrix*>(ENGINE_BASE + 0x637158);
+
+		// g_pInstanceData
+		MeshInstanceData_t* instance_info = reinterpret_cast<MeshInstanceData_t*>(*(DWORD*)(RENDERER_BASE + 0x1754AC));
+
+		if (instance_info)
+		{
+			int x = 1;
+		}
+
+		VMatrix mat = {};
+		mat.m[0][0] = model_to_world_mtx->m[0][0];
+		mat.m[1][0] = model_to_world_mtx->m[0][1];
+		mat.m[2][0] = model_to_world_mtx->m[0][2];
+
+		mat.m[0][1] = model_to_world_mtx->m[1][0];
+		mat.m[1][1] = model_to_world_mtx->m[1][1];
+		mat.m[2][1] = model_to_world_mtx->m[1][2];
+
+		mat.m[0][2] = model_to_world_mtx->m[2][0];
+		mat.m[1][2] = model_to_world_mtx->m[2][1];
+		mat.m[2][2] = model_to_world_mtx->m[2][2];
+
+		mat.m[3][0] = model_to_world_mtx->m[0][3];
+		mat.m[3][1] = model_to_world_mtx->m[1][3];
+		mat.m[3][2] = model_to_world_mtx->m[2][3];
+		mat.m[3][3] = game::identity[3][3];
+
+		if (og_bmodel_shader && mesh->m_VertexFormat == 0x2480033)
+		{
+			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mat));
+
+			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
+			dev->SetVertexShader(nullptr);
+		}
+		else if (og_model_shader && mesh->m_VertexFormat == 0xa0003 /*stride == 48*/) // player model - gun - grabable stuff - portal button - portal door
 		{
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX6);
 			dev->SetVertexShader(nullptr); // vertexformat 0x00000000000a0003
 
-			/*float mtx[4][4] = {};
-			mtx[0][0] = game::identity[0][0];
-			mtx[0][1] = game::identity[0][1];
-			mtx[0][2] = game::identity[0][2];
-			mtx[0][3] = game::identity[0][3];
-
-			mtx[1][0] = game::identity[1][0];
-			mtx[1][1] = game::identity[1][1];
-			mtx[1][2] = game::identity[1][2];
-			mtx[1][3] = game::identity[1][3];
-
-			mtx[2][0] = game::identity[2][0];
-			mtx[2][1] = game::identity[2][1];
-			mtx[2][2] = game::identity[2][2];
-			mtx[2][3] = game::identity[2][3];
-
-			mtx[3][0] = game::identity[3][0];
-			mtx[3][1] = game::identity[3][1];
-			mtx[3][2] = sinf((float)main_module::framecount * 0.05f) * 10.0f;
-			mtx[3][3] = game::identity[3][3];
-			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));*/
+			//mtx[3][2] = sinf((float)main_module::framecount * 0.05f) * 10.0f;
 		}
 		else if (og_model_shader) // should be stride 30
 		{
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3);
 			dev->SetVertexShader(nullptr); // vertexformat 0x00000000000a0003
-
-			//D3DMATRIX mtx;
-			//dev->GetTransform(D3DTS_WORLD, &mtx);
-
-			/*float mtx[4][4] = {};
-			mtx[0][0] = game::identity[0][0];
-			mtx[0][1] = game::identity[0][1];
-			mtx[0][2] = game::identity[0][2];
-			mtx[0][3] = game::identity[0][3];
-
-			mtx[1][0] = game::identity[1][0];
-			mtx[1][1] = game::identity[1][1];
-			mtx[1][2] = game::identity[1][2];
-			mtx[1][3] = game::identity[1][3];
-
-			mtx[2][0] = game::identity[2][0];
-			mtx[2][1] = game::identity[2][1];
-			mtx[2][2] = game::identity[2][2];
-			mtx[2][3] = game::identity[2][3];
-
-			mtx[3][0] = game::identity[3][0];
-			mtx[3][1] = game::identity[3][1];*/
-			//mtx.m[3][2] = sinf((float)main_module::framecount * 0.05f) * 10.0f;
-			//mtx[3][3] = game::identity[3][3];
-			//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
-
-			//int zz = 1;
+			dev->SetRenderState(D3DRS_COLORVERTEX, FALSE);
+			dev->SetRenderState(D3DRS_SHADEMODE, D3DSHADE_PHONG);
+			dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+			dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+			dev->SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
 		}
 		else
 		{
@@ -393,78 +363,29 @@ namespace components
 			//}
 			else if (mesh->m_VertexFormat == 0x80007) // HUD
 			{
-				//dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX5); // 64
-				//dev->SetFVF(NULL);
-				//dev->GetVertexShader(&saved_shader_unk);
-				//dev->SetVertexShader(nullptr);
-
-				/*float mtx[4][4] = {};
-				mtx[0][0] = game::identity[0][0];
-				mtx[0][1] = game::identity[0][1];
-				mtx[0][2] = game::identity[0][2];
-				mtx[0][3] = game::identity[0][3];
-
-				mtx[1][0] = game::identity[1][0];
-				mtx[1][1] = game::identity[1][1];
-				mtx[1][2] = game::identity[1][2];
-				mtx[1][3] = game::identity[1][3];
-
-				mtx[2][0] = game::identity[2][0];
-				mtx[2][1] = game::identity[2][1];
-				mtx[2][2] = game::identity[2][2];
-				mtx[2][3] = game::identity[2][3];
-
-				mtx[3][0] = game::identity[3][0];
-				mtx[3][1] = game::identity[3][1];
-				mtx[3][2] = (sinf((float)main_module::framecount * 0.05f) * 40.0f);
-				mtx[3][3] = game::identity[3][3];
-
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));*/
+				int z = 0;
 			}
-			//else if (mesh->m_VertexFormat == 0x92480005)
-			//{
-			//	int zz = 1;
-			//}
-			//else if (mesh->m_VertexFormat == 0x924900005)
-			//{
-			//	int zz = 1;
-			//}
+			else if (mesh->m_VertexFormat == 0x92480005)
+			{
+				int zz = 1;
+			}
+			else if (mesh->m_VertexFormat == 0x924900005)
+			{
+				int zz = 1;
+			}
+			else if (mesh->m_VertexFormat == 0xa0103)
+			{
+				int s = stride; 
 
+				// tc @ 24
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
+				dev->GetVertexShader(&ff_unkmeshtype01::s_shader);
+				dev->SetVertexShader(nullptr);
+			}
 			// 0x924900005 on portal opening
-
-			//else if (mesh->m_VertexFormat == 0x114900005 || mesh->m_VertexFormat == 0x914900005 || mesh->m_VertexFormat == 0x1b924900005 || mesh->m_VertexFormat == 0x80037
-			//	/*|| mesh->m_VertexFormat == 0x80007*/ || mesh->m_VertexFormat == 0x6c0005 || mesh->m_VertexFormat == 0xa0003 || mesh->m_VertexFormat == 0x92480005) //
-			//{
-			//	dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
-			//	//dev->SetFVF(NULL);
-			//	dev->GetVertexShader(&saved_shader_unk);
-			//	dev->SetVertexShader(nullptr);
-
-			//	float mtx[4][4] = {};
-			//	mtx[0][0] = game::identity[0][0];
-			//	mtx[0][1] = game::identity[0][1];
-			//	mtx[0][2] = game::identity[0][2];
-			//	mtx[0][3] = game::identity[0][3];
-
-			//	mtx[1][0] = game::identity[1][0];
-			//	mtx[1][1] = game::identity[1][1];
-			//	mtx[1][2] = game::identity[1][2];
-			//	mtx[1][3] = game::identity[1][3];
-
-			//	mtx[2][0] = game::identity[2][0];
-			//	mtx[2][1] = game::identity[2][1];
-			//	mtx[2][2] = game::identity[2][2];
-			//	mtx[2][3] = game::identity[2][3];
-
-			//	mtx[3][0] = game::identity[3][0];
-			//	mtx[3][1] = game::identity[3][1];
-			//	mtx[3][2] = (sinf((float)main_module::framecount * 0.05f) * 40.0f);
-			//	mtx[3][3] = game::identity[3][3];
-
-			//	dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
-			//}
 			else
 			{
+				//dev->SetVertexShader(nullptr);
 				int xx = 1;
 			}
 
@@ -473,7 +394,6 @@ namespace components
 	}
 
 	HOOK_RETN_PLACE_DEF(cmeshdx8_renderpass_pre_draw_retn_addr);
-
 	void __declspec(naked) cmeshdx8_renderpass_pre_draw_stub()
 	{
 		__asm
@@ -507,6 +427,13 @@ namespace components
 			//dev->SetTransform(D3DTS_WORLD, &saved_world_mtx_unk);
 
 			//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+		}
+
+		if (ff_unkmeshtype01::s_shader)
+		{
+			dev->SetVertexShader(ff_unkmeshtype01::s_shader);
+			dev->SetFVF(NULL);
+			ff_unkmeshtype01::s_shader = nullptr;
 		}
 
 		if (ff_fxrelated::s_shader)
@@ -583,50 +510,33 @@ namespace components
 	// ##########################
 	// ##########################
 
-	IDirect3DVertexShader9* og_bmodel_shader = nullptr;
+	
 	namespace ff_brushmodels
 	{
 		IDirect3DVertexShader9* s_shader = nullptr;
 		IDirect3DBaseTexture9* s_texture;
 	}
 
-	void __fastcall tbl_hk::bmodel_renderer::DrawBrushModelEx::Detour(void* ecx, void* o1, IClientEntity& baseentity, model_t& model, const Vector& origin, const QAngle& angles, DrawBrushModelMode_t mode)
-	{
-		tbl_hk::model_renderer::table.original<FN>(Index)(ecx, o1, baseentity, model, origin, angles, mode);
-	}
-
-	/*
-	void __fastcall tbl_hk::model_renderer::DrawModelExecute::Detour(void* ecx, void* edx, void* oo, const DrawModelState_t& state, const ModelRenderInfo_t& pInfo, matrix3x4_t* pCustomBoneToWorld)
+	// cl_brushfastpath 0 will result in this being called
+	void __fastcall tbl_hk::bmodel_renderer::DrawBrushModelEx::Detour(void* ecx, void* o1, IClientEntity* baseentity, model_t* model, const Vector* origin, const QAngle* angles, DrawBrushModelMode_t mode)
 	{
 		const auto dev = game::get_d3d_device();
-		dev->GetVertexShader(&og_model_shader);
+		dev->GetVertexShader(&og_bmodel_shader);
+
+		tbl_hk::bmodel_renderer::table.original<FN>(Index)(ecx, o1, baseentity, model, origin, angles, mode);
+
 		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+		dev->SetFVF(NULL);
 
-		// MODELFLAG_MATERIALPROXY | MODELFLAG_STUDIOHDR_AMBIENT_BOOST
-		if (pInfo.flags == 0x80000011)
+		if (og_bmodel_shader)
 		{
-			VMatrix mat = {};
-			mat.m[0][0] = pInfo.pModelToWorld->m_flMatVal[0][0];
-			mat.m[1][0] = pInfo.pModelToWorld->m_flMatVal[0][1];
-			mat.m[2][0] = pInfo.pModelToWorld->m_flMatVal[0][2];
-
-			mat.m[0][1] = pInfo.pModelToWorld->m_flMatVal[1][0];
-			mat.m[1][1] = pInfo.pModelToWorld->m_flMatVal[1][1];
-			mat.m[2][1] = pInfo.pModelToWorld->m_flMatVal[1][2];
-
-			mat.m[0][2] = pInfo.pModelToWorld->m_flMatVal[2][0];
-			mat.m[1][2] = pInfo.pModelToWorld->m_flMatVal[2][1];
-			mat.m[2][2] = pInfo.pModelToWorld->m_flMatVal[2][2];
-
-			mat.m[3][0] = pInfo.pModelToWorld->m_flMatVal[0][3];
-			mat.m[3][1] = pInfo.pModelToWorld->m_flMatVal[1][3];
-			mat.m[3][2] = pInfo.pModelToWorld->m_flMatVal[2][3];
-			mat.m[3][3] = game::identity[3][3];
-
-			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m));
-			*/
+			dev->SetVertexShader(og_bmodel_shader);
+			og_bmodel_shader = nullptr;
+		}
+	}
 
 	// flags 0x40000000 = shadow?
+	// called if cl_brushfastpath 1
 	void __fastcall tbl_hk::bmodel_renderer::DrawBrushModelArray::Detour(void* ecx, void* o1, void* o2, int nCount, const BrushArrayInstanceData_t& pInstanceData, int nModelTypeFlags)
 	{
 		const auto dev = game::get_d3d_device();
@@ -651,7 +561,7 @@ namespace components
 		mat.m[3][2] = pInstanceData.m_pBrushToWorld->m_flMatVal[2][3];
 		mat.m[3][3] = game::identity[3][3];
 
-		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m));
+		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m)); 
  
 
 		tbl_hk::bmodel_renderer::table.original<FN>(Index)(ecx, o1, o2, nCount, pInstanceData, nModelTypeFlags);
@@ -667,6 +577,7 @@ namespace components
 		}
 	}
 
+	// not used for brushmodels when cl_brushfastpath 0?
 	void cmeshdx8_renderpassforinstances_pre_draw(CMeshDX8* mesh)
 	{
 		const auto dev = game::get_d3d_device();
@@ -675,13 +586,34 @@ namespace components
 		UINT ofs = 0, stride = 0;
 		dev->GetStreamSource(0, &b, &ofs, &stride);
 
+		// g_pInstanceData
+		MeshInstanceData_t* instance_info = reinterpret_cast<MeshInstanceData_t*>(*(DWORD*)(RENDERER_BASE + 0x1754AC));
+
+		VMatrix mat = {};
+		mat.m[0][0] = instance_info->m_pPoseToWorld->m_flMatVal[0][0];
+		mat.m[1][0] = instance_info->m_pPoseToWorld->m_flMatVal[0][1];
+		mat.m[2][0] = instance_info->m_pPoseToWorld->m_flMatVal[0][2];
+
+		mat.m[0][1] = instance_info->m_pPoseToWorld->m_flMatVal[1][0];
+		mat.m[1][1] = instance_info->m_pPoseToWorld->m_flMatVal[1][1];
+		mat.m[2][1] = instance_info->m_pPoseToWorld->m_flMatVal[1][2];
+
+		mat.m[0][2] = instance_info->m_pPoseToWorld->m_flMatVal[2][0];
+		mat.m[1][2] = instance_info->m_pPoseToWorld->m_flMatVal[2][1];
+		mat.m[2][2] = instance_info->m_pPoseToWorld->m_flMatVal[2][2];
+
+		mat.m[3][0] = instance_info->m_pPoseToWorld->m_flMatVal[0][3];
+		mat.m[3][1] = instance_info->m_pPoseToWorld->m_flMatVal[1][3];
+		mat.m[3][2] = instance_info->m_pPoseToWorld->m_flMatVal[2][3];
+		mat.m[3][3] = game::identity[3][3];
+
 		if (og_bmodel_shader && mesh->m_VertexFormat == 0x2480033) // THIS
 		{
 			// tc @ 24
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
 			dev->SetVertexShader(nullptr);
 		}
-		else if (og_model_shader)
+		else if (og_bmodel_shader)
 		{
 			if (mesh->m_VertexFormat == 0xa2183)
 			{
@@ -690,9 +622,10 @@ namespace components
 		}
 		else 
 		{
-			// metal door right = 0xa2183
-			if (mesh->m_VertexFormat == 0xa2183) // entities - not brushmodel
+			// metal door = 0xa2183
+			if (mesh->m_VertexFormat == 0xa2183) // entities - not brushmodel (eg portal gun stand)
 			{
+				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m)); 
 				dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_NORMAL | D3DFVF_TEX4 | D3DFVF_TEXCOORDSIZE1(3));
 				dev->GetVertexShader(&ff_brushmodels::s_shader);
 				dev->SetVertexShader(nullptr);

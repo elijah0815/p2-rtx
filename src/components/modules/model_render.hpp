@@ -59,8 +59,8 @@ namespace components
 		namespace DrawBrushModelEx
 		{
 			constexpr uint32_t Index = 53u;
-			using FN = void(__fastcall*)(void*, void*, IClientEntity&, model_t&, const Vector&, const QAngle&, DrawBrushModelMode_t);
-			void __fastcall Detour(void* ecx, void* o1, IClientEntity& baseentity, model_t& model, const Vector& origin, const QAngle& angles, DrawBrushModelMode_t mode);
+			using FN = void(__fastcall*)(void*, void*, IClientEntity*, model_t*, const Vector*, const QAngle*, DrawBrushModelMode_t);
+			void __fastcall Detour(void* ecx, void* o1, IClientEntity* baseentity, model_t* model, const Vector* origin, const QAngle* angles, DrawBrushModelMode_t mode);
 		}
 
 		namespace DrawBrushModelArray
