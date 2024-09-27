@@ -3,6 +3,7 @@
 namespace components
 {
 	IDirect3DVertexShader9* og_model_shader = nullptr;
+	bool is_portalgun_viewmodel = false;
 
 	void __fastcall tbl_hk::model_renderer::DrawModelExecute::Detour(void* ecx, void* edx, void* oo, const DrawModelState_t& state, const ModelRenderInfo_t& pInfo, matrix3x4_t* pCustomBoneToWorld)
 	{
@@ -10,7 +11,7 @@ namespace components
 		dev->GetVertexShader(&og_model_shader);
 		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 
-		/*if (std::string_view(pInfo.pModel->szPathName).contains("glass_broken_193x193_d"))
+	/*	if (std::string_view(pInfo.pModel->szPathName).contains("stair"))
 		{
 			int dbg = 0;
 		}*/
@@ -69,6 +70,7 @@ namespace components
 			mat.m[3][1] = fwd[1];
 			mat.m[3][2] = fwd[2];
 
+			is_portalgun_viewmodel = true;
 			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mat.m));
 		}
 		else
@@ -78,6 +80,7 @@ namespace components
 
 		tbl_hk::model_renderer::table.original<FN>(Index)(ecx, edx, oo, state, pInfo, pCustomBoneToWorld);
 
+		is_portalgun_viewmodel = false;
 		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 		dev->SetFVF(NULL);
 
@@ -199,8 +202,13 @@ namespace components
 		}
 		else if (og_model_shader && mesh->m_VertexFormat == 0xa0003 /*stride == 48*/) // player model - gun - grabable stuff - portal button - portal door
 		{
+			if (!is_portalgun_viewmodel)
+			{
+				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mat));
+			}
+			
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX6);
-			dev->SetVertexShader(nullptr); // vertexformat 0x00000000000a0003
+			dev->SetVertexShader(nullptr); // vertexformat 0x00000000000a0003 
 
 			//mtx[3][2] = sinf((float)main_module::framecount * 0.05f) * 10.0f;
 		}
@@ -352,7 +360,7 @@ namespace components
 			{
 				dev->SetFVF(D3DFVF_XYZB1 | D3DFVF_NORMAL | D3DFVF_TEX5 | D3DFVF_TEXCOORDSIZE1(4)); // 68 - 4 as last tc is one float
 				dev->GetVertexShader(&ff_billboard::s_shader);
-				dev->SetVertexShader(nullptr);
+				//dev->SetVertexShader(nullptr);
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity)); // 0x6c0005 influences this one here???
 			}
 
@@ -361,13 +369,20 @@ namespace components
 
 			else if (mesh->m_VertexFormat == 0x4a0003 || mesh->m_VertexFormat == 0xa0003) // stuff behind portals - unstable
 			{
-				// tc @ 24
-				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
-				//dev->SetFVF(NULL);
 				dev->GetVertexShader(&ff_fxrelated::s_shader);
-				dev->SetVertexShader(nullptr);
 
+				if (mesh->m_VertexFormat == 0xa0003)
+				{
+					//dev->SetVertexShader(nullptr);
+				}
+				else
+				{
+					//dev->SetVertexShader(nullptr);
+				}
+
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
 				dev->GetTexture(0, &ff_fxrelated::s_texture);
+				dev->SetVertexShader(nullptr);
 				//dev->SetTexture(0, nullptr);
 			}
 			//else if (mesh->m_VertexFormat == 0x6c0005) // ??
@@ -381,6 +396,10 @@ namespace components
 			else if (mesh->m_VertexFormat == 0x80007) // HUD
 			{
 				int z = 0;
+				//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mat));
+				//dev->SetFVF(D3DFVF_XYZW | D3DFVF_TEX4);
+				//dev->GetVertexShader(&saved_shader_unk);
+				//dev->SetVertexShader(nullptr);
 			}
 			else if (mesh->m_VertexFormat == 0x92480005)
 			{
@@ -390,13 +409,14 @@ namespace components
 			{
 				int zz = 1;
 			}
-			//else if (mesh->m_VertexFormat == 0xa0103)
-			//{
+			else if (mesh->m_VertexFormat == 0xa0103)
+			{
+				int z = 0; 
 			//	// tc @ 24
 			//	dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
 			//	dev->GetVertexShader(&ff_terrain::s_shader);
 			//	dev->SetVertexShader(nullptr);
-			//}
+			}
 			else if (mesh->m_VertexFormat == 0x480007)
 			{
 				// tc @ 28
@@ -473,7 +493,6 @@ namespace components
 			dev->SetFVF(NULL);
 			saved_shader_unk = nullptr;
 			//dev->SetTransform(D3DTS_WORLD, &saved_world_mtx_unk);
-
 			//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 		}
 
