@@ -10,6 +10,11 @@ namespace components
 		dev->GetVertexShader(&og_model_shader);
 		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 
+		/*if (std::string_view(pInfo.pModel->szPathName).contains("glass_broken_193x193_d"))
+		{
+			int dbg = 0;
+		}*/
+
 		// MODELFLAG_MATERIALPROXY | MODELFLAG_STUDIOHDR_AMBIENT_BOOST
 		if (pInfo.flags == 0x80000011 || pInfo.flags == 0x11)
 		{
@@ -124,7 +129,19 @@ namespace components
 		IDirect3DBaseTexture9* s_texture;
 	}
 
-	namespace ff_unkmeshtype01
+	namespace ff_terrain
+	{
+		IDirect3DVertexShader9* s_shader = nullptr;
+		IDirect3DBaseTexture9* s_texture;
+	}
+
+	namespace ff_glass_shards
+	{
+		IDirect3DVertexShader9* s_shader = nullptr;
+		IDirect3DBaseTexture9* s_texture;
+	}
+
+	namespace ff_temp_01
 	{
 		IDirect3DVertexShader9* s_shader = nullptr;
 		IDirect3DBaseTexture9* s_texture;
@@ -191,11 +208,11 @@ namespace components
 		{
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3);
 			dev->SetVertexShader(nullptr); // vertexformat 0x00000000000a0003
-			dev->SetRenderState(D3DRS_COLORVERTEX, FALSE);
-			dev->SetRenderState(D3DRS_SHADEMODE, D3DSHADE_PHONG);
-			dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
-			dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-			dev->SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
+			//dev->SetRenderState(D3DRS_COLORVERTEX, FALSE);
+			//dev->SetRenderState(D3DRS_SHADEMODE, D3DSHADE_PHONG);
+			//dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+			//dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+			//dev->SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
 		}
 		else
 		{
@@ -373,20 +390,51 @@ namespace components
 			{
 				int zz = 1;
 			}
-			else if (mesh->m_VertexFormat == 0xa0103)
+			//else if (mesh->m_VertexFormat == 0xa0103)
+			//{
+			//	// tc @ 24
+			//	dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
+			//	dev->GetVertexShader(&ff_terrain::s_shader);
+			//	dev->SetVertexShader(nullptr);
+			//}
+			else if (mesh->m_VertexFormat == 0x480007)
 			{
-				int s = stride; 
-
-				// tc @ 24
-				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
-				dev->GetVertexShader(&ff_unkmeshtype01::s_shader);
+				// tc @ 28
+				dev->SetFVF(D3DFVF_XYZB4 | D3DFVF_TEX3);
+				dev->GetVertexShader(&ff_terrain::s_shader);
 				dev->SetVertexShader(nullptr);
 			}
+			else if (mesh->m_VertexFormat == 0x24900005)
+			{
+				int z = 0;
+			}
+			else if (mesh->m_VertexFormat == 0x2900005)
+			{
+				int z = 0;
+			}
+			else if (mesh->m_VertexFormat == 0x6c0005)
+			{
+				// tc @ 28
+				int z = 0;
+				/*dev->SetFVF(D3DFVF_XYZB4 | D3DFVF_TEX3);
+				dev->GetVertexShader(&ff_temp_01::s_shader);
+				dev->SetVertexShader(nullptr);*/
+			}
+			//else if (mesh->m_VertexFormat == 0x24900005)
+			//{
+			//	int s = stride;
+
+			//	// ff_unk01
+			//	// tc @ 28
+			//	dev->SetFVF(D3DFVF_XYZB4 | D3DFVF_TEX3); 
+			//	dev->GetVertexShader(&ff_unk01::s_shader);
+			//	dev->SetVertexShader(nullptr);
+			//}
 			// 0x924900005 on portal opening
 			else
 			{
 				//dev->SetVertexShader(nullptr);
-				int xx = 1;
+				int xx = 1;  
 			}
 
 			int zz = 1;
@@ -429,11 +477,11 @@ namespace components
 			//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 		}
 
-		if (ff_unkmeshtype01::s_shader)
+		if (ff_terrain::s_shader)
 		{
-			dev->SetVertexShader(ff_unkmeshtype01::s_shader);
+			dev->SetVertexShader(ff_terrain::s_shader);
 			dev->SetFVF(NULL);
-			ff_unkmeshtype01::s_shader = nullptr;
+			ff_terrain::s_shader = nullptr;
 		}
 
 		if (ff_fxrelated::s_shader)
@@ -630,9 +678,18 @@ namespace components
 				dev->GetVertexShader(&ff_brushmodels::s_shader);
 				dev->SetVertexShader(nullptr);
 			}
+			// somewhat broken
+			else if (mesh->m_VertexFormat == 0xa0103) // glass shards
+			{
+				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m));
+				//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX2);
+				dev->GetVertexShader(&ff_glass_shards::s_shader);
+				dev->SetVertexShader(nullptr);
+			}
 			else
 			{
-				int xx = 1;
+				int xx = 1; 
 			}
 		}
 
@@ -650,10 +707,16 @@ namespace components
 			dev->SetFVF(NULL);
 			ff_brushmodels::s_shader = nullptr;
 		}
+
+		/*if (ff_unk01::s_shader)
+		{
+			dev->SetVertexShader(ff_unk01::s_shader);
+			dev->SetFVF(NULL);
+			ff_unk01::s_shader = nullptr;
+		}*/
 	}
 
 	HOOK_RETN_PLACE_DEF(cmeshdx8_renderpassforinstances_pre_draw_retn_addr);
-
 	void __declspec(naked) cmeshdx8_renderpassforinstances_pre_draw_stub()
 	{
 		__asm
@@ -686,6 +749,48 @@ namespace components
 	}
 
 
+
+	// #############
+#if 0
+	void cmeshdx8_renderpasswithvertexindexbuffer_pre_draw()
+	{
+		int z = 1;
+	}
+
+	void cmeshdx8_renderpasswithvertexindexbuffer_post_draw()
+	{
+		int z = 1;
+	}
+
+	HOOK_RETN_PLACE_DEF(cmeshdx8_renderpasswithvertexindexbuffer_retn_addr);
+	void __declspec(naked) cmeshdx8_renderpasswithvertexindexbuffer_stub()
+	{
+		__asm
+		{
+			pushad;
+			call	cmeshdx8_renderpasswithvertexindexbuffer_pre_draw;
+			popad;
+
+			// og code
+			push eax;
+			push ecx;
+			push 0;
+			push esi;
+			push edi;
+			call edx; // DrawIndexedPrimitive
+
+			pushad;
+			call	cmeshdx8_renderpasswithvertexindexbuffer_post_draw;
+			popad;
+
+			jmp cmeshdx8_renderpasswithvertexindexbuffer_retn_addr;
+		}
+	}
+#endif
+
+
+
+
 	model_render::model_render()
 	{
 		tbl_hk::model_renderer::_interface = utils::module_interface.get<tbl_hk::model_renderer::IVModelRender*>("engine.dll", "VEngineModel016");
@@ -710,6 +815,13 @@ namespace components
 
 		utils::hook(RENDERER_BASE + 0xA56D, cmeshdx8_renderpassforinstances_pre_draw_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(cmeshdx8_renderpassforinstances_pre_draw_retn_addr, RENDERER_BASE + 0xA581);
+
+
+#if 0
+		// 0xA685
+		utils::hook(RENDERER_BASE + 0xA685, cmeshdx8_renderpasswithvertexindexbuffer_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(cmeshdx8_renderpasswithvertexindexbuffer_retn_addr, RENDERER_BASE + 0xA68D);
+#endif
 	}
 }
 
