@@ -10,6 +10,9 @@ namespace components
 		const char* get_name() override { return "main_module"; }
 
 		static inline std::uint64_t framecount = 0u;
+		static inline remixapi_Interface bridge = {};
+		static inline bool m_initialized = false;
+
 	private:
 	};
 }

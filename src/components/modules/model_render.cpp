@@ -156,6 +156,10 @@ namespace components
 	IDirect3DVertexShader9* og_bmodel_shader = nullptr;
 	Vector model_org_offset = {};
 
+	
+
+	
+
 	void cmeshdx8_renderpass_pre_draw(CMeshDX8* mesh)
 	{
 		const auto dev = game::get_d3d_device();
@@ -359,8 +363,10 @@ namespace components
 			else if (mesh->m_VertexFormat == 0xa0007) // portal fx
 			{
 				dev->SetFVF(D3DFVF_XYZB1 | D3DFVF_NORMAL | D3DFVF_TEX5 | D3DFVF_TEXCOORDSIZE1(4)); // 68 - 4 as last tc is one float
+				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_TEX5 | D3DFVF_TEXCOORDSIZE1(4)); // 68 - 4 as last tc is one float
+				//dev->SetFVF(NULL);
 				dev->GetVertexShader(&ff_billboard::s_shader);
-				//dev->SetVertexShader(nullptr);
+				dev->SetVertexShader(nullptr);
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity)); // 0x6c0005 influences this one here???
 			}
 
@@ -373,14 +379,17 @@ namespace components
 
 				if (mesh->m_VertexFormat == 0xa0003)
 				{
+					
 					//dev->SetVertexShader(nullptr);
 				}
 				else
 				{
+					
 					//dev->SetVertexShader(nullptr);
 				}
 
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
+				//dev->SetFVF(NULL); // 64
 				dev->GetTexture(0, &ff_fxrelated::s_texture);
 				dev->SetVertexShader(nullptr);
 				//dev->SetTexture(0, nullptr);
@@ -835,7 +844,8 @@ namespace components
 		utils::hook(RENDERER_BASE + 0xA56D, cmeshdx8_renderpassforinstances_pre_draw_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(cmeshdx8_renderpassforinstances_pre_draw_retn_addr, RENDERER_BASE + 0xA581);
 
-
+		// enable mat_wireframe on portals to make them stable?
+		utils::hook::nop(CLIENT_BASE + 0x2BD41C, 6);
 #if 0
 		// 0xA685
 		utils::hook(RENDERER_BASE + 0xA685, cmeshdx8_renderpasswithvertexindexbuffer_stub, HOOK_JUMP).install()->quick();

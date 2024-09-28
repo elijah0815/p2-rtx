@@ -142,6 +142,11 @@ namespace components
 		~model_render() = default;
 		const char* get_name() override { return "model_render"; }
 
+		static inline remixapi_MeshHandle portal0_mdl = nullptr;
+		static inline remixapi_MaterialHandle portal0_mtl = nullptr;
+
+		static inline remixapi_MeshHandle portal1_mdl = nullptr;
+		static inline remixapi_MaterialHandle portal1_mtl = nullptr;
 	private:
 	};
 }
