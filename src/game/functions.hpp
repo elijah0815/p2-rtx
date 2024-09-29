@@ -1,6 +1,6 @@
 #pragma once
-#include "utils/function.hpp"
-#include "game/structs.hpp"
+//#include "utils/function.hpp"
+//#include "game/structs.hpp"
 
 #define RENDERER_BASE			game::shaderapidx9_module
 #define STUDIORENDER_BASE		game::studiorender_module
@@ -23,4 +23,6 @@ namespace game
 	inline components::CRender* get_engine_renderer() { return reinterpret_cast<components::CRender*>(ENGINE_BASE + 0x60F880); }
 
 	inline IDirect3DDevice9* get_d3d_device() { return reinterpret_cast<IDirect3DDevice9*>(*(DWORD*)(RENDERER_BASE + 0x179F38)); }
+
+	inline components::IShaderAPIDX8* get_shaderapi() { return reinterpret_cast<components::IShaderAPIDX8*>(*(DWORD*)(RENDERER_BASE + 0x164C48)); }
 }

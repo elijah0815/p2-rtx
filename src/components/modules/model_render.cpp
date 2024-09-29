@@ -41,7 +41,9 @@ namespace components
 		}
 		else if (pInfo.pModel->radius == 37.3153992f) // models/weapons/v_portalgun.mdl
 		{
-			VMatrix mat = {};
+			// use viewmodel_offset_ instead?
+
+			/*VMatrix mat = {};
 			mat.m[0][0] = game::identity[0][0];
 			mat.m[0][1] = game::identity[0][1];
 			mat.m[0][2] = game::identity[0][2];
@@ -71,7 +73,8 @@ namespace components
 			mat.m[3][2] = fwd[2];
 
 			is_portalgun_viewmodel = true;
-			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mat.m));
+			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mat.m));*/
+			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 		}
 		else
 		{
@@ -175,8 +178,9 @@ namespace components
 
 	C_BaseEntity* current_render_ent = nullptr;
 
-	LPDIRECT3DTEXTURE9 local_texture_test01;
-	LPDIRECT3DTEXTURE9 local_texture_test02;
+	LPDIRECT3DTEXTURE9 tex_portal_mask;
+	LPDIRECT3DTEXTURE9 tex_portal_blue;
+	LPDIRECT3DTEXTURE9 tex_portal_orange;
 
 	int do_not_render_next_mesh = false;
 	std::uint64_t tick_on_first_no_render = 0;
@@ -201,52 +205,80 @@ namespace components
 			int x = 1;
 		}
 
-		// do_not_render_next_mesh = true;
+		//do_not_render_next_mesh = true;
 
-		VMatrix mat = {};
-		mat.m[0][0] = model_to_world_mtx->m[0][0];
-		mat.m[1][0] = model_to_world_mtx->m[0][1];
-		mat.m[2][0] = model_to_world_mtx->m[0][2];
+		VMatrix mtx = {};
+		mtx.m[0][0] = model_to_world_mtx->m[0][0];
+		mtx.m[1][0] = model_to_world_mtx->m[0][1];
+		mtx.m[2][0] = model_to_world_mtx->m[0][2];
 
-		mat.m[0][1] = model_to_world_mtx->m[1][0];
-		mat.m[1][1] = model_to_world_mtx->m[1][1];
-		mat.m[2][1] = model_to_world_mtx->m[1][2];
+		mtx.m[0][1] = model_to_world_mtx->m[1][0];
+		mtx.m[1][1] = model_to_world_mtx->m[1][1];
+		mtx.m[2][1] = model_to_world_mtx->m[1][2];
 
-		mat.m[0][2] = model_to_world_mtx->m[2][0];
-		mat.m[1][2] = model_to_world_mtx->m[2][1];
-		mat.m[2][2] = model_to_world_mtx->m[2][2];
+		mtx.m[0][2] = model_to_world_mtx->m[2][0];
+		mtx.m[1][2] = model_to_world_mtx->m[2][1];
+		mtx.m[2][2] = model_to_world_mtx->m[2][2];
 
-		mat.m[3][0] = model_to_world_mtx->m[0][3];
-		mat.m[3][1] = model_to_world_mtx->m[1][3];
-		mat.m[3][2] = model_to_world_mtx->m[2][3];
-		mat.m[3][3] = game::identity[3][3];
+		mtx.m[3][0] = model_to_world_mtx->m[0][3];
+		mtx.m[3][1] = model_to_world_mtx->m[1][3];
+		mtx.m[3][2] = model_to_world_mtx->m[2][3];
+		mtx.m[3][3] = game::identity[3][3];
 
 		if (og_bmodel_shader && mesh->m_VertexFormat == 0x2480033)
 		{
-			// do_not_render_next_mesh = true;
+			//do_not_render_next_mesh = true;
 
-			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mat));
+			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
 
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
 			dev->SetVertexShader(nullptr);
 		}
 		else if (og_model_shader && mesh->m_VertexFormat == 0xa0003 /*stride == 48*/) // player model - gun - grabable stuff - portal button - portal door
 		{
+			//do_not_render_next_mesh = true;
+
 			if (!is_portalgun_viewmodel)
 			{
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mat));
+				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
 			}
-
-			// do_not_render_next_mesh = true;
 
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX6);
 			dev->SetVertexShader(nullptr); // vertexformat 0x00000000000a0003 
 
 			//mtx[3][2] = sinf((float)main_module::framecount * 0.05f) * 10.0f;
 		}
+
+		// this also renders the glass? infront of white panel lamps
 		else if (og_model_shader) // should be stride 30
 		{
 			//do_not_render_next_mesh = true;
+			// glass/glasswindow_refract01_neutral
+
+			if (auto shaderapi = game::get_shaderapi(); shaderapi)
+			{
+				if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
+				{
+					if (auto name = cmat->vftable->GetName(cmat); name)
+					{
+						// r_portal_stencil_depth 0 heavy influence
+						if (std::string_view(name).contains("portal_stencil"))
+						{
+						}
+					}
+
+					// m_nDXSupportLevel: 100 .. 90 or 92 should do this automatically
+					
+					if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+					{
+						/*if (std::string_view(shadername).contains("Refract"))
+						{
+							cmat->vftable->SetShader(cmat, "Wireframe");
+							int x = 1;
+						}*/
+					}
+				}
+			}
 
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3);
 			dev->SetVertexShader(nullptr); // vertexformat 0x00000000000a0003
@@ -258,9 +290,174 @@ namespace components
 		}
 		else
 		{
-			// world geo? - floor / walls
-			if (mesh->m_VertexFormat == 0x2480033)
+			// #TODO init textures elsewhere
+			if (!tex_portal_mask)
 			{
+				D3DXCreateTextureFromFileA(dev, "portal_mask.png", &tex_portal_mask);
+			}
+
+			if (!tex_portal_blue)
+			{
+				D3DXCreateTextureFromFileA(dev, "portal_blue.png", &tex_portal_blue);
+			}
+
+			if (!tex_portal_orange)
+			{
+				D3DXCreateTextureFromFileA(dev, "portal_orange.png", &tex_portal_orange);
+			}
+
+			bool was_portal_related = false;
+			bool was_world = false;
+
+			if (auto shaderapi = game::get_shaderapi(); shaderapi)
+			{
+				if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
+				{
+					if (auto name = cmat->vftable->GetName(cmat); name)
+					{
+						// r_portal_stencil_depth 0 heavy influence
+						if (std::string_view(name).contains("portal_stencil"))
+						{
+							// is it better to render this with a null texture or disable rendering of the quad
+							// using do_not_render_next_mesh
+							/*if (tex_portal_mask)
+							{
+								dev->SetTexture(0, nullptr);
+							}*/
+							was_portal_related = true; // prevent all other else's
+							do_not_render_next_mesh = true;
+						}
+						//else if (std::string_view(name).contains("dev/lumcompare"))
+						//{
+						//	was_portal_related = true; // prevent all other else's
+						//	do_not_render_next_mesh = true;
+						//}
+						else if (std::string_view(name).contains("portalstaticoverlay_1"))
+						{
+							//if (!model_render::portal1_render_count)  
+							{
+								if (tex_portal_mask)
+								{
+									dev->GetTexture(1, &ff_portalfx_03::s_texture2);
+									dev->SetTexture(1, tex_portal_mask);
+								}
+
+								if (tex_portal_blue)
+								{
+									dev->GetTexture(0, &ff_portalfx_03::s_texture1);
+									dev->SetTexture(0, tex_portal_blue);
+								}
+							}
+							/*else
+							{
+								do_not_render_next_mesh = true;
+							}*/
+
+							// replace with wireframe (makes life much easier)
+							if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+							{
+								//if (std::string_view(shadername).contains("PortalRefract_dx9"))
+								if (std::string_view(shadername) != "Wireframe_DX9")
+								{
+									cmat->vftable->SetShader(cmat, "Wireframe"); 
+									int x = 1;
+								}
+								int x = 1;
+							}
+
+							was_portal_related = true;
+							model_render::portal1_render_count++;
+						}
+						else if (std::string_view(name).contains("portalstaticoverlay_2"))
+						{
+							//if (!model_render::portal2_render_count)
+							{
+								if (tex_portal_mask)
+								{
+									dev->GetTexture(1, &ff_portalfx_03::s_texture2);
+									dev->SetTexture(1, tex_portal_mask);
+								}
+
+								if (tex_portal_orange) 
+								{
+									dev->GetTexture(0, &ff_portalfx_03::s_texture1);
+									dev->SetTexture(0, tex_portal_orange);
+								}
+							}
+							/*else
+							{
+								do_not_render_next_mesh = true;
+							}*/
+
+							// replace with wireframe (makes life much easier)
+							if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+							{
+								//if (std::string_view(shadername).contains("PortalRefract_dx9"))
+								if (std::string_view(shadername) != "Wireframe_DX9")
+								{
+									cmat->vftable->SetShader(cmat, "Wireframe");
+									int x = 1;
+								}
+								int x = 1;
+							}
+
+							was_portal_related = true;
+							model_render::portal2_render_count++;
+						}
+
+						if (was_portal_related)
+						{
+							// through wall overlays
+							if (mesh->m_VertexFormat == 0xa0007)
+							{
+								int x = 1;
+								//do_not_render_next_mesh = true;
+
+								//dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_NORMAL | D3DFVF_TEX5 | D3DFVF_TEXCOORDSIZE1(4)); // 68 - 4 as last tc is one float
+								//dev->GetVertexShader(&ff_portalfx_01::s_shader);
+								//dev->SetVertexShader(nullptr);
+								//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+							}
+
+							// actually draws the portals
+							if (mesh->m_VertexFormat == 0x4a0003)
+							{
+								//do_not_render_next_mesh = true;
+
+								dev->GetVertexShader(&ff_portalfx_03::s_shader);
+								dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
+								dev->SetVertexShader(nullptr);
+								dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+							}
+
+							// if set to wireframe mode
+							if (mesh->m_VertexFormat == 0x80003)
+							{
+								dev->GetVertexShader(&ff_portalfx_03::s_shader);
+								dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1 | D3DFVF_TEXCOORDSIZE2(0));
+								dev->SetVertexShader(nullptr);
+								dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+							}
+
+							// fizzle
+							if (mesh->m_VertexFormat == 0xa0003)
+							{
+								int x = 1;
+							}
+						}
+					}
+				}
+			}
+
+			if (was_portal_related)
+			{
+				int x = 0;
+				
+			}
+			// world geo? - floor / walls
+			else if (mesh->m_VertexFormat == 0x2480033)
+			{
+				was_world = true;
 				//do_not_render_next_mesh = true;
 
 				// tc @ 24
@@ -271,7 +468,10 @@ namespace components
 
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 			}
-
+			/*else if (!was_world)
+			{
+				do_not_render_next_mesh = true;
+			}*/
 			// transporting beams
 			else if (mesh->m_VertexFormat == 0x80005) // stride 0x20
 			{
@@ -304,26 +504,26 @@ namespace components
 				dev->GetVertexShader(&ff_laserplatform::s_shader);
 				dev->SetVertexShader(nullptr);
 
-				float mtx[4][4] = {};
-				mtx[0][0] = game::identity[0][0];
-				mtx[0][1] = game::identity[0][1];
-				mtx[0][2] = game::identity[0][2];
-				mtx[0][3] = game::identity[0][3];
+				//float mtx1[4][4] = {};
+				//mtx1[0][0] = game::identity[0][0];
+				//mtx1[0][1] = game::identity[0][1];
+				//mtx1[0][2] = game::identity[0][2];
+				//mtx1[0][3] = game::identity[0][3];
 
-				mtx[1][0] = game::identity[1][0];
-				mtx[1][1] = game::identity[1][1];
-				mtx[1][2] = game::identity[1][2];
-				mtx[1][3] = game::identity[1][3];
+				//mtx1[1][0] = game::identity[1][0];
+				//mtx1[1][1] = game::identity[1][1];
+				//mtx1[1][2] = game::identity[1][2];
+				//mtx1[1][3] = game::identity[1][3];
 
-				mtx[2][0] = game::identity[2][0];
-				mtx[2][1] = game::identity[2][1];
-				mtx[2][2] = game::identity[2][2];
-				mtx[2][3] = game::identity[2][3];
+				//mtx1[2][0] = game::identity[2][0];
+				//mtx1[2][1] = game::identity[2][1];
+				//mtx1[2][2] = game::identity[2][2];
+				//mtx1[2][3] = game::identity[2][3];
 
-				mtx[3][0] = game::identity[3][0];
-				mtx[3][1] = game::identity[3][1];
-				mtx[3][2] = 0.0f; //sinf((float)main_module::framecount * 0.05f) * 40.0f;
-				mtx[3][3] = game::identity[3][3];
+				//mtx1[3][0] = game::identity[3][0];
+				//mtx1[3][1] = game::identity[3][1];
+				//mtx1[3][2] = 0.0f; //sinf((float)main_module::framecount * 0.05f) * 40.0f;
+				//mtx1[3][3] = game::identity[3][3];
 
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 
@@ -338,12 +538,49 @@ namespace components
 				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
 			}
 
-			// lasers - this also renders the the actual portal? (white quad)
+			// lasers - indicator dots - some of the white light stripes
+			// this also renders the the wireframe portal if hook enabled to render wireframe for portals
 			else if (mesh->m_VertexFormat == 0x80003)
 			{
-				do_not_render_next_mesh = true;
+				//do_not_render_next_mesh = true;
+				//auto shaderapi = reinterpret_cast<IShaderAPIDX8*>(/**(DWORD*)*/(*(DWORD*)(RENDERER_BASE + 0x164C48)));
 
-				dev->GetVertexShader(&ff_laser::s_shader);
+				if (current_render_ent)
+				{
+					if (current_render_ent->model /*&& std::string_view(current_render_ent->model->szPathName).contains("portal1.mdl")*/)
+					{
+						int x = 1;
+					}
+				}
+
+				if (auto shaderapi = game::get_shaderapi(); shaderapi)
+				{
+					auto mat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr);
+					if (mat)
+					{
+						auto name = mat->vftable->GetName(mat);
+
+						if (name) 
+						{
+							if (std::string_view(name).contains("light_panel_neutral"))
+							{
+								/*if (tex_portal_mask)
+								{
+									dev->SetTexture(0, tex_portal_mask);
+								}*/
+								int yy = 1; 
+								//do_not_render_next_mesh = true;
+							}
+						}
+					}
+				}
+				//do_not_render_next_mesh = true;
+				if (current_render_ent)
+				{
+					int x = 1;
+				}
+
+				dev->GetVertexShader(&ff_laser::s_shader); 
 				bool swing = false;
 
 				if (mesh->m_Mode == D3DPT_TRIANGLELIST)
@@ -365,7 +602,7 @@ namespace components
 					dev->SetVertexShader(nullptr);
 				}
 
-				float mtx[4][4] = {};
+				/*float mtx[4][4] = {};
 				mtx[0][0] = game::identity[0][0];
 				mtx[0][1] = game::identity[0][1];
 				mtx[0][2] = game::identity[0][2];
@@ -384,9 +621,10 @@ namespace components
 				mtx[3][0] = game::identity[3][0];
 				mtx[3][1] = game::identity[3][1];
 				mtx[3][2] = swing ? (sinf((float)main_module::framecount * 0.05f) * 2.0f) : 0.0f;
-				mtx[3][3] = game::identity[3][3];
+				mtx[3][3] = game::identity[3][3];*/
 
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+				//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 
 				//dev->GetTransform(D3DTS_TEXTURE0, &laserplatform::s_tc_transform);
 				//
@@ -445,24 +683,24 @@ namespace components
 
 				// the remix runtime expects a portal mask texture in the second texture slot .... :D
 
-				if (!local_texture_test01)
+				/*if (!tex_portal_mask)
 				{
-					D3DXCreateTextureFromFileA(dev, "portal_mask.bmp", &local_texture_test01);
+					D3DXCreateTextureFromFileA(dev, "portal_mask.png", &tex_portal_mask);
 				}
 
-				if (local_texture_test01)
+				if (tex_portal_mask)
 				{
-					dev->SetTexture(1, local_texture_test01);
-				}
+					dev->SetTexture(1, tex_portal_mask);
+				}*/
 
 				// no change in tiny portal bug 
-				if (model_render::portal_meshes_rendered_count >= 2)
-				{
-					int x = 1;
-					//do_not_render_next_mesh = true;
-				}
+				//if (model_render::portal1_render_count >= 2)
+				//{
+				//	int x = 1;
+				//	//do_not_render_next_mesh = true;
+				//}
 
-				model_render::portal_meshes_rendered_count++;
+				//model_render::portal_meshes_rendered_count++;
 
 				/*if (tick_on_first_no_render != main_module::framecount)
 				{
@@ -524,6 +762,78 @@ namespace components
 			//  this draws the portal1 and portal2 mesh
 			else if (mesh->m_VertexFormat == 0x4a0003)
 			{
+				//do_not_render_next_mesh = true;
+
+				//struct IShaderAPIDX8_vtbl
+				//{
+				//	char pad[0x41C];
+				//	IMaterial* (__fastcall* GetBoundMaterial)(void* shaderapi_ptr, void* ecx);
+				//};
+				//struct IShaderAPIDX8
+				//{
+				//	IShaderAPIDX8_vtbl* vtbl;
+				//};
+				//auto shaderapi = reinterpret_cast<IShaderAPIDX8*>(/**(DWORD*)*/(*(DWORD*)(RENDERER_BASE + 0x164C48)));
+
+				auto shaderapi = game::get_shaderapi();
+
+				//if (current_render_ent)
+				//{
+				//	if (current_render_ent->model /*&& std::string_view(current_render_ent->model->szPathName).contains("portal1.mdl")*/)
+				//	{
+				//		int x = 1;
+				//	}
+				//}
+
+				//if (shaderapi)
+				//{
+				//	auto mat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr);
+				//	if (mat)
+				//	{
+				//		auto name = mat->vftable->GetName(mat);
+
+				//		if (name)
+				//		{
+				//			if (std::string_view(name).contains("portal_stencil"))
+				//			{
+				//				//do_not_render_next_mesh = true;
+				//				/*if (tex_portal_mask) // nope
+				//				{
+				//					dev->SetTexture(1, tex_portal_mask);
+				//				}*/
+				//			}
+				//			else if (std::string_view(name).contains("portalstaticoverlay_1"))
+				//			{
+				//				if (tex_portal_mask)
+				//				{
+				//					dev->SetTexture(1, tex_portal_mask);
+				//				}
+
+				//				//if (tex_portal_blue)
+				//				{
+				//					dev->SetTexture(0, tex_portal_blue);
+				//				}
+
+				//				model_render::portal1_render_count++;
+				//			}
+				//			else if (std::string_view(name).contains("portalstaticoverlay_2"))
+				//			{
+				//				if (tex_portal_mask)
+				//				{
+				//					dev->SetTexture(1, tex_portal_mask);
+				//				}
+
+				//				//if (tex_portal_orange)
+				//				{
+				//					dev->SetTexture(0, tex_portal_orange);
+				//				}
+				//			}
+				//		}
+
+				//		int x = 1;
+				//	}
+				//}
+
 				// stride 0x40
 				//do_not_render_next_mesh = true;
 
@@ -531,7 +841,6 @@ namespace components
 				{
 					IMaterial* m_pMaterial;
 				};
-
 				struct PropPortalRenderingMaterials_t
 				{
 					CMaterialReference m_PortalMaterials[2];
@@ -548,19 +857,67 @@ namespace components
 					Vector m_coopPlayerPortalColors[2][2];
 					Vector m_singlePlayerPortalColors[2];
 				};
-
-
 				struct CAutoInitBasicPropPortalDrawingMaterials
 				{
 					char pad[0xC];
 					PropPortalRenderingMaterials_t m_Materials;
 				};
-
-				// CAutoInitBasicPropPortalDrawingMaterials
-				auto base_portal_mats = reinterpret_cast<CAutoInitBasicPropPortalDrawingMaterials*>(CLIENT_BASE + 0x9FE710);
+				auto base_portal_mats = reinterpret_cast<CAutoInitBasicPropPortalDrawingMaterials*>(CLIENT_BASE + 0x9FE710); // CAutoInitBasicPropPortalDrawingMaterials
 
 				//dev->GetTexture(0, &ff_portalfx_03::s_texture1);
 				//dev->SetTexture(0, nullptr);
+
+				
+
+				
+
+				//if (current_render_ent)
+				//{
+				//	if (current_render_ent->model && std::string_view(current_render_ent->model->szPathName).contains("portal2.mdl"))
+				//	{
+				//		if (tex_portal_blue)
+				//		{
+				//			dev->SetTexture(0, tex_portal_blue);
+				//		}
+
+				//		// always set mask
+				//		if (tex_portal_mask)
+				//		{
+				//			//dev->SetTexture(0, tex_portal_mask);
+				//			dev->SetTexture(1, tex_portal_mask);
+				//		}
+				//	}
+
+				//}
+				
+
+				//if (current_render_ent)
+				//{
+				//	if (current_render_ent->model && std::string_view(current_render_ent->model->szPathName).contains("portal1.mdl"))
+				//	{
+				//		dev->SetTexture(0, tex_portal_orange);
+
+				//		// always set mask
+				//		if (tex_portal_mask)
+				//		{
+				//			//dev->SetTexture(0, tex_portal_mask);
+				//			dev->SetTexture(1, tex_portal_mask);
+				//		}
+				//	}
+				//	else if (current_render_ent->model && std::string_view(current_render_ent->model->szPathName).contains("portal2.mdl"))
+				//	{
+				//		dev->SetTexture(0, tex_portal_blue);
+
+				//		// always set mask
+				//		if (tex_portal_mask)
+				//		{
+				//			//dev->SetTexture(0, tex_portal_mask);
+				//			dev->SetTexture(1, tex_portal_mask);
+				//		}
+				//	}
+				//}
+
+				
 
 #if 0
 				if (current_render_ent)
@@ -653,6 +1010,7 @@ namespace components
 			// ?
 			else if (mesh->m_VertexFormat == 0x92480005)
 			{
+				//do_not_render_next_mesh = true;
 				int zz = 1; 
 			}
 
@@ -680,6 +1038,7 @@ namespace components
 			// ?
 			else if (mesh->m_VertexFormat == 0xa0103) 
 			{
+				//do_not_render_next_mesh = true;
 				int z = 0; 
 			//	// tc @ 24
 			//	dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
@@ -690,6 +1049,8 @@ namespace components
 			// terrain
 			else if (mesh->m_VertexFormat == 0x480007)
 			{
+				//do_not_render_next_mesh = true;
+
 				// tc @ 28
 				dev->SetFVF(D3DFVF_XYZB4 | D3DFVF_TEX3);
 				dev->GetVertexShader(&ff_terrain::s_shader);
@@ -772,6 +1133,7 @@ namespace components
 
 			else
 			{
+				//do_not_render_next_mesh = true;
 				//dev->SetVertexShader(nullptr);
 				int xx = 1;  
 			}
@@ -1242,7 +1604,7 @@ namespace components
 		HOOK_RETN_PLACE(cmeshdx8_renderpassforinstances_pre_draw_retn_addr, RENDERER_BASE + 0xA581);
 
 		// enable mat_wireframe on portals to make them stable?
-		utils::hook::nop(CLIENT_BASE + 0x2BD41C, 6);
+		//utils::hook::nop(CLIENT_BASE + 0x2BD41C, 6);
 #if 0
 		// 0xA685
 		utils::hook(RENDERER_BASE + 0xA685, cmeshdx8_renderpasswithvertexindexbuffer_stub, HOOK_JUMP).install()->quick();

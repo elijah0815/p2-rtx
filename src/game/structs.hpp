@@ -771,7 +771,8 @@ namespace components
 
 	struct IMaterial_vtbl
 	{
-		const char* (__thiscall* GetName)(IMaterial*);
+		//const char* (__thiscall* GetName)(IMaterial*);
+		const char* (__fastcall* GetName)(IMaterial*);
 		const char* (__thiscall* GetTextureGroupName)(IMaterial*);
 		PreviewImageRetVal_t(__thiscall* GetPreviewImageProperties)(IMaterial*, int*, int*, ImageFormat*, bool*);
 		PreviewImageRetVal_t(__thiscall* GetPreviewImage)(IMaterial*, unsigned __int8*, int, int, ImageFormat);
@@ -1770,5 +1771,15 @@ namespace components
 		int m_nLightmapPageId;
 	};
 
+	struct IShaderAPIDX8_vtbl
+	{
+		char pad[0x41C];
+		IMaterial* (__fastcall* GetBoundMaterial)(void* shaderapi_ptr, void* ecx);
+	};
+
+	struct IShaderAPIDX8
+	{
+		IShaderAPIDX8_vtbl* vtbl;
+	};
 }
 
