@@ -1771,11 +1771,29 @@ namespace components
 		int m_nLightmapPageId;
 	};
 
+	struct BufferedState_t
+	{
+		D3DXMATRIX m_Transform[3];
+		_D3DVIEWPORT9 m_Viewport;
+		int m_BoundTexture[16];
+		void* m_VertexShader;
+		void* m_PixelShader;
+	};
+
 	struct IShaderAPIDX8_vtbl
 	{
-		char pad[0x41C];
+		char pad[1032];
+		void(__fastcall* GetBufferedState)(void* shaderapi_ptr, void* ecx, BufferedState_t*);
+		_D3DCULL(__fastcall* GetCullMode)(void* shaderapi_ptr, void* ecx);
+		void* ComputeFillRate;
+		void* IsInSelectionMode;
+		void* RegisterSelectionHit;
 		IMaterial* (__fastcall* GetBoundMaterial)(void* shaderapi_ptr, void* ecx);
+
+		//char pad[0x41C];
+		//IMaterial* (__fastcall* GetBoundMaterial)(void* shaderapi_ptr, void* ecx);
 	};
+	STATIC_ASSERT_OFFSET(IShaderAPIDX8_vtbl, GetBoundMaterial, 0x41C);
 
 	struct IShaderAPIDX8
 	{

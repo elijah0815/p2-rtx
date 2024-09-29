@@ -162,10 +162,18 @@ namespace components
 		IDirect3DBaseTexture9* s_texture;
 	}
 
-	namespace ff_temp_01
+	namespace ff_more_models
 	{
 		IDirect3DVertexShader9* s_shader = nullptr;
 		IDirect3DBaseTexture9* s_texture;
+	}
+
+	namespace ff_vgui
+	{
+		IDirect3DVertexShader9* s_shader01 = nullptr;
+		IDirect3DVertexShader9* s_shader02 = nullptr;
+		IDirect3DVertexShader9* s_shader03 = nullptr;
+		IDirect3DVertexShader9* s_shader04 = nullptr;
 	}
 
 	IDirect3DVertexShader9* saved_shader_unk = nullptr;
@@ -182,6 +190,8 @@ namespace components
 	LPDIRECT3DTEXTURE9 tex_portal_blue;
 	LPDIRECT3DTEXTURE9 tex_portal_orange;
 
+	LPDIRECT3DTEXTURE9 tex_glass_shards;
+
 	int do_not_render_next_mesh = false;
 	std::uint64_t tick_on_first_no_render = 0;
 	
@@ -197,12 +207,25 @@ namespace components
 		Vector* model_org = reinterpret_cast<Vector*>(ENGINE_BASE + 0x50DA90);
 		VMatrix* model_to_world_mtx = reinterpret_cast<VMatrix*>(ENGINE_BASE + 0x637158);
 
-		// g_pInstanceData
-		MeshInstanceData_t* instance_info = reinterpret_cast<MeshInstanceData_t*>(*(DWORD*)(RENDERER_BASE + 0x1754AC));
-
-		if (instance_info)
+		// #TODO init textures elsewhere
+		if (!tex_portal_mask)
 		{
-			int x = 1;
+			D3DXCreateTextureFromFileA(dev, "portal_mask.png", &tex_portal_mask);
+		}
+
+		if (!tex_portal_blue)
+		{
+			D3DXCreateTextureFromFileA(dev, "portal_blue.png", &tex_portal_blue);
+		}
+
+		if (!tex_portal_orange)
+		{
+			D3DXCreateTextureFromFileA(dev, "portal_orange.png", &tex_portal_orange);
+		}
+
+		if (!tex_glass_shards)
+		{
+			D3DXCreateTextureFromFileA(dev, "glass_shards.png", &tex_glass_shards);
 		}
 
 		//do_not_render_next_mesh = true;
@@ -238,6 +261,27 @@ namespace components
 		{
 			//do_not_render_next_mesh = true;
 
+			if (auto shaderapi = game::get_shaderapi(); shaderapi)
+			{
+				if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
+				{
+					if (auto name = cmat->vftable->GetName(cmat); name)
+					{
+						if (std::string_view(name).contains("props_destruction/glass_"))
+						{
+							//do_not_render_next_mesh = true;
+
+							if (tex_glass_shards)
+							{
+								dev->SetTexture(0, tex_glass_shards);
+							}
+							
+						}
+					}
+				}
+			}
+
+
 			if (!is_portalgun_viewmodel)
 			{
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
@@ -261,51 +305,36 @@ namespace components
 				{
 					if (auto name = cmat->vftable->GetName(cmat); name)
 					{
-						// r_portal_stencil_depth 0 heavy influence
-						if (std::string_view(name).contains("portal_stencil"))
+						// TODO replace with unique texture
+						/*if (std::string_view(name).contains("glasswindow"))
 						{
-						}
-					}
+							IDirect3DBaseTexture9* nml = nullptr;
+							dev->GetTexture(1, &nml);
 
-					// m_nDXSupportLevel: 100 .. 90 or 92 should do this automatically
-					
-					if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
-					{
-						/*if (std::string_view(shadername).contains("Refract"))
-						{
-							cmat->vftable->SetShader(cmat, "Wireframe");
-							int x = 1;
+							if (nml)
+							{
+								dev->SetTexture(0, nml);
+							}
 						}*/
+
+						// replace glass refract with wireframe
+						if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+						{
+							if (std::string_view(shadername).contains("Refract_DX90"))
+							{
+								cmat->vftable->SetShader(cmat, "Wireframe");
+								int x = 1;
+							}
+						}
 					}
 				}
 			}
 
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3);
 			dev->SetVertexShader(nullptr); // vertexformat 0x00000000000a0003
-			//dev->SetRenderState(D3DRS_COLORVERTEX, FALSE);
-			//dev->SetRenderState(D3DRS_SHADEMODE, D3DSHADE_PHONG);
-			//dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
-			//dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-			//dev->SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
 		}
 		else
 		{
-			// #TODO init textures elsewhere
-			if (!tex_portal_mask)
-			{
-				D3DXCreateTextureFromFileA(dev, "portal_mask.png", &tex_portal_mask);
-			}
-
-			if (!tex_portal_blue)
-			{
-				D3DXCreateTextureFromFileA(dev, "portal_blue.png", &tex_portal_blue);
-			}
-
-			if (!tex_portal_orange)
-			{
-				D3DXCreateTextureFromFileA(dev, "portal_orange.png", &tex_portal_orange);
-			}
-
 			bool was_portal_related = false;
 			bool was_world = false;
 
@@ -348,10 +377,8 @@ namespace components
 									dev->SetTexture(0, tex_portal_blue);
 								}
 							}
-							/*else
-							{
-								do_not_render_next_mesh = true;
-							}*/
+
+							//do_not_render_next_mesh = true;
 
 							// replace with wireframe (makes life much easier)
 							if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
@@ -433,6 +460,7 @@ namespace components
 							// if set to wireframe mode
 							if (mesh->m_VertexFormat == 0x80003)
 							{
+								//do_not_render_next_mesh = true;
 								dev->GetVertexShader(&ff_portalfx_03::s_shader);
 								dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1 | D3DFVF_TEXCOORDSIZE2(0));
 								dev->SetVertexShader(nullptr);
@@ -468,10 +496,6 @@ namespace components
 
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 			}
-			/*else if (!was_world)
-			{
-				do_not_render_next_mesh = true;
-			}*/
 			// transporting beams
 			else if (mesh->m_VertexFormat == 0x80005) // stride 0x20
 			{
@@ -540,49 +564,43 @@ namespace components
 
 			// lasers - indicator dots - some of the white light stripes
 			// this also renders the the wireframe portal if hook enabled to render wireframe for portals
+			// also renders white stuff behind sliding doors
 			else if (mesh->m_VertexFormat == 0x80003)
 			{
 				//do_not_render_next_mesh = true;
-				//auto shaderapi = reinterpret_cast<IShaderAPIDX8*>(/**(DWORD*)*/(*(DWORD*)(RENDERER_BASE + 0x164C48)));
-
-				if (current_render_ent)
-				{
-					if (current_render_ent->model /*&& std::string_view(current_render_ent->model->szPathName).contains("portal1.mdl")*/)
-					{
-						int x = 1;
-					}
-				}
-
+				
 				if (auto shaderapi = game::get_shaderapi(); shaderapi)
 				{
-					auto mat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr);
-					if (mat)
+					if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
 					{
-						auto name = mat->vftable->GetName(mat);
-
-						if (name) 
+						if (auto name = cmat->vftable->GetName(cmat); name)
 						{
-							if (std::string_view(name).contains("light_panel_neutral"))
+							// fix sliding door background
+							if (std::string_view(name).contains("decals/portalstencildecal"))
 							{
-								/*if (tex_portal_mask)
-								{
-									dev->SetTexture(0, tex_portal_mask);
-								}*/
-								int yy = 1; 
 								//do_not_render_next_mesh = true;
+
+								// todo set unique texture
+								dev->SetTexture(0, tex_portal_mask);
+
+								//if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+								//{
+								//	//if (std::string_view(shadername).contains("PortalRefract_dx9"))
+								//	/*if (std::string_view(shadername) != "Wireframe_DX9")
+								//	{
+								//		cmat->vftable->SetShader(cmat, "Wireframe");
+								//		int x = 1;
+								//	}*/
+								//	int x = 1;
+								//}
+								int yy = 1; 
 							}
 						}
 					}
 				}
-				//do_not_render_next_mesh = true;
-				if (current_render_ent)
-				{
-					int x = 1;
-				}
 
 				dev->GetVertexShader(&ff_laser::s_shader); 
-				bool swing = false;
-
+				
 				if (mesh->m_Mode == D3DPT_TRIANGLELIST)
 				{
 					// tc @ 12
@@ -625,22 +643,13 @@ namespace components
 
 				//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
-
-				//dev->GetTransform(D3DTS_TEXTURE0, &laserplatform::s_tc_transform);
-				//
-				//// tc scroll
-				//D3DXMATRIX ret = laserplatform::s_tc_transform;
-				//ret(3, 1) = (float)main_module::framecount * 0.01f;
-
-				//dev->SetTransform(D3DTS_TEXTURE0, &ret);
-				//dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
 			}
 
 			// portal_draw_ghosting 0 disables this
 			// this normally shows portals through walls
 			else if (mesh->m_VertexFormat == 0xa0007) // portal fx
 			{
-				// do_not_render_next_mesh = true;
+				//do_not_render_next_mesh = true;
 
 				// could be of use
 				/*if (current_render_ent) 
@@ -1000,6 +1009,61 @@ namespace components
 			// HUD
 			else if (mesh->m_VertexFormat == 0x80007) 
 			{
+				//do_not_render_next_mesh = true;
+				// IsDepthWriteEnabled
+				// GetBufferedState
+				// GetCullMode
+				if (auto shaderapi = game::get_shaderapi(); shaderapi)
+				{
+					if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
+					{
+						if (auto name = cmat->vftable->GetName(cmat); name)
+						{
+							// get rid of all world-rendered text as its using the same glyph as HUD elements?!
+							if (std::string_view(name).contains("vgui__fontpage"))
+							{
+								BufferedState_t state = {};
+								shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+
+								if (state.m_Transform[0].m[3][0] != 0.0f)
+								{
+									do_not_render_next_mesh = true;
+								}
+							}
+							else if (std::string_view(name).contains("vgui_coop_progress_board"))
+							{
+								//do_not_render_next_mesh = true;
+								// gameinstructor_iconsheet1
+
+								BufferedState_t state = {};
+								shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+
+								dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
+
+								// no need to set fvf here?
+								//dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_TEX4);
+
+								dev->GetVertexShader(&ff_vgui::s_shader01);
+								dev->SetVertexShader(nullptr);
+							}
+
+							// gameinstructor_iconsheet1 - info icon on screen
+
+							int x = 1;
+
+							// replace glass refract with wireframe
+							//if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+							//{
+							//	if (std::string_view(shadername).contains("Refract_DX90"))
+							//	{
+							//		//cmat->vftable->SetShader(cmat, "Wireframe");
+							//		int x = 1;
+							//	}
+							//}
+						}
+					}
+				}
+
 				int z = 0;
 				//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mat));
 				//dev->SetFVF(D3DFVF_XYZW | D3DFVF_TEX4);
@@ -1035,15 +1099,15 @@ namespace components
 				//dev->SetVertexShader(nullptr);
 			}
 
-			// ?
+			// ? bed
 			else if (mesh->m_VertexFormat == 0xa0103) 
 			{
 				//do_not_render_next_mesh = true;
 				int z = 0; 
-			//	// tc @ 24
-			//	dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
-			//	dev->GetVertexShader(&ff_terrain::s_shader);
-			//	dev->SetVertexShader(nullptr);
+				//	// tc @ 24
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
+				dev->GetVertexShader(&ff_more_models::s_shader);
+				dev->SetVertexShader(nullptr);
 			}
 
 			// terrain
@@ -1060,12 +1124,14 @@ namespace components
 			// ?
 			else if (mesh->m_VertexFormat == 0x24900005)
 			{
+				//do_not_render_next_mesh = true;
 				int z = 0;
 			}
 
 			// ?
 			else if (mesh->m_VertexFormat == 0x2900005)
 			{
+				//do_not_render_next_mesh = true;
 				int z = 0;
 			}
 
@@ -1282,6 +1348,25 @@ namespace components
 			ff_portalfx_04::s_shader = nullptr;
 		}
 
+		if (ff_more_models::s_shader)
+		{
+			dev->SetVertexShader(ff_more_models::s_shader);
+			dev->SetFVF(NULL);
+			ff_more_models::s_shader = nullptr;
+		}
+
+		if (ff_vgui::s_shader01)
+		{ dev->SetVertexShader(ff_vgui::s_shader01); dev->SetFVF(NULL); ff_vgui::s_shader01 = nullptr; }
+
+		if (ff_vgui::s_shader02)
+		{ dev->SetVertexShader(ff_vgui::s_shader02); dev->SetFVF(NULL); ff_vgui::s_shader02 = nullptr; }
+
+		if (ff_vgui::s_shader03)
+		{ dev->SetVertexShader(ff_vgui::s_shader03); dev->SetFVF(NULL); ff_vgui::s_shader03 = nullptr; }
+
+		if (ff_vgui::s_shader04)
+		{ dev->SetVertexShader(ff_vgui::s_shader04); dev->SetFVF(NULL); ff_vgui::s_shader04 = nullptr; }
+
 		do_not_render_next_mesh = false;
 	}
 
@@ -1387,7 +1472,7 @@ namespace components
 	}
 
 	// not used for brushmodels when cl_brushfastpath 0?
-	void cmeshdx8_renderpassforinstances_pre_draw(CMeshDX8* mesh)
+	void cmeshdx8_renderpassforinstances_pre_draw(CMeshDX8* mesh, MeshInstanceData_t* data)
 	{
 		const auto dev = game::get_d3d_device();
 
@@ -1395,8 +1480,16 @@ namespace components
 		UINT ofs = 0, stride = 0;
 		dev->GetStreamSource(0, &b, &ofs, &stride);
 
+		Vector* model_org = reinterpret_cast<Vector*>(ENGINE_BASE + 0x50DA90);
+		VMatrix* model_to_world_mtx = reinterpret_cast<VMatrix*>(ENGINE_BASE + 0x637158);
+
 		// g_pInstanceData
 		MeshInstanceData_t* instance_info = reinterpret_cast<MeshInstanceData_t*>(*(DWORD*)(RENDERER_BASE + 0x1754AC));
+
+		/*if (&instance_info != &data)
+		{
+			int x = 1;
+		}*/
 
 		VMatrix mat = {};
 		mat.m[0][0] = instance_info->m_pPoseToWorld->m_flMatVal[0][0];
@@ -1434,7 +1527,49 @@ namespace components
 			// metal door = 0xa2183
 			if (mesh->m_VertexFormat == 0xa2183) // entities - not brushmodel (eg portal gun stand)
 			{
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m)); 
+				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m));
+
+#if 1
+				if (auto shaderapi = game::get_shaderapi(); shaderapi)
+				{
+					if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
+					{
+						if (auto name = cmat->vftable->GetName(cmat); name)
+						{
+							// blending is a shader thing I guess?
+							if (std::string_view(name).contains("portal_door_glass"))
+							{
+								//mat.m[3][1] += sinf((float)main_module::framecount * 0.05f) * 6.0f;
+								dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m));
+
+								if (current_render_ent)
+								{
+									int x = 1;
+								}
+								
+								if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+								{
+								//	//if (std::string_view(shadername).contains("PortalRefract_dx9"))
+								//	/*if (std::string_view(shadername) != "Wireframe_DX9")
+								//	{
+								//		cmat->vftable->SetShader(cmat, "Wireframe");
+								//		int x = 1;
+								//	}*/
+									int x = 1;
+								}
+							}
+							else if (std::string_view(name).contains("props_destruction/glass_"))
+							{
+								IDirect3DBaseTexture9* aa = nullptr;
+								dev->GetTexture(1, &aa);
+								dev->SetTexture(0, aa);
+							}
+						}
+					}
+				}
+#endif
+
+				
 				dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_NORMAL | D3DFVF_TEX4 | D3DFVF_TEXCOORDSIZE1(3));
 				dev->GetVertexShader(&ff_brushmodels::s_shader);
 				dev->SetVertexShader(nullptr);
@@ -1442,6 +1577,36 @@ namespace components
 			// somewhat broken
 			else if (mesh->m_VertexFormat == 0xa0103) // glass shards
 			{
+				if (auto shaderapi = game::get_shaderapi(); shaderapi)
+				{
+					if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
+					{
+						if (auto name = cmat->vftable->GetName(cmat); name)
+						{
+							// blending is a shader thing I guess?
+							//if (std::string_view(name).contains("portal_door_glass"))
+							{
+								// todo set unique texture
+								dev->SetTexture(0, nullptr); //tex_portal_mask);
+
+								if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+								{
+									//if (std::string_view(shadername).contains("PortalRefract_dx9"))
+									if (std::string_view(shadername) != "VertexLitGeneric") 
+									{
+										// setting to VertexLitGeneric results in vertexformat '0xa0003' and gets rendered in 'cmeshdx8_renderpass_pre_draw'
+										cmat->vftable->SetShader(cmat, "VertexLitGeneric");
+										
+										int x = 1;
+									}
+									int x = 1;
+								}
+								int yy = 1;
+							}
+						}
+					}
+				}
+
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m));
 				//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX2);
@@ -1486,23 +1651,24 @@ namespace components
 			call eax;
 
 			pushad;
-			push ecx; // CMeshDX8
-			call cmeshdx8_renderpassforinstances_pre_draw;
-			add esp, 4;
+			push	ebx; // actual instance data
+			push	ecx; // CMeshDX8
+			call	cmeshdx8_renderpassforinstances_pre_draw;
+			add		esp, 8;
 			popad;
 
 			// og code
-			mov ecx, [ebp - 4];
-			mov edx, [esi + 0x148];
-			push eax;
-			push 0;
-			push 0;
-			push ecx;
-			push edi;
-			call edx; // DrawIndexedPrimitive
+			mov		ecx, [ebp - 4];
+			mov		edx, [esi + 0x148];
+			push	eax;
+			push	0;
+			push	0;
+			push	ecx;
+			push	edi;
+			call	edx; // DrawIndexedPrimitive
 
 			pushad;
-			call cmeshdx8_renderpassforinstances_post_draw;
+			call	cmeshdx8_renderpassforinstances_post_draw;
 			popad;
 
 			jmp cmeshdx8_renderpassforinstances_pre_draw_retn_addr;
