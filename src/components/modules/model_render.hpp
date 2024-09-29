@@ -147,6 +147,8 @@ namespace components
 
 		static inline remixapi_MeshHandle portal1_mdl = nullptr;
 		static inline remixapi_MaterialHandle portal1_mtl = nullptr;
+
+		static inline uint32_t portal_meshes_rendered_count = 0;
 	private:
 	};
 }

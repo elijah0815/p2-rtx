@@ -2,6 +2,8 @@
 
 // -novid -disable_d3d9_hacks -limitvsconst -disallowhwmorph -no_compressed_verts -maxdxlevel 90 -dxlevel 90 +sv_cheats 1 +developer 1 +cl_brushfastpath 0 +cl_modelfastpath 0 +r_ShowViewerArea 1 +mat_fullbright 1  +mat_queue_mode 0 +mat_softwarelighting 1 +mat_softwareskin 1 +mat_phong 1 +mat_parallaxmap 0 +mat_frame_sync_enable 0 +mat_fastnobump 1 +mat_disable_bloom 1 +mat_dof_enabled 0 +mat_displacementmap 0 +mat_drawflat 1 +mat_normalmaps 0 +mat_normals 0 +sv_lan 1 +map devtest
 
+// r_entityclips 0
+
 namespace components
 {
 	template <std::size_t Index, typename ReturnType, typename... Args>
@@ -185,7 +187,8 @@ namespace components
 
 	void endscene_cb()
 	{
-#if 1
+		model_render::portal_meshes_rendered_count = 0;
+#if 0
 		{
 			main_module::bridge.DestroyMesh(model_render::portal0_mdl);
 			create_portal0();
@@ -198,14 +201,14 @@ namespace components
 
 		if (model_render::portal0_mdl)
 		{
-			remixapi_Transform t0 = {};
-			t0.matrix[0][0] = 1.0f;
-			t0.matrix[1][1] = 1.0f;
-			t0.matrix[2][2] = 1.0f;
+			//remixapi_Transform t0 = {};
+			main_module::portal0.matrix[0][0] = 1.0f;
+			main_module::portal0.matrix[1][1] = 1.0f;
+			main_module::portal0.matrix[2][2] = 1.0f;
 
-			t0.matrix[0][3] = -1550.0f;
-			t0.matrix[1][3] = 1715.0f;
-			t0.matrix[2][3] = -255.0f;
+			//main_module::portal0.matrix[0][3] = -1550.0f;
+			//main_module::portal0.matrix[1][3] = 1715.0f;
+			//main_module::portal0.matrix[2][3] = -255.0f;
 
 			const remixapi_InstanceInfo info =
 			{
@@ -213,7 +216,7 @@ namespace components
 				.pNext = nullptr,
 				.categoryFlags = 0,
 				.mesh = model_render::portal0_mdl,
-				.transform = t0,
+				.transform = main_module::portal0,
 				.doubleSided = false
 			};
 
@@ -223,14 +226,14 @@ namespace components
 
 		if (model_render::portal1_mdl)
 		{
-			remixapi_Transform t0 = {};
-			t0.matrix[0][0] = 1.0f;
-			t0.matrix[1][1] = 1.0f;
-			t0.matrix[2][2] = 1.0f;
+			//remixapi_Transform t0 = {};
+			main_module::portal1.matrix[0][0] = 1.0f;
+			main_module::portal1.matrix[1][1] = 1.0f;
+			main_module::portal1.matrix[2][2] = 1.0f;
 
-			t0.matrix[0][3] = -1550.0f;
-			t0.matrix[1][3] = 1590.0f;
-			t0.matrix[2][3] = -255.0f;
+			//main_module::portal1.matrix[0][3] = -1550.0f;
+			//main_module::portal1.matrix[1][3] = 1590.0f;
+			//main_module::portal1.matrix[2][3] = -255.0f;
 
 			const remixapi_InstanceInfo info =
 			{
@@ -238,7 +241,7 @@ namespace components
 				.pNext = nullptr,
 				.categoryFlags = 0,
 				.mesh = model_render::portal1_mdl,
-				.transform = t0,
+				.transform = main_module::portal1,
 				.doubleSided = false
 			};
 

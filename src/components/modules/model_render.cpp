@@ -121,12 +121,27 @@ namespace components
 		IDirect3DVertexShader9* s_shader = nullptr;
 	}
 
-	namespace ff_billboard
+	namespace ff_portalfx_01
 	{
 		IDirect3DVertexShader9* s_shader = nullptr;
+		IDirect3DBaseTexture9* s_texture;
+		IDirect3DBaseTexture9* s_texture2;
 	}
 
-	namespace ff_fxrelated
+	namespace ff_portalfx_02
+	{
+		IDirect3DVertexShader9* s_shader = nullptr;
+		IDirect3DBaseTexture9* s_texture;
+	}
+
+	namespace ff_portalfx_03
+	{
+		IDirect3DVertexShader9* s_shader = nullptr;
+		IDirect3DBaseTexture9* s_texture1;
+		IDirect3DBaseTexture9* s_texture2;
+	}
+
+	namespace ff_portalfx_04
 	{
 		IDirect3DVertexShader9* s_shader = nullptr;
 		IDirect3DBaseTexture9* s_texture;
@@ -158,6 +173,13 @@ namespace components
 
 	
 
+	C_BaseEntity* current_render_ent = nullptr;
+
+	LPDIRECT3DTEXTURE9 local_texture_test01;
+	LPDIRECT3DTEXTURE9 local_texture_test02;
+
+	int do_not_render_next_mesh = false;
+	std::uint64_t tick_on_first_no_render = 0;
 	
 
 	void cmeshdx8_renderpass_pre_draw(CMeshDX8* mesh)
@@ -179,6 +201,8 @@ namespace components
 			int x = 1;
 		}
 
+		// do_not_render_next_mesh = true;
+
 		VMatrix mat = {};
 		mat.m[0][0] = model_to_world_mtx->m[0][0];
 		mat.m[1][0] = model_to_world_mtx->m[0][1];
@@ -199,6 +223,8 @@ namespace components
 
 		if (og_bmodel_shader && mesh->m_VertexFormat == 0x2480033)
 		{
+			// do_not_render_next_mesh = true;
+
 			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mat));
 
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
@@ -210,7 +236,9 @@ namespace components
 			{
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mat));
 			}
-			
+
+			// do_not_render_next_mesh = true;
+
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX6);
 			dev->SetVertexShader(nullptr); // vertexformat 0x00000000000a0003 
 
@@ -218,6 +246,8 @@ namespace components
 		}
 		else if (og_model_shader) // should be stride 30
 		{
+			//do_not_render_next_mesh = true;
+
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3);
 			dev->SetVertexShader(nullptr); // vertexformat 0x00000000000a0003
 			//dev->SetRenderState(D3DRS_COLORVERTEX, FALSE);
@@ -231,6 +261,8 @@ namespace components
 			// world geo? - floor / walls
 			if (mesh->m_VertexFormat == 0x2480033)
 			{
+				//do_not_render_next_mesh = true;
+
 				// tc @ 24
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
 				dev->GetVertexShader(&ff_worldmodel::s_shader);
@@ -243,6 +275,8 @@ namespace components
 			// transporting beams
 			else if (mesh->m_VertexFormat == 0x80005) // stride 0x20
 			{
+				//do_not_render_next_mesh = true;
+
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX2);
 				dev->GetVertexShader(&ff_beamtransport::s_shader);
 				dev->SetVertexShader(nullptr);
@@ -263,6 +297,8 @@ namespace components
 			// laser platforms
 			else if (mesh->m_VertexFormat == 0x80001)
 			{
+				//do_not_render_next_mesh = true;
+
 				// tc @ 12
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_TEX2 | D3DFVF_TEXCOORDSIZE3(1)); // missing 4 bytes at the end here - fixed with tc2 size 3?
 				dev->GetVertexShader(&ff_laserplatform::s_shader);
@@ -302,9 +338,11 @@ namespace components
 				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
 			}
 
-			// lasers
+			// lasers - this also renders the the actual portal? (white quad)
 			else if (mesh->m_VertexFormat == 0x80003)
 			{
+				do_not_render_next_mesh = true;
+
 				dev->GetVertexShader(&ff_laser::s_shader);
 				bool swing = false;
 
@@ -360,49 +398,250 @@ namespace components
 				//dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
 			}
 
+			// portal_draw_ghosting 0 disables this
+			// this normally shows portals through walls
 			else if (mesh->m_VertexFormat == 0xa0007) // portal fx
 			{
-				dev->SetFVF(D3DFVF_XYZB1 | D3DFVF_NORMAL | D3DFVF_TEX5 | D3DFVF_TEXCOORDSIZE1(4)); // 68 - 4 as last tc is one float
-				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_TEX5 | D3DFVF_TEXCOORDSIZE1(4)); // 68 - 4 as last tc is one float
+				// do_not_render_next_mesh = true;
+
+				// could be of use
+				/*if (current_render_ent) 
+				{
+					if (current_render_ent->model && 
+						std::string_view(current_render_ent->model->szPathName).contains("portal1.mdl"))
+					{
+						main_module::portal1.matrix[0][3] = current_render_ent->m_vecAbsOrigin.x;
+						main_module::portal1.matrix[1][3] = current_render_ent->m_vecAbsOrigin.y;
+						main_module::portal1.matrix[2][3] = current_render_ent->m_vecAbsOrigin.z;
+					}
+
+					int x = 1;
+				}*/
+
+				// tc at 16 + 12 
+				//dev->SetFVF(D3DFVF_XYZB4 | D3DFVF_TEX5 | D3DFVF_TEXCOORDSIZE1(4)); // 68 - 4 as last tc is one float
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_NORMAL | D3DFVF_TEX5 | D3DFVF_TEXCOORDSIZE1(4)); // 68 - 4 as last tc is one float
 				//dev->SetFVF(NULL);
-				dev->GetVertexShader(&ff_billboard::s_shader);
+				dev->GetVertexShader(&ff_portalfx_01::s_shader);
+
+				//if (!ff_portalfx_01::s_texture)
+				{
+					//dev->GetTexture(0, &ff_portalfx_01::s_texture);
+					//dev->GetTexture(1, &ff_portalfx_01::s_texture2);
+
+					//dev->SetTexture(0, nullptr);
+					//dev->SetTexture(1, nullptr);
+				}
+				/*else
+				{
+					int z = 0;
+				}*/
+
 				dev->SetVertexShader(nullptr);
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity)); // 0x6c0005 influences this one here???
+
+				// first two are the static portal overlays (2 prims each)
+				// recursive overlays after that
+
+				// the remix runtime expects a portal mask texture in the second texture slot .... :D
+
+				if (!local_texture_test01)
+				{
+					D3DXCreateTextureFromFileA(dev, "portal_mask.bmp", &local_texture_test01);
+				}
+
+				if (local_texture_test01)
+				{
+					dev->SetTexture(1, local_texture_test01);
+				}
+
+				// no change in tiny portal bug 
+				if (model_render::portal_meshes_rendered_count >= 2)
+				{
+					int x = 1;
+					//do_not_render_next_mesh = true;
+				}
+
+				model_render::portal_meshes_rendered_count++;
+
+				/*if (tick_on_first_no_render != main_module::framecount)
+				{
+					tick_on_first_no_render = main_module::framecount;
+					do_not_render_next_mesh = true;
+				}*/
 			}
 
-			// no clue what 0x6c0005 is
-			// same for 0x80007
-
-			else if (mesh->m_VertexFormat == 0x4a0003 || mesh->m_VertexFormat == 0xa0003) // stuff behind portals - unstable
+			// related to props like portalgun, pickup-ables
+			// does not have a visibile texture set? (setting one manually makes it show up)
+			else if (mesh->m_VertexFormat == 0x6c0005)
 			{
-				dev->GetVertexShader(&ff_fxrelated::s_shader);
+				//do_not_render_next_mesh = true;
 
-				if (mesh->m_VertexFormat == 0xa0003)
+				if (current_render_ent)
 				{
-					
-					//dev->SetVertexShader(nullptr);
+					int z = 1;
 				}
-				else
-				{
-					
-					//dev->SetVertexShader(nullptr);
-				}
-
-				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
-				//dev->SetFVF(NULL); // 64
-				dev->GetTexture(0, &ff_fxrelated::s_texture);
-				dev->SetVertexShader(nullptr);
+				// stride 48
+				int x = 1;
+				dev->SetFVF(D3DFVF_XYZB1 | D3DFVF_TEX5);
+				dev->GetVertexShader(&saved_shader_unk);
 				//dev->SetTexture(0, nullptr);
+				dev->SetVertexShader(nullptr);
+
+				//if (ff_portalfx_01::s_texture2)
+				//{
+				//	//int x = 1;
+				//	dev->SetTexture(0, ff_portalfx_01::s_texture);
+				//}
+
+				float mtx[4][4] = {};
+				/*mtx[0][0] = game::identity[0][0];
+				mtx[0][1] = game::identity[0][1];
+				mtx[0][2] = game::identity[0][2];
+				mtx[0][3] = game::identity[0][3];
+
+				mtx[1][0] = game::identity[1][0];
+				mtx[1][1] = game::identity[1][1];
+				mtx[1][2] = game::identity[1][2];
+				mtx[1][3] = game::identity[1][3];
+
+				mtx[2][0] = game::identity[2][0];
+				mtx[2][1] = game::identity[2][1];
+				mtx[2][2] = game::identity[2][2];
+				mtx[2][3] = game::identity[2][3];
+
+				mtx[3][0] = game::identity[3][0];
+				mtx[3][1] = game::identity[3][1];
+				mtx[3][2] = 40.0f + sinf((float)main_module::framecount * 0.05f) * 6.0f;
+				mtx[3][3] = game::identity[3][3];*/
+				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
 			}
-			//else if (mesh->m_VertexFormat == 0x6c0005) // ??
-			//{
-			//	int zz = 1;
-			//}
-			//else if (mesh->m_VertexFormat == 0xa0003) // ??
-			//{
-			//	int xx = 0;
-			//}
-			else if (mesh->m_VertexFormat == 0x80007) // HUD
+
+			// white overlay on portals? - getting tex1 and setting it onto tex0 shows
+			// a texture (prob. lmap) that matches the tiny portals
+			// does not look like its responsible for the tiny portals tho
+
+			//  this draws the portal1 and portal2 mesh
+			else if (mesh->m_VertexFormat == 0x4a0003)
+			{
+				// stride 0x40
+				//do_not_render_next_mesh = true;
+
+				struct CMaterialReference
+				{
+					IMaterial* m_pMaterial;
+				};
+
+				struct PropPortalRenderingMaterials_t
+				{
+					CMaterialReference m_PortalMaterials[2];
+					CMaterialReference m_PortalRenderFixMaterials[2];
+					CMaterialReference m_PortalDepthDoubler;
+					CMaterialReference m_PortalStaticOverlay[2];
+					CMaterialReference m_PortalStaticOverlay_Tinted;
+					CMaterialReference m_PortalStaticGhostedOverlay[2];
+					CMaterialReference m_PortalStaticGhostedOverlay_Tinted;
+					CMaterialReference m_Portal_Stencil_Hole;
+					CMaterialReference m_Portal_Refract;
+					unsigned int m_nDepthDoubleViewMatrixVarCache;
+					unsigned int m_nStaticOverlayTintedColorGradientLightVarCache;
+					Vector m_coopPlayerPortalColors[2][2];
+					Vector m_singlePlayerPortalColors[2];
+				};
+
+
+				struct CAutoInitBasicPropPortalDrawingMaterials
+				{
+					char pad[0xC];
+					PropPortalRenderingMaterials_t m_Materials;
+				};
+
+				// CAutoInitBasicPropPortalDrawingMaterials
+				auto base_portal_mats = reinterpret_cast<CAutoInitBasicPropPortalDrawingMaterials*>(CLIENT_BASE + 0x9FE710);
+
+				//dev->GetTexture(0, &ff_portalfx_03::s_texture1);
+				//dev->SetTexture(0, nullptr);
+
+#if 0
+				if (current_render_ent)
+				{
+					if (current_render_ent->model &&
+						std::string_view(current_render_ent->model->szPathName).contains("portal1.mdl"))
+					{
+						if (!local_texture_test01)
+						{
+							D3DXCreateTextureFromFileA(dev, "portal1.bmp", &local_texture_test01);
+						}
+
+						dev->GetTexture(0, &ff_portalfx_03::s_texture1);
+
+						if (local_texture_test01)
+						{
+							dev->SetTexture(0, local_texture_test01);
+							/*dev->SetTexture(1, nullptr);
+							dev->SetTexture(2, nullptr);
+							dev->SetTexture(3, nullptr);
+							dev->SetTexture(4, nullptr);*/
+						}
+					}
+					else if (current_render_ent->model &&
+							std::string_view(current_render_ent->model->szPathName).contains("portal2.mdl"))
+						{
+							if (!local_texture_test02)
+							{
+								D3DXCreateTextureFromFileA(dev, "portal2.bmp", &local_texture_test02);
+							}
+
+							dev->GetTexture(0, &ff_portalfx_03::s_texture2);
+
+							if (local_texture_test02)
+							{
+								dev->SetTexture(0, local_texture_test02);
+								/*dev->SetTexture(1, nullptr);
+								dev->SetTexture(2, nullptr);
+								dev->SetTexture(3, nullptr);
+								dev->SetTexture(4, nullptr);*/
+							}
+
+							//IDirect3DBaseTexture9* t1 = nullptr;
+							//dev->GetTexture(3, &t1);
+							//dev->SetTexture(0, t1);
+						}
+
+					int z = 1;
+				}
+#endif
+
+				dev->GetVertexShader(&ff_portalfx_03::s_shader); 
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
+				dev->SetVertexShader(nullptr);
+			}
+
+			// fizzle texture that breaks everything and is normally ignored?
+			else if (mesh->m_VertexFormat == 0xa0003)
+			{
+				do_not_render_next_mesh = true;
+
+				// stride 0x30
+				dev->GetVertexShader(&ff_portalfx_02::s_shader);
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_TEX5 | D3DFVF_TEXCOORDSIZE1(4));
+
+				if (!ff_portalfx_02::s_texture)
+				{
+					dev->GetTexture(1, &ff_portalfx_02::s_texture);
+					//dev->SetTexture(1, nullptr); 
+				}
+
+				// def. render using FF as the shader is causing heavy frametime drops
+				dev->SetVertexShader(nullptr);
+
+				// 0 scale gets rid of it (disable to make it show up)
+				float mtx[4][4] = {};
+				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+			}
+
+			// HUD
+			else if (mesh->m_VertexFormat == 0x80007) 
 			{
 				int z = 0;
 				//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mat));
@@ -410,15 +649,36 @@ namespace components
 				//dev->GetVertexShader(&saved_shader_unk);
 				//dev->SetVertexShader(nullptr);
 			}
+
+			// ?
 			else if (mesh->m_VertexFormat == 0x92480005)
 			{
-				int zz = 1;
+				int zz = 1; 
 			}
+
+			// on portal open - spark fx (center)
 			else if (mesh->m_VertexFormat == 0x924900005)
 			{
+				// stride 0x70 - 112
+				
 				int zz = 1;
+
+				// cant find a fitting fvf
+				// setting just fvf without disabling the vertexshader makes it disappear
+
+				//dev->GetVertexShader(&ff_portalfx_04::s_shader);
+				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5);
+
+				//if (!ff_portalfx_04::s_texture)
+				//{
+				//	//dev->GetTexture(1, &ff_portalfx_04::s_texture);
+				//	//dev->SetTexture(1, nullptr); 
+				//}
+				//dev->SetVertexShader(nullptr);
 			}
-			else if (mesh->m_VertexFormat == 0xa0103)
+
+			// ?
+			else if (mesh->m_VertexFormat == 0xa0103) 
 			{
 				int z = 0; 
 			//	// tc @ 24
@@ -426,6 +686,8 @@ namespace components
 			//	dev->GetVertexShader(&ff_terrain::s_shader);
 			//	dev->SetVertexShader(nullptr);
 			}
+
+			// terrain
 			else if (mesh->m_VertexFormat == 0x480007)
 			{
 				// tc @ 28
@@ -433,33 +695,81 @@ namespace components
 				dev->GetVertexShader(&ff_terrain::s_shader);
 				dev->SetVertexShader(nullptr);
 			}
+
+			// ?
 			else if (mesh->m_VertexFormat == 0x24900005)
 			{
 				int z = 0;
 			}
+
+			// ?
 			else if (mesh->m_VertexFormat == 0x2900005)
 			{
 				int z = 0;
 			}
-			else if (mesh->m_VertexFormat == 0x6c0005)
-			{
-				// tc @ 28
-				int z = 0;
-				/*dev->SetFVF(D3DFVF_XYZB4 | D3DFVF_TEX3);
-				dev->GetVertexShader(&ff_temp_01::s_shader);
-				dev->SetVertexShader(nullptr);*/
-			}
-			//else if (mesh->m_VertexFormat == 0x24900005)
-			//{
-			//	int s = stride;
 
-			//	// ff_unk01
-			//	// tc @ 28
-			//	dev->SetFVF(D3DFVF_XYZB4 | D3DFVF_TEX3); 
-			//	dev->GetVertexShader(&ff_unk01::s_shader);
-			//	dev->SetVertexShader(nullptr);
-			//}
-			// 0x924900005 on portal opening
+			// on portal open - no clue
+			else if (mesh->m_VertexFormat == 0x114900005)
+			{
+				// stride 96
+				int z = 0;
+				//dev->GetVertexShader(&ff_portalfx_04::s_shader);
+				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5);
+				//dev->SetVertexShader(nullptr);
+			}
+
+			// on portal open - blob in the middle (impact)
+			else if (mesh->m_VertexFormat == 0x80037)
+			{
+				// this needs a position as it spawns on 0 0 0
+				// stride 0x40
+
+				int x = 0;
+
+				//dev->GetVertexShader(&ff_portalfx_04::s_shader);
+				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_NORMAL | D3DFVF_TEX5);
+				//dev->SetVertexShader(nullptr);
+
+				// nope
+				/*if (current_render_ent)
+				{
+					float mtx[4][4] = {};
+					mtx[0][0] = game::identity[0][0];
+					mtx[0][1] = game::identity[0][1];
+					mtx[0][2] = game::identity[0][2];
+					mtx[0][3] = game::identity[0][3];
+
+					mtx[1][0] = game::identity[1][0];
+					mtx[1][1] = game::identity[1][1];
+					mtx[1][2] = game::identity[1][2];
+					mtx[1][3] = game::identity[1][3];
+
+					mtx[2][0] = game::identity[2][0];
+					mtx[2][1] = game::identity[2][1];
+					mtx[2][2] = game::identity[2][2];
+					mtx[2][3] = game::identity[2][3];
+
+					mtx[3][0] = current_render_ent->m_vecAbsOrigin.x;
+					mtx[3][1] = current_render_ent->m_vecAbsOrigin.y;
+					mtx[3][2] = current_render_ent->m_vecAbsOrigin.z;
+					mtx[3][3] = game::identity[3][3];
+					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+				}*/
+
+				//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+				
+			}
+
+			// on portal open - outer ring
+			else if (mesh->m_VertexFormat == 0x1b924900005)
+			{
+				// stride 0x90 - 144
+				// no fitting fvf
+				//dev->GetVertexShader(&ff_portalfx_04::s_shader);
+				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_TEX5);
+				//dev->SetVertexShader(nullptr);
+			}
+
 			else
 			{
 				//dev->SetVertexShader(nullptr);
@@ -491,7 +801,7 @@ namespace components
 
 	// #
 
-	void cmeshdx8_renderpass_post_draw()
+	void cmeshdx8_renderpass_post_draw(std::uint32_t num_prims_rendered)
 	{
 		const auto dev = game::get_d3d_device();
 
@@ -510,15 +820,6 @@ namespace components
 			dev->SetVertexShader(ff_terrain::s_shader);
 			dev->SetFVF(NULL);
 			ff_terrain::s_shader = nullptr;
-		}
-
-		if (ff_fxrelated::s_shader)
-		{
-			dev->SetVertexShader(ff_fxrelated::s_shader);
-			dev->SetFVF(NULL);
-			ff_fxrelated::s_shader = nullptr;
-
-			dev->SetTexture(0, ff_fxrelated::s_texture);
 		}
 
 		if (ff_worldmodel::s_shader)
@@ -555,31 +856,101 @@ namespace components
 			ff_laser::s_shader = nullptr;
 		}
 
-		if (ff_billboard::s_shader)
+		if (ff_portalfx_01::s_shader)
 		{
-			dev->SetVertexShader(ff_billboard::s_shader);
+			/*if (ff_portalfx_01::s_texture)
+			{
+				dev->SetTexture(0, ff_portalfx_01::s_texture);
+				ff_portalfx_01::s_texture = nullptr;
+			}
+
+			if (ff_portalfx_01::s_texture2)
+			{
+				dev->SetTexture(1, ff_portalfx_01::s_texture2);
+				ff_portalfx_01::s_texture2 = nullptr;
+			}*/
+
+			dev->SetVertexShader(ff_portalfx_01::s_shader);
 			dev->SetFVF(NULL);
-			ff_billboard::s_shader = nullptr;
+			ff_portalfx_01::s_shader = nullptr;
 		}
+
+		if (ff_portalfx_02::s_shader)
+		{
+			if (ff_portalfx_02::s_texture)
+			{
+				dev->SetTexture(1, ff_portalfx_02::s_texture);
+				ff_portalfx_02::s_texture = nullptr;
+			}
+
+			dev->SetVertexShader(ff_portalfx_02::s_shader);
+			dev->SetFVF(NULL);
+			ff_portalfx_02::s_shader = nullptr;
+		}
+
+		if (ff_portalfx_03::s_shader)
+		{
+			if (ff_portalfx_03::s_texture1)
+			{
+				dev->SetTexture(0, ff_portalfx_03::s_texture1);
+				ff_portalfx_03::s_texture1 = nullptr;
+			}
+
+			if (ff_portalfx_03::s_texture2)
+			{
+				dev->SetTexture(0, ff_portalfx_03::s_texture2);
+				ff_portalfx_03::s_texture2 = nullptr;
+			}
+
+			dev->SetVertexShader(ff_portalfx_03::s_shader);
+			dev->SetFVF(NULL);
+			ff_portalfx_03::s_shader = nullptr;
+		}
+
+		if (ff_portalfx_04::s_shader)
+		{
+			if (ff_portalfx_04::s_texture)
+			{
+				dev->SetTexture(0, ff_portalfx_04::s_texture);
+				ff_portalfx_04::s_texture = nullptr;
+			}
+
+			dev->SetVertexShader(ff_portalfx_04::s_shader);
+			dev->SetFVF(NULL);
+			ff_portalfx_04::s_shader = nullptr;
+		}
+
+		do_not_render_next_mesh = false;
 	}
 
 	HOOK_RETN_PLACE_DEF(cmeshdx8_renderpass_post_draw_retn_addr);
-
 	void __declspec(naked) cmeshdx8_renderpass_post_draw_stub()
 	{
 		__asm
-			{
-			mov ecx, [esi + 0x50];
-			push ecx;
-			push eax;
-			call edx; // DrawIndexedPrimitive
+		{
+			mov		ecx, [esi + 0x50];
+			push	ecx;
+			push	eax;
 
+			mov		eax, do_not_render_next_mesh;
+			test	eax, eax;
+			jnz		SKIP;
+
+			call	edx; // DrawIndexedPrimitive
+			jmp		OG;
+
+		SKIP:
+			add		esp, 0x1C;
+
+		OG:
 			pushad;
-			call cmeshdx8_renderpass_post_draw;
+			push	edi;
+			call	cmeshdx8_renderpass_post_draw;
+			add		esp, 4;
 			popad;
 
-			jmp cmeshdx8_renderpass_post_draw_retn_addr;
-			}
+			jmp		cmeshdx8_renderpass_post_draw_retn_addr;
+		}
 	}
 
 
@@ -816,8 +1187,34 @@ namespace components
 	}
 #endif
 
+	void drawrenderable_pre_draw(C_BaseEntity* ent)
+	{
+		//if (ent)
+		{
+			current_render_ent = ent;
+		}
+		
+		int x = 1;
+	}
 
+	HOOK_RETN_PLACE_DEF(drawrenderable_pre_draw_retn_addr);
+	void __declspec(naked) drawrenderable_pre_draw_stub()
+	{
+		__asm
+		{
+			pushad;
+			push	eax;
+			call	drawrenderable_pre_draw;
+			add		esp, 4;
+			popad;
 
+			// og
+			mov     edx, [edi + 0x70];
+			push    eax;
+			call	edx;
+			jmp		drawrenderable_pre_draw_retn_addr;
+		}
+	}
 
 	model_render::model_render()
 	{
@@ -851,6 +1248,10 @@ namespace components
 		utils::hook(RENDERER_BASE + 0xA685, cmeshdx8_renderpasswithvertexindexbuffer_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(cmeshdx8_renderpasswithvertexindexbuffer_retn_addr, RENDERER_BASE + 0xA68D);
 #endif
+
+		utils::hook::nop(CLIENT_BASE + 0x1E4A18, 6);
+		utils::hook(CLIENT_BASE + 0x1E4A18, drawrenderable_pre_draw_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(drawrenderable_pre_draw_retn_addr, CLIENT_BASE + 0x1E4A1E);
 	}
 }
 

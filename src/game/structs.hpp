@@ -1547,6 +1547,7 @@ namespace components
 	{
 	};
 
+	struct C_BaseEntity;
 	struct IClientEntity_vtbl
 	{
 		void(__thiscall * IHandleEntity_destructor)(IHandleEntity*);
@@ -1556,7 +1557,7 @@ namespace components
 		IClientNetworkable* (__thiscall* GetClientNetworkable)(IClientUnknown*);
 		IClientRenderable* (__thiscall* GetClientRenderable)(IClientUnknown*);
 		IClientEntity* (__thiscall* GetIClientEntity)(IClientUnknown*);
-		struct C_BaseEntity* (__thiscall* GetBaseEntity)(IClientUnknown*);
+		C_BaseEntity* (__thiscall* GetBaseEntity)(IClientUnknown*);
 		IClientThinkable* (__thiscall* GetClientThinkable)(IClientUnknown*);
 		void* (__thiscall* GetClientAlphaProperty)(IClientUnknown*); // IClientAlphaProperty
 		const Vector* (__thiscall* GetAbsOrigin)(IClientEntity*);
@@ -1565,6 +1566,183 @@ namespace components
 		bool(__thiscall* GetSoundSpatialization)(IClientEntity*, void*); // SpatializationInfo_t
 		bool(__thiscall* IsBlurred)(IClientEntity*);
 	};
+
+	//struct VarMapping_t
+	//{
+	//	//CUtlVector<VarMapEntry_t, CUtlMemory<VarMapEntry_t, int> > m_Entries;
+	//	char pad[0x14];
+	//	int m_nInterpolatedEntries;
+	//	float m_lastInterpolationTime;
+	//};
+	//STATIC_ASSERT_SIZE(VarMapping_t, 0x1C);
+
+	enum ModelDataCategory_t : __int32
+	{
+		MODEL_DATA_LIGHTING_MODEL = 0x0,
+		MODEL_DATA_STENCIL = 0x1,
+		MODEL_DATA_CATEGORY_COUNT = 0x2,
+	};
+	
+	struct IClientModelRenderable_vtbl;
+	struct  IClientModelRenderable
+	{
+		IClientModelRenderable_vtbl* vftabl;
+	};
+
+	struct IClientModelRenderable_vtbl
+	{
+		bool(__thiscall* GetRenderData)(IClientModelRenderable*, void*, ModelDataCategory_t);
+	};
+
+	struct __declspec(align(4)) C_BaseEntity /*: IClientEntity, IClientModelRenderable*/
+	{
+		char pad_vtbls[0x14];
+		const char* m_iClassname;
+		void* m_hScriptInstance; // HSCRIPT__
+		const char* m_iszScriptId;
+		char pad_varmap[0x20];//VarMapping_t m_VarMap;
+		char pad_think[0x10]; //__int128 m_pfnThink;
+		char pad_touch[0x10]; //__int128 m_pfnTouch;
+		int index;
+		unsigned __int16 m_EntClientFlags;
+		const struct model_t* model;
+		void* m_clrRender; //CNetworkColor32Base<color32_s, C_BaseEntity::NetworkVar_m_clrRender> m_clrRender;
+		int m_cellbits;
+		int m_cellwidth;
+		int m_cellX;
+		int m_cellY;
+		int m_cellZ;
+		Vector m_vecCellOrigin;
+		Vector m_vecAbsVelocity;
+		Vector m_vecAbsOrigin;
+		Vector m_vecOrigin;
+		QAngle m_vecAngVelocity;
+		QAngle m_angAbsRotation;
+		QAngle m_angRotation;
+		float m_flGravity;
+		float m_flProxyRandomValue;
+		int m_iEFlags;
+		unsigned __int8 m_nWaterType;
+		bool m_bDormant;
+		bool m_bCanUseBrushModelFastPath;
+		int m_fEffects;
+		int m_iTeamNum;
+		int m_nNextThinkTick;
+		int m_iHealth;
+		int m_fFlags;
+		Vector m_vecViewOffset;
+		Vector m_vecVelocity;
+		Vector m_vecBaseVelocity;
+		QAngle m_angNetworkAngles;
+		Vector m_vecNetworkOrigin;
+		float m_flFriction;
+		void* m_hNetworkMoveParent; // CHandle<C_BaseEntity>
+		void* m_hOwnerEntity;
+		void* m_hGroundEntity;
+		char m_iName[260];
+		char m_iSignifierName[260];
+		__int16 m_nModelIndex;
+		unsigned __int8 m_nRenderFX;
+		unsigned __int8 m_nRenderMode;
+		unsigned __int8 m_MoveType;
+		unsigned __int8 m_MoveCollide;
+		unsigned __int8 m_nWaterLevel;
+		char m_lifeState;
+		float m_flAnimTime;
+		float m_flOldAnimTime;
+		float m_flSimulationTime;
+		float m_flOldSimulationTime;
+		unsigned __int8 m_nOldRenderMode;
+		unsigned __int16 m_hRender;
+		int m_VisibilityBits; // CBitVec<2>
+		bool m_bReadyToDraw;
+		bool m_bClientSideRagdoll;
+		int m_nLastThinkTick;
+		char m_takedamage;
+		float m_flSpeed;
+		int touchStamp;
+		CBaseHandle m_RefEHandle;
+		bool m_bEnabledInToolView;
+		bool m_bToolRecording;
+		unsigned int m_ToolHandle;
+		int m_nLastRecordedFrame;
+		bool m_bRecordInTools;
+		void* m_pPhysicsObject; // IPhysicsObject
+		bool m_bPredictionEligible;
+		int m_nSimulationTick;
+		char pad_thinkFunc[0x14]; //CUtlVector<thinkfunc_t, CUtlMemory<thinkfunc_t, int> > m_aThinkFunctions;
+		int m_iCurrentThinkContext;
+		int m_spawnflags;
+		int m_iObjectCapsCache;
+		bool m_bDormantPredictable;
+		int m_nIncomingPacketEntityBecameDormant;
+		float m_flSpawnTime;
+		float m_flLastMessageTime;
+		unsigned __int16 m_ModelInstance;
+		unsigned __int16 m_ShadowHandle;
+		int m_ShadowBits; // CBitVec<2>
+		struct CClientThinkHandlePtr* m_hThink;
+		unsigned __int8 m_iParentAttachment;
+		unsigned __int8 m_iOldParentAttachment;
+		bool m_bPredictable;
+		bool m_bRenderWithViewModels;
+		bool m_bDisableCachedRenderBounds;
+		bool m_bDisableSimulationFix;
+		float m_fadeMinDist;
+		float m_fadeMaxDist;
+		float m_flFadeScale;
+		int m_nSplitUserPlayerPredictionSlot;
+		void* m_pMoveParent; // CHandle<C_BaseEntity>
+		void* m_pMoveChild;
+		void* m_pMovePeer;
+		void* m_pMovePrevPeer;
+		void* m_hOldMoveParent;
+		const char* m_ModelName;
+		char pad_mcoll[0x5C]; //C_BaseEntity::NetworkVar_m_Collision m_Collision;
+		char pad_mpartc[0x20]; //C_BaseEntity::NetworkVar_m_Particles m_Particles;
+		void* m_pClientAlphaProperty; // CClientAlphaProperty
+		float m_flElasticity;
+		float m_flShadowCastDistance;
+		void* m_ShadowDirUseOtherEntity; // CHandle<C_BaseEntity>
+		float m_flGroundChangeTime;
+		Vector m_vecOldOrigin;
+		QAngle m_vecOldAngRotation;
+		/*CDiscontinuousInterpolatedVar<Vector> m_iv_vecOrigin;
+		CDiscontinuousInterpolatedVar<QAngle> m_iv_angRotation;
+		matrix3x4_t m_rgflCoordinateFrame;
+		int m_CollisionGroup;
+		unsigned __int8* m_pIntermediateData[150];
+		unsigned __int8* m_pIntermediateData_FirstPredicted[151];
+		unsigned __int8* m_pOriginalData;
+		int m_nIntermediateDataCount;
+		int m_nIntermediateData_FirstPredictedShiftMarker;
+		bool m_bEverHadPredictionErrorsForThisCommand;
+		bool m_bIsPlayerSimulated;
+		CNetworkVarBase<bool, C_BaseEntity::NetworkVar_m_bSimulatedEveryTick> m_bSimulatedEveryTick;
+		CNetworkVarBase<bool, C_BaseEntity::NetworkVar_m_bAnimatedEveryTick> m_bAnimatedEveryTick;
+		CNetworkVarBase<bool, C_BaseEntity::NetworkVar_m_bAlternateSorting> m_bAlternateSorting;
+		unsigned __int8 m_nMinCPULevel;
+		unsigned __int8 m_nMaxCPULevel;
+		unsigned __int8 m_nMinGPULevel;
+		unsigned __int8 m_nMaxGPULevel;
+		unsigned __int8 m_iTextureFrameIndex;
+		unsigned __int8 m_fBBoxVisFlags;
+		bool m_bIsValidIKAttachment;
+		int m_DataChangeEventRef;
+		CHandle<C_BasePlayer> m_hPlayerSimulationOwner;
+		CHandle<C_BaseEntity> m_hEffectEntity;
+		int m_fDataObjectTypes;
+		unsigned int m_AimEntsListHandle;
+		int m_nCreationTick;
+		float m_fRenderingClipPlane[4];
+		bool m_bEnableRenderingClipPlane;
+		unsigned __int16 m_ListEntry[5];
+		CThreadFastMutex m_CalcAbsolutePositionMutex;
+		CThreadFastMutex m_CalcAbsoluteVelocityMutex;
+		bool m_bIsBlurred;*/
+	};
+	STATIC_ASSERT_OFFSET(C_BaseEntity, m_vecAbsOrigin, 0x9C);
+
 
 	struct MeshBoneRemap_t
 	{

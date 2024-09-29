@@ -13,6 +13,9 @@ namespace components
 		static inline remixapi_Interface bridge = {};
 		static inline bool m_initialized = false;
 
+		static inline remixapi_Transform portal0 = {};
+		static inline remixapi_Transform portal1 = {};
+
 	private:
 	};
 }
