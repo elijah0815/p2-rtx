@@ -1019,8 +1019,9 @@ namespace components
 					{
 						if (auto name = cmat->vftable->GetName(cmat); name)
 						{
+							const auto sname = std::string_view(name);
 							// get rid of all world-rendered text as its using the same glyph as HUD elements?!
-							if (std::string_view(name).contains("vgui__fontpage"))
+							if (sname.contains("vgui__fontpage"))
 							{
 								BufferedState_t state = {};
 								shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
@@ -1030,7 +1031,9 @@ namespace components
 									do_not_render_next_mesh = true;
 								}
 							}
-							else if (std::string_view(name).contains("vgui_coop_progress_board"))
+							else if (sname.contains("vgui_coop_progress_board")
+								|| sname.contains("p2_lightboard_vgui")
+								|| sname.contains("elevator_video_overlay3"))
 							{
 								//do_not_render_next_mesh = true;
 								// gameinstructor_iconsheet1
@@ -1046,10 +1049,12 @@ namespace components
 								dev->GetVertexShader(&ff_vgui::s_shader01);
 								dev->SetVertexShader(nullptr);
 							}
-
-							// gameinstructor_iconsheet1 - info icon on screen
-
-							int x = 1;
+							else
+							{
+								int x = 1;
+							}
+							
+							int y = 1; 
 
 							// replace glass refract with wireframe
 							//if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
@@ -1079,32 +1084,45 @@ namespace components
 			}
 
 			// on portal open - spark fx (center)
+			// also portal clearing gate (blue sweeping beam)
+			// can be rendered but also requires vertexshader + position
 			else if (mesh->m_VertexFormat == 0x924900005)
 			{
+				//do_not_render_next_mesh = true;
 				// stride 0x70 - 112
 				
 				int zz = 1;
 
-				// cant find a fitting fvf
-				// setting just fvf without disabling the vertexshader makes it disappear
+#if 0
+				if (auto shaderapi = game::get_shaderapi(); shaderapi)
+				{
+					BufferedState_t state = {};
+					shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
 
-				//dev->GetVertexShader(&ff_portalfx_04::s_shader);
-				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5);
+					float mtx[4][4] = {};
+					mtx[0][0] = game::identity[0][0];
+					mtx[1][1] = game::identity[1][1];
+					mtx[2][2] = game::identity[2][2];
+					
+					mtx[3][0] = -706.0f;
+					mtx[3][1] = 3830.0f;
+					mtx[3][2] = 2750.0f /*+ sinf((float)main_module::framecount * 0.05f) * 6.0f*/;
+					mtx[3][3] = game::identity[3][3];
 
-				//if (!ff_portalfx_04::s_texture)
-				//{
-				//	//dev->GetTexture(1, &ff_portalfx_04::s_texture);
-				//	//dev->SetTexture(1, nullptr); 
-				//}
-				//dev->SetVertexShader(nullptr);
+					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+				}
+
+				//dev->SetFVF(D3DFVF_XYZB5 | D3DFVF_NORMAL | D3DFVF_TEX2); // 80
+				dev->GetVertexShader(&ff_terrain::s_shader);
+				dev->SetPixelShader(nullptr);
+#endif
 			}
 
 			// ? bed
 			else if (mesh->m_VertexFormat == 0xa0103) 
 			{
 				//do_not_render_next_mesh = true;
-				int z = 0; 
-				//	// tc @ 24
+				// tc @ 24
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
 				dev->GetVertexShader(&ff_more_models::s_shader);
 				dev->SetVertexShader(nullptr);
@@ -1121,11 +1139,25 @@ namespace components
 				dev->SetVertexShader(nullptr);
 			}
 
-			// ?
+			// hanging cables - requires vertex shader - verts not modified on the cpu
 			else if (mesh->m_VertexFormat == 0x24900005)
 			{
 				//do_not_render_next_mesh = true;
+				// tc @ 28
+
 				int z = 0;
+#if 0
+				if (auto shaderapi = game::get_shaderapi(); shaderapi)
+				{
+					BufferedState_t state = {};
+					shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
+				}
+
+				//dev->SetFVF(D3DFVF_XYZB5 | D3DFVF_NORMAL | D3DFVF_TEX2); // 80
+				dev->GetVertexShader(&ff_terrain::s_shader);
+				dev->SetPixelShader(nullptr);
+#endif
 			}
 
 			// ?
@@ -1148,6 +1180,7 @@ namespace components
 			// on portal open - blob in the middle (impact)
 			else if (mesh->m_VertexFormat == 0x80037)
 			{
+				//do_not_render_next_mesh = true;
 				// this needs a position as it spawns on 0 0 0
 				// stride 0x40
 
@@ -1190,6 +1223,7 @@ namespace components
 			// on portal open - outer ring
 			else if (mesh->m_VertexFormat == 0x1b924900005)
 			{
+				//do_not_render_next_mesh = true;
 				// stride 0x90 - 144
 				// no fitting fvf
 				//dev->GetVertexShader(&ff_portalfx_04::s_shader);
@@ -1197,6 +1231,24 @@ namespace components
 				//dev->SetVertexShader(nullptr);
 			}
 
+			// portal clearing gate
+			else if (mesh->m_VertexFormat == 0x80033)
+			{
+				//stride = 0x40 
+				//do_not_render_next_mesh = true;
+
+				if (auto shaderapi = game::get_shaderapi(); shaderapi)
+				{
+					BufferedState_t state = {};
+					shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
+				}
+
+				// tc @ 24
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
+				dev->GetVertexShader(&ff_vgui::s_shader04);
+				dev->SetVertexShader(nullptr);
+			}
 			else
 			{
 				//do_not_render_next_mesh = true;
@@ -1536,8 +1588,16 @@ namespace components
 					{
 						if (auto name = cmat->vftable->GetName(cmat); name)
 						{
+							const auto sname = std::string_view(name);
+							/*if (auto shaderapi = game::get_shaderapi(); shaderapi) 
+							{
+								BufferedState_t state = {};
+								shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+								dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
+							}*/
+
 							// blending is a shader thing I guess?
-							if (std::string_view(name).contains("portal_door_glass"))
+							if (sname.contains("portal_door_glass"))
 							{
 								//mat.m[3][1] += sinf((float)main_module::framecount * 0.05f) * 6.0f;
 								dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m));
@@ -1546,6 +1606,9 @@ namespace components
 								{
 									int x = 1;
 								}
+
+								// setting to VertexLitGeneric results in vertexformat '0xa0003' and gets rendered in 'cmeshdx8_renderpass_pre_draw'
+								//cmat->vftable->SetShader(cmat, "VertexLitGeneric"); 
 								
 								if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
 								{
@@ -1563,6 +1626,21 @@ namespace components
 								IDirect3DBaseTexture9* aa = nullptr;
 								dev->GetTexture(1, &aa);
 								dev->SetTexture(0, aa);
+							}
+							else if (sname.contains("vacum_pipe_glass")) 
+							{
+								if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+								{
+									//if (std::string_view(shadername).contains("PortalRefract_dx9"))
+									if (std::string_view(shadername) != "VertexLitGeneric")
+									{
+										// setting to VertexLitGeneric results in vertexformat '0xa0003' and gets rendered in 'cmeshdx8_renderpass_pre_draw'
+										//cmat->vftable->SetShader(cmat, "VertexLitGeneric");
+
+										int x = 1;
+									}
+									int x = 1;
+								}
 							}
 						}
 					}
