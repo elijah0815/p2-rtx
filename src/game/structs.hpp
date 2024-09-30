@@ -1782,7 +1782,11 @@ namespace components
 
 	struct IShaderAPIDX8_vtbl
 	{
-		char pad[1032];
+		char pad[1016];
+		IDirect3DBaseTexture9* (__fastcall* GetD3DTexture)(void* shaderapi_ptr, void* ecx, int handle);
+		void* pad97;
+		void* pad98;
+		void* pad99;
 		void(__fastcall* GetBufferedState)(void* shaderapi_ptr, void* ecx, BufferedState_t*);
 		_D3DCULL(__fastcall* GetCullMode)(void* shaderapi_ptr, void* ecx);
 		void* ComputeFillRate;

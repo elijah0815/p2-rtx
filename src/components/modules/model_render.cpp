@@ -294,17 +294,20 @@ namespace components
 		}
 
 		// this also renders the glass? infront of white panel lamps
+		// also renders some foliage (2nd level - emissive)
 		else if (og_model_shader) // should be stride 30
 		{
 			//do_not_render_next_mesh = true;
 			// glass/glasswindow_refract01_neutral
 
-			if (auto shaderapi = game::get_shaderapi(); shaderapi)
+			if (auto shaderapi = game::get_shaderapi(); shaderapi) 
 			{
 				if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
 				{
 					if (auto name = cmat->vftable->GetName(cmat); name)
 					{
+						const auto sname = std::string_view(name);
+
 						// TODO replace with unique texture
 						/*if (std::string_view(name).contains("glasswindow"))
 						{
@@ -320,9 +323,25 @@ namespace components
 						// replace glass refract with wireframe
 						if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
 						{
-							if (std::string_view(shadername).contains("Refract_DX90"))
+							if (sname.contains("Refract_DX90"))
 							{
 								cmat->vftable->SetShader(cmat, "Wireframe");
+								int x = 1;
+							}
+							//else if (sname.contains("props_foliage/leaves")
+							//	|| sname.contains("vine_cluster_loop01_dry_alphatest")
+							//	|| sname.contains("props_foliage/vines_"))
+							//{
+							//	//dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+							//	//dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_XRGB(255, 0, 0));
+
+							//	//dev->SetTextureStageState(0, (_D3DTEXTURESTAGESTATETYPE)1, D3DTOP_SELECTARG1);
+							//	//dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_DIFFUSE);  // Use vertex color
+							//	//do_not_render_next_mesh = true;
+							//	int x = 1; 
+							//}
+							else
+							{
 								int x = 1;
 							}
 						}
@@ -470,7 +489,7 @@ namespace components
 							// fizzle
 							if (mesh->m_VertexFormat == 0xa0003)
 							{
-								int x = 1;
+								int x = 1; 
 							}
 						}
 					}
@@ -1038,6 +1057,10 @@ namespace components
 								//do_not_render_next_mesh = true;
 								// gameinstructor_iconsheet1
 
+								/*IDirect3DBaseTexture9* vid = nullptr;
+								dev->GetTexture(1, &vid); 
+								dev->SetTexture(0, vid);*/
+
 								BufferedState_t state = {};
 								shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
 
@@ -1049,9 +1072,28 @@ namespace components
 								dev->GetVertexShader(&ff_vgui::s_shader01);
 								dev->SetVertexShader(nullptr);
 							}
-							else
+							else if (sname.contains("elevator_video_lines"))
+							{
+								BufferedState_t state = {};
+								shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+
+								dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
+
+								//IDirect3DBaseTexture9* vid = nullptr;
+								//dev->GetTexture(1, &vid);
+								//IDirect3DBaseTexture9* vid = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, state.m_BoundTexture[0]);
+								//dev->SetTexture(0, vid);
+
+								dev->GetVertexShader(&ff_vgui::s_shader01);
+								dev->SetVertexShader(nullptr);
+							}
+							else if (sname.contains("vgui_white"))
 							{
 								int x = 1;
+							}
+							else
+							{
+								int x = 1; 
 							}
 							
 							int y = 1; 
@@ -1069,7 +1111,7 @@ namespace components
 					}
 				}
 
-				int z = 0;
+				int z = 0; 
 				//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mat));
 				//dev->SetFVF(D3DFVF_XYZW | D3DFVF_TEX4);
 				//dev->GetVertexShader(&saved_shader_unk);
@@ -1256,7 +1298,7 @@ namespace components
 				int xx = 1;  
 			}
 
-			int zz = 1;
+			int zz = 1; 
 		}
 	}
 
