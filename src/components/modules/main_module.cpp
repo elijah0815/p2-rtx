@@ -423,7 +423,20 @@ namespace components
 		// engine.dll + 0xE64E0 -> jmp - freeze
 		// engine.dll + 0xE65DA -> nop 2
 
-		utils::hook::set<BYTE>(ENGINE_BASE + 0xE68F8, 0xEB);
+		//utils::hook::set<BYTE>(ENGINE_BASE + 0xE68F8, 0xEB);
+		//utils::hook::nop(ENGINE_BASE + 0xE69C3, 2);
+
+		// R_RecursiveWorldNode :: while (node->visframe == r_visframecount .. ) -> renders the entire map if everything after this is enabled
+		utils::hook::nop(ENGINE_BASE + 0xE68EF, 6);
+
+		// ^ :: while( ... node->contents < -1 .. ) -> jl to jle
+		utils::hook::set<BYTE>(ENGINE_BASE + 0xE68F8, 0x7E);
+
+		// ^ :: backface check -> je to jl
+		// utils::hook::set<BYTE>(ENGINE_BASE + 0xE69C3, 0x7C); // this culls some visible surfs?
 		utils::hook::nop(ENGINE_BASE + 0xE69C3, 2);
+
+		// ^ :: backface check -> jnz to je
+		utils::hook::set<BYTE>(ENGINE_BASE + 0xE69CD, 0x74);
 	}
 }
