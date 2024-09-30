@@ -731,7 +731,7 @@ namespace components
 	{
 		ITexture* (__thiscall* GetTextureValue)(IMaterialVar*);
 		bool(__thiscall* IsTextureValueInternalEnvCubemap)(IMaterialVar*);
-		const char* (__thiscall* GetName)(IMaterialVar*);
+		const char* (__fastcall* GetName)(IMaterialVar*);
 		unsigned __int16(__thiscall* GetNameAsSymbol)(IMaterialVar*);
 		void(__thiscall* SetFloatValue)(IMaterialVar*, float);
 		void(__thiscall* SetIntValue)(IMaterialVar*, int);

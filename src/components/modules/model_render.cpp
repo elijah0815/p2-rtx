@@ -5,16 +5,34 @@ namespace components
 	IDirect3DVertexShader9* og_model_shader = nullptr;
 	bool is_portalgun_viewmodel = false;
 
+	// returns true if exists
+	bool add_nocull_materialvar(IMaterialInternal* cmat)
+	{
+		bool found = false;
+		auto cullvar = cmat->vftable->FindVar(cmat, nullptr, "$nocull", &found, false);
+		auto varname = cullvar->vftable->GetName(cullvar);
+
+		if (!found)
+		{
+			utils::function<IMaterialVar* (IMaterialInternal* pMaterial, const char* pKey, int val)> IMaterialVar_Create = MATERIALSTYSTEM_BASE + 0x1A2F0;
+			auto var = IMaterialVar_Create(cmat, "$nocull", 1);
+
+			cmat->vftable->AddMaterialVar(cmat, nullptr, var);
+			cullvar = cmat->vftable->FindVar(cmat, nullptr, "$nocull", &found, false);
+		}
+
+		return found;
+	}
+
 	void __fastcall tbl_hk::model_renderer::DrawModelExecute::Detour(void* ecx, void* edx, void* oo, const DrawModelState_t& state, const ModelRenderInfo_t& pInfo, matrix3x4_t* pCustomBoneToWorld)
 	{
 		const auto dev = game::get_d3d_device();
 		dev->GetVertexShader(&og_model_shader);
 		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 
-	/*	if (std::string_view(pInfo.pModel->szPathName).contains("stair"))
-		{
-			int dbg = 0;
-		}*/
+		D3DMATRIX saved_view = {};
+		D3DMATRIX saved_proj = {};
+
 
 		// MODELFLAG_MATERIALPROXY | MODELFLAG_STUDIOHDR_AMBIENT_BOOST
 		if (pInfo.flags == 0x80000011 || pInfo.flags == 0x11)
@@ -37,7 +55,7 @@ namespace components
 			mat.m[3][2] = pInfo.pModelToWorld->m_flMatVal[2][3];
 			mat.m[3][3] = game::identity[3][3];
 
-			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m));
+			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m)); 
 		}
 		else if (pInfo.pModel->radius == 37.3153992f) // models/weapons/v_portalgun.mdl
 		{
@@ -75,6 +93,19 @@ namespace components
 			is_portalgun_viewmodel = true;
 			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mat.m));*/
 			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+
+			is_portalgun_viewmodel = true;
+			if (auto shaderapi = game::get_shaderapi(); shaderapi)
+			{
+				BufferedState_t state = {};
+				shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+
+				dev->GetTransform(D3DTS_VIEW, &saved_view);
+				dev->GetTransform(D3DTS_PROJECTION, &saved_proj);
+
+				dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[1]));
+				dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[2]));
+			}
 		}
 		else
 		{
@@ -82,6 +113,12 @@ namespace components
 		}
 
 		tbl_hk::model_renderer::table.original<FN>(Index)(ecx, edx, oo, state, pInfo, pCustomBoneToWorld);
+
+		if (is_portalgun_viewmodel)
+		{
+			dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(&saved_view));
+			dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(&saved_proj));
+		}
 
 		is_portalgun_viewmodel = false;
 		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
@@ -288,7 +325,7 @@ namespace components
 			}
 
 
-			if (!is_portalgun_viewmodel)
+			//if (!is_portalgun_viewmodel)
 			{
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
 			}
@@ -312,19 +349,6 @@ namespace components
 					{
 						const auto sname = std::string_view(name);
 
-						if (sname.contains("glasswindow_refract"))
-						{
-							if (tex_glass_window_refract)
-							{
-								dev->SetTexture(0, tex_glass_window_refract);
-							}
-
-							//BufferedState_t state = {};
-							//shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
-							//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
-						}
-
-						// replace glass refract with wireframe so that we can see our custom texture
 						if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
 						{
 							if (std::string_view(shadername).contains("Refract_DX90"))
@@ -336,6 +360,24 @@ namespace components
 								int x = 1;
 							}
 						}
+
+						if (sname.contains("glasswindow_refract"))
+						{
+							if (tex_glass_window_refract)
+							{
+								dev->SetTexture(0, tex_glass_window_refract);
+							}
+
+							// does nothing?
+							//add_nocull_materialvar(cmat);
+
+							//BufferedState_t state = {};
+							//shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+							//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
+						}
+
+						// replace glass refract with wireframe so that we can see our custom texture
+						
 					}
 				}
 			}
@@ -595,35 +637,12 @@ namespace components
 								// todo set unique texture
 								dev->SetTexture(0, tex_portal_mask);
 
-								//if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
-								//{
-								//	//if (std::string_view(shadername).contains("PortalRefract_dx9"))
-								//	/*if (std::string_view(shadername) != "Wireframe_DX9")
-								//	{
-								//		cmat->vftable->SetShader(cmat, "Wireframe");
-								//		int x = 1;
-								//	}*/
-								//	int x = 1;
-								//}
 								int yy = 1; 
 							}
 							else if (sname.contains("light_panel_"))
 							{
-								static utils::function<IMaterialVar* (IMaterialInternal* pMaterial, const char* pKey, int val)> IMaterialVar_Create = MATERIALSTYSTEM_BASE + 0x1A2F0;
+								add_nocull_materialvar(cmat);
 
-								bool found = false;
-								auto cullvar = cmat->vftable->FindVar(cmat, nullptr, "$nocull", &found, false);
-								auto varname = cullvar->vftable->GetName(cullvar);
-								if (!found)
-								{
-									auto var = IMaterialVar_Create(cmat, "$nocull", 1);
-									cmat->vftable->AddMaterialVar(cmat, nullptr, var);
-								}
-								
-
-								//cmat->vftable->Material
-								// matsys IMaterialVar::Create
-								// IMaterialInternal AddMaterialVar
 								if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
 								{
 									int x = 1; 
