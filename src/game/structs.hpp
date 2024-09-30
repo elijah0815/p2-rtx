@@ -821,13 +821,124 @@ namespace components
 		bool(__thiscall* IsTranslucentUnderModulation)(IMaterial*, float);
 		IMaterialVar* (__thiscall* FindVarFast)(IMaterial*, const char*, unsigned int*);
 		void(__thiscall* SetShaderAndParams)(IMaterial*, KeyValues*);
-		const char* (__thiscall* GetShaderName)(IMaterial*);
+		const char* (__fastcall* GetShaderName)(IMaterial*);
 		void(__thiscall* DeleteIfUnreferenced)(IMaterial*);
 		bool(__thiscall* IsSpriteCard)(IMaterial*);
 		void(__thiscall* CallBindProxy)(IMaterial*, void*, void*); // ICallQueue
 		void(__thiscall* RefreshPreservingMaterialVars)(IMaterial*);
 		bool(__thiscall* WasReloadedFromWhitelist)(IMaterial*);
 	};
+
+	struct IMaterialInternal_vtbl;
+	struct IMaterialInternal /*: IMaterial*/
+	{
+		IMaterialInternal_vtbl* vftable;
+	};
+
+	struct IMaterialInternal_vtbl
+	{
+		const char* (__fastcall* GetName)(IMaterialInternal*);
+		const char* (__thiscall* GetTextureGroupName)(IMaterial*);
+		PreviewImageRetVal_t(__thiscall* GetPreviewImageProperties)(IMaterial*, int*, int*, ImageFormat*, bool*);
+		PreviewImageRetVal_t(__thiscall* GetPreviewImage)(IMaterial*, unsigned __int8*, int, int, ImageFormat);
+		int(__thiscall* GetMappingWidth)(IMaterial*);
+		int(__thiscall* GetMappingHeight)(IMaterial*);
+		int(__thiscall* GetNumAnimationFrames)(IMaterial*);
+		bool(__thiscall* InMaterialPage)(IMaterial*);
+		void(__thiscall* GetMaterialOffset)(IMaterial*, float*);
+		void(__thiscall* GetMaterialScale)(IMaterial*, float*);
+		IMaterial* (__thiscall* GetMaterialPage)(IMaterial*);
+		IMaterialVar* (__fastcall* FindVar)(IMaterialInternal*, void* null, const char*, bool*, bool);
+		void(__thiscall* IncrementReferenceCount)(IMaterial*);
+		void(__thiscall* DecrementReferenceCount)(IMaterial*);
+		int(__thiscall* GetEnumerationID)(IMaterial*);
+		void(__thiscall* GetLowResColorSample)(IMaterial*, float, float, float*);
+		void(__thiscall* RecomputeStateSnapshots)(IMaterial*);
+		bool(__thiscall* IsTranslucent)(IMaterial*);
+		bool(__thiscall* IsAlphaTested)(IMaterial*);
+		bool(__thiscall* IsVertexLit)(IMaterial*);
+		unsigned __int64(__fastcall* GetVertexFormat)(IMaterial*, void* null);
+		bool(__thiscall* HasProxy)(IMaterial*);
+		bool(__thiscall* UsesEnvCubemap)(IMaterial*);
+		bool(__thiscall* NeedsTangentSpace)(IMaterial*);
+		bool(__thiscall* NeedsPowerOfTwoFrameBufferTexture)(IMaterial*, bool);
+		bool(__thiscall* NeedsFullFrameBufferTexture)(IMaterial*, bool);
+		bool(__thiscall* NeedsSoftwareSkinning)(IMaterial*);
+		void(__thiscall* AlphaModulate)(IMaterial*, float);
+		void(__thiscall* ColorModulate)(IMaterial*, float, float, float);
+		void(__thiscall* SetMaterialVarFlag)(IMaterial*, MaterialVarFlags_t, bool);
+		bool(__thiscall* GetMaterialVarFlag)(IMaterial*, MaterialVarFlags_t);
+		void(__thiscall* GetReflectivity)(IMaterial*, Vector*);
+		bool(__thiscall* GetPropertyFlag)(IMaterial*, MaterialPropertyTypes_t);
+		bool(__thiscall* IsTwoSided)(IMaterial*);
+		void(__thiscall* SetShader)(IMaterialInternal*, const char*);
+		int(__thiscall* GetNumPasses)(IMaterial*);
+		int(__thiscall* GetTextureMemoryBytes)(IMaterial*);
+		void(__thiscall* Refresh)(IMaterial*);
+		bool(__thiscall* NeedsLightmapBlendAlpha)(IMaterial*);
+		bool(__thiscall* NeedsSoftwareLighting)(IMaterial*);
+		int(__thiscall* ShaderParamCount)(IMaterial*);
+		IMaterialVar** (__thiscall* GetShaderParams)(IMaterial*);
+		bool(__thiscall* IsErrorMaterial)(IMaterial*);
+		void(__thiscall* Unused)(IMaterial*);
+		float(__thiscall* GetAlphaModulation)(IMaterial*);
+		void(__thiscall* GetColorModulation)(IMaterial*, float*, float*, float*);
+		bool(__thiscall* IsTranslucentUnderModulation)(IMaterial*, float);
+		IMaterialVar* (__fastcall* FindVarFast)(IMaterial*, void* null, const char*, unsigned int*);
+		void(__thiscall* SetShaderAndParams)(IMaterial*, KeyValues*);
+		const char* (__fastcall* GetShaderName)(IMaterialInternal*);
+		void(__thiscall* DeleteIfUnreferenced)(IMaterial*);
+		bool(__thiscall* IsSpriteCard)(IMaterial*);
+		void(__thiscall* CallBindProxy)(IMaterial*, void*, void*); // ICallQueue
+		void(__thiscall* RefreshPreservingMaterialVars)(IMaterial*);
+		bool(__thiscall* WasReloadedFromWhitelist)(IMaterial*);
+		int(__thiscall* GetReferenceCount)(IMaterialInternal*);
+		void(__thiscall* SetEnumerationID)(IMaterialInternal*, int);
+		void(__thiscall* SetNeedsWhiteLightmap)(IMaterialInternal*, bool);
+		bool(__thiscall* GetNeedsWhiteLightmap)(IMaterialInternal*);
+		void(__thiscall* Uncache)(IMaterialInternal*, bool);
+		void(__thiscall* Precache)(IMaterialInternal*);
+		bool(__thiscall* PrecacheVars)(IMaterialInternal*, KeyValues*, KeyValues*, void*, void*, int); // CUtlVector CUtlMemory
+		void(__thiscall* ReloadTextures)(IMaterialInternal*);
+		void(__thiscall* SetMinLightmapPageID)(IMaterialInternal*, int);
+		void(__thiscall* SetMaxLightmapPageID)(IMaterialInternal*, int);
+		int(__thiscall* GetMinLightmapPageID)(IMaterialInternal*);
+		int(__thiscall* GetMaxLightmapPageID)(IMaterialInternal*);
+		void* (__thiscall* GetShader)(IMaterialInternal*); // IShader
+		bool(__thiscall* IsPrecached)(IMaterialInternal*);
+		bool(__thiscall* IsPrecachedVars)(IMaterialInternal*);
+		void(__thiscall* DrawMesh)(IMaterialInternal*, VertexCompressionType_t, bool, bool);
+		unsigned __int64(__thiscall* GetVertexUsage)(IMaterialInternal*);
+		bool(__thiscall* PerformDebugTrace)(IMaterialInternal*);
+		bool(__thiscall* NoDebugOverride)(IMaterialInternal*);
+		void(__thiscall* ToggleSuppression)(IMaterialInternal*);
+		bool(__thiscall* IsSuppressed)(IMaterialInternal*);
+		void(__thiscall* ToggleDebugTrace)(IMaterialInternal*);
+		bool(__thiscall* UseFog)(IMaterialInternal*);
+		void(__fastcall* AddMaterialVar)(IMaterialInternal*, void* null, IMaterialVar*);
+		struct ShaderRenderState_t* (__thiscall* GetRenderState)(IMaterialInternal*);
+		bool(__thiscall* IsManuallyCreated)(IMaterialInternal*);
+		bool(__thiscall* NeedsFixedFunctionFlashlight)(IMaterialInternal*);
+		bool(__thiscall* IsUsingVertexID)(IMaterialInternal*);
+		void(__thiscall* MarkAsPreloaded)(IMaterialInternal*, bool);
+		bool(__thiscall* IsPreloaded)(IMaterialInternal*);
+		void(__thiscall* ArtificialAddRef)(IMaterialInternal*);
+		void(__thiscall* ArtificialRelease)(IMaterialInternal*);
+		void(__thiscall* ReportVarChanged)(IMaterialInternal*, struct IMaterialVar*);
+		unsigned int(__thiscall* GetChangeID)(IMaterialInternal*);
+		bool(__thiscall* IsTranslucentInternal)(IMaterialInternal*, float);
+		bool(__thiscall* IsRealTimeVersion)(IMaterialInternal*);
+		void(__thiscall* ClearContextData)(IMaterialInternal*);
+		IMaterialInternal* (__thiscall* GetRealTimeVersion)(IMaterialInternal*);
+		IMaterialInternal* (__thiscall* GetQueueFriendlyVersion)(IMaterialInternal*);
+		void(__thiscall* PrecacheMappingDimensions)(IMaterialInternal*);
+		void(__thiscall* FindRepresentativeTexture)(IMaterialInternal*);
+		void(__thiscall* DecideShouldReloadFromWhitelist)(IMaterialInternal*, struct IFileList*);
+		void(__thiscall* ReloadFromWhitelistIfMarked)(IMaterialInternal*);
+		void(__thiscall* CompactMaterialVars)(IMaterialInternal*);
+	};
+
+
 
 	struct VisibleFogVolumeInfo_t
 	{
@@ -1792,7 +1903,7 @@ namespace components
 		void* ComputeFillRate;
 		void* IsInSelectionMode;
 		void* RegisterSelectionHit;
-		IMaterial* (__fastcall* GetBoundMaterial)(void* shaderapi_ptr, void* ecx);
+		IMaterialInternal* (__fastcall* GetBoundMaterial)(void* shaderapi_ptr, void* ecx);
 
 		//char pad[0x41C];
 		//IMaterial* (__fastcall* GetBoundMaterial)(void* shaderapi_ptr, void* ecx);

@@ -191,6 +191,7 @@ namespace components
 	LPDIRECT3DTEXTURE9 tex_portal_orange;
 
 	LPDIRECT3DTEXTURE9 tex_glass_shards;
+	LPDIRECT3DTEXTURE9 tex_glass_window_refract;
 
 	int do_not_render_next_mesh = false;
 	std::uint64_t tick_on_first_no_render = 0;
@@ -226,6 +227,11 @@ namespace components
 		if (!tex_glass_shards)
 		{
 			D3DXCreateTextureFromFileA(dev, "glass_shards.png", &tex_glass_shards);
+		}
+
+		if (!tex_glass_window_refract)
+		{
+			D3DXCreateTextureFromFileA(dev, "glass_window_refract.png", &tex_glass_window_refract);
 		}
 
 		//do_not_render_next_mesh = true;
@@ -298,9 +304,7 @@ namespace components
 		else if (og_model_shader) // should be stride 30
 		{
 			//do_not_render_next_mesh = true;
-			// glass/glasswindow_refract01_neutral
-
-			if (auto shaderapi = game::get_shaderapi(); shaderapi) 
+			if (auto shaderapi = game::get_shaderapi(); shaderapi)  
 			{
 				if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
 				{
@@ -308,38 +312,25 @@ namespace components
 					{
 						const auto sname = std::string_view(name);
 
-						// TODO replace with unique texture
-						/*if (std::string_view(name).contains("glasswindow"))
+						if (sname.contains("glasswindow_refract"))
 						{
-							IDirect3DBaseTexture9* nml = nullptr;
-							dev->GetTexture(1, &nml);
-
-							if (nml)
+							if (tex_glass_window_refract)
 							{
-								dev->SetTexture(0, nml);
+								dev->SetTexture(0, tex_glass_window_refract);
 							}
-						}*/
 
-						// replace glass refract with wireframe
+							//BufferedState_t state = {};
+							//shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+							//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
+						}
+
+						// replace glass refract with wireframe so that we can see our custom texture
 						if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
 						{
-							if (sname.contains("Refract_DX90"))
+							if (std::string_view(shadername).contains("Refract_DX90"))
 							{
 								cmat->vftable->SetShader(cmat, "Wireframe");
-								int x = 1;
 							}
-							//else if (sname.contains("props_foliage/leaves")
-							//	|| sname.contains("vine_cluster_loop01_dry_alphatest")
-							//	|| sname.contains("props_foliage/vines_"))
-							//{
-							//	//dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
-							//	//dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_XRGB(255, 0, 0));
-
-							//	//dev->SetTextureStageState(0, (_D3DTEXTURESTAGESTATETYPE)1, D3DTOP_SELECTARG1);
-							//	//dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_DIFFUSE);  // Use vertex color
-							//	//do_not_render_next_mesh = true;
-							//	int x = 1; 
-							//}
 							else
 							{
 								int x = 1;
@@ -594,8 +585,10 @@ namespace components
 					{
 						if (auto name = cmat->vftable->GetName(cmat); name)
 						{
+							const auto sname = std::string_view(name);
+
 							// fix sliding door background
-							if (std::string_view(name).contains("decals/portalstencildecal"))
+							if (sname.contains("decals/portalstencildecal"))
 							{
 								//do_not_render_next_mesh = true;
 
@@ -613,6 +606,28 @@ namespace components
 								//	int x = 1;
 								//}
 								int yy = 1; 
+							}
+							else if (sname.contains("light_panel_"))
+							{
+								static utils::function<IMaterialVar* (IMaterialInternal* pMaterial, const char* pKey, int val)> IMaterialVar_Create = MATERIALSTYSTEM_BASE + 0x1A2F0;
+
+								bool found = false;
+								auto cullvar = cmat->vftable->FindVar(cmat, nullptr, "$nocull", &found, false);
+								auto varname = cullvar->vftable->GetName(cullvar);
+								if (!found)
+								{
+									auto var = IMaterialVar_Create(cmat, "$nocull", 1);
+									cmat->vftable->AddMaterialVar(cmat, nullptr, var);
+								}
+								
+
+								//cmat->vftable->Material
+								// matsys IMaterialVar::Create
+								// IMaterialInternal AddMaterialVar
+								if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+								{
+									int x = 1; 
+								}
 							}
 						}
 					}
