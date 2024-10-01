@@ -1325,8 +1325,37 @@ namespace components
 				dev->GetVertexShader(&ff_vgui::s_shader04);
 				dev->SetVertexShader(nullptr);
 			}
+
+			// decals
+			else if (mesh->m_VertexFormat == 0x2480037)
+			{
+				// stride = 0x50 - 80
+
+				// tc at 28
+				dev->SetFVF(D3DFVF_XYZB4 | D3DFVF_TEX7 | D3DFVF_TEXCOORDSIZE1(4)); // 84 - 4 as last tc is one float
+				dev->GetVertexShader(&ff_vgui::s_shader03);
+				dev->SetVertexShader(nullptr);
+
+				if (auto shaderapi = game::get_shaderapi(); shaderapi)
+				{
+					BufferedState_t state = {};
+					shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
+				}
+			}
 			else
 			{
+				if (auto shaderapi = game::get_shaderapi(); shaderapi)
+				{
+					if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
+					{
+						if (auto name = cmat->vftable->GetName(cmat); name)
+						{
+							const auto sname = std::string_view(name);
+						}
+					}
+				}
+				
 				//do_not_render_next_mesh = true;
 				//dev->SetVertexShader(nullptr);
 				int xx = 1;  
