@@ -1086,7 +1086,7 @@ namespace components
 							}
 							else if (sname.contains("vgui_coop_progress_board")
 								|| sname.contains("p2_lightboard_vgui")
-								|| sname.contains("elevator_video_overlay3"))
+								|| sname.contains("elevator_video_overlay"))
 							{
 								//do_not_render_next_mesh = true;
 								// gameinstructor_iconsheet1
@@ -1145,7 +1145,7 @@ namespace components
 					}
 				}
 
-				int z = 0; 
+				int z = 0;  
 				//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mat));
 				//dev->SetFVF(D3DFVF_XYZW | D3DFVF_TEX4);
 				//dev->GetVertexShader(&saved_shader_unk);
