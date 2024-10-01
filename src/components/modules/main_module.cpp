@@ -4,7 +4,13 @@
 
 // dxlevel 100 required
 // -novid -disable_d3d9_hacks -limitvsconst -disallowhwmorph -no_compressed_verts +sv_cheats 1 +r_PortalTestEnts 0 +r_portal_earlyz 0 +r_portal_use_complex_frustums 0 +r_portal_use_pvs_optimization 0 +r_portalstencildisable 0 +portal_stencil_depth 1 +portal_draw_ghosting 1 +r_staticprop_lod 0 +r_lod 0 +r_threaded_particles 0 +developer 1 +r_entityclips 0 +cl_brushfastpath 0 +cl_showpos 1 +cl_tlucfastpath 0 +cl_modelfastpath 0 +r_ShowViewerArea 1 +mat_fullbright 1 +mat_queue_mode 0 +mat_softwarelighting 0 +mat_softwareskin 1 +mat_phong 1 +mat_parallaxmap 0 +mat_frame_sync_enable 0 +mat_fastnobump 1 +mat_disable_bloom 1 +mat_dof_enabled 0 +mat_displacementmap 0 +mat_drawflat 1 +mat_normalmaps 0 +mat_normals 0 +sv_lan 1 +map sp_a1_intro1
-// // portal_ghosts_disable 1 ----- almost fixes chell in portals
+
+// r_PortalTestEnts 0 -- needed for anti culling of entities
+// portal_ghosts_disable 1 ----- almost fixes chell in portals
+
+
+// cl_particles_show_bbox 1 can be used to see fx names
+// +map sp_a1_intro2
 
 namespace components
 {
@@ -455,5 +461,8 @@ namespace components
 
 		// DrawDisplacementsInLeaf :: nop 'Frustum_t::CullBox' check to disable displacement (terrain) culling in leafs
 		utils::hook::nop(ENGINE_BASE + 0xE6384, 2);
+
+		// C_VGuiScreen::DrawModel :: vgui screens (world) :: nop C_VGuiScreen::IsBackfacing check
+		utils::hook::nop(CLIENT_BASE + 0xCA14E, 2);
 	}
 }
