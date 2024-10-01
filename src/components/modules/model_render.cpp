@@ -29,7 +29,7 @@ namespace components
 
 	// only supports 1 saved state for now (should be enough)
 	// values also influence radiance (can be larger than 1)
-	void add_light_to_texture_color_push(const float& r, const float& g, const float& b)
+	void add_light_to_texture_color_edit(const float& r, const float& g, const float& b, const float scalar = 1.0f)
 	{
 		const auto dev = game::get_d3d_device();
 
@@ -39,12 +39,12 @@ namespace components
 		// save prev. color
 		g_old_light_to_texture_color = temp_mat.Diffuse;
 
-		temp_mat.Diffuse = { .r = r, .g = g, .b = b };
+		temp_mat.Diffuse = { .r = r * scalar, .g = g * scalar, .b = b * scalar };
 		dev->SetMaterial(&temp_mat);
 	}
 
 	// restore color
-	void add_light_to_texture_color_pop()
+	void add_light_to_texture_color_restore()
 	{
 		const D3DMATERIAL9 temp_mat = 
 		{
@@ -645,10 +645,11 @@ namespace components
 			// lasers - indicator dots - some of the white light stripes
 			// this also renders the the wireframe portal if hook enabled to render wireframe for portals
 			// also renders white stuff behind sliding doors
+			// + skybox
 			else if (mesh->m_VertexFormat == 0x80003)
 			{
 				//do_not_render_next_mesh = true;
-				
+				bool was_transform_set = false;
 				if (auto shaderapi = game::get_shaderapi(); shaderapi)
 				{
 					if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
@@ -658,7 +659,7 @@ namespace components
 							const auto sname = std::string_view(name);
 
 							// fix sliding door background
-							if (sname.contains("decals/portalstencildecal"))
+							if (sname.contains("decals/portalstencildecal")) 
 							{
 								//do_not_render_next_mesh = true;
 
@@ -675,6 +676,15 @@ namespace components
 								{
 									int x = 1; 
 								}
+							}
+							// vgui/signage/vgui_indicator_checked
+							else if (sname.contains("vgui_indicator_checked"))
+							{
+								int x = 1;
+								/*BufferedState_t state = {};
+								shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+								dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
+								was_transform_set = true;*/
 							}
 						}
 					}
@@ -723,7 +733,17 @@ namespace components
 				mtx[3][3] = game::identity[3][3];*/
 
 				//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+				/*if (!was_transform_set)
+				{
+					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+				}*/
+
+				if (auto shaderapi = game::get_shaderapi(); shaderapi)
+				{
+					BufferedState_t state = {};
+					shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0])); 
+				}
 			}
 
 			// portal_draw_ghosting 0 disables this
@@ -1094,82 +1114,77 @@ namespace components
 				// IsDepthWriteEnabled
 				// GetBufferedState
 				// GetCullMode
-				if (auto shaderapi = game::get_shaderapi(); shaderapi)
+
+				auto shaderapi = game::get_shaderapi();
+
+				if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
 				{
-					if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
+					if (auto name = cmat->vftable->GetName(cmat); name)
 					{
-						if (auto name = cmat->vftable->GetName(cmat); name)
+						const auto sname = std::string_view(name);
+
+						// get rid of all world-rendered text as its using the same glyph as HUD elements?!
+						if (sname.contains("vgui__fontpage"))
 						{
-							const auto sname = std::string_view(name);
-							// get rid of all world-rendered text as its using the same glyph as HUD elements?!
-							if (sname.contains("vgui__fontpage"))
+							BufferedState_t state = {};
+							shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+
+							if (state.m_Transform[0].m[3][0] != 0.0f)
 							{
-								BufferedState_t state = {};
-								shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
-
-								if (state.m_Transform[0].m[3][0] != 0.0f)
-								{
-									do_not_render_next_mesh = true;
-								}
+								do_not_render_next_mesh = true;
 							}
-							else if (sname.contains("vgui_coop_progress_board")
-								|| sname.contains("p2_lightboard_vgui")
-								|| sname.contains("elevator_video_overlay"))
-							{
-								//do_not_render_next_mesh = true;
-								// gameinstructor_iconsheet1
-
-								/*IDirect3DBaseTexture9* vid = nullptr;
-								dev->GetTexture(1, &vid); 
-								dev->SetTexture(0, vid);*/
-
-								BufferedState_t state = {};
-								shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
-
-								dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
-
-								// no need to set fvf here?
-								//dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_TEX4);
-
-								dev->GetVertexShader(&ff_vgui::s_shader01);
-								dev->SetVertexShader(nullptr);
-							}
-							else if (sname.contains("elevator_video_lines"))
-							{
-								BufferedState_t state = {};
-								shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
-
-								dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
-
-								//IDirect3DBaseTexture9* vid = nullptr;
-								//dev->GetTexture(1, &vid);
-								//IDirect3DBaseTexture9* vid = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, state.m_BoundTexture[0]);
-								//dev->SetTexture(0, vid);
-
-								dev->GetVertexShader(&ff_vgui::s_shader01);
-								dev->SetVertexShader(nullptr);
-							}
-							else if (sname.contains("vgui_white"))
-							{
-								int x = 1;
-							}
-							else
-							{
-								int x = 1; 
-							}
-							
-							int y = 1; 
-
-							// replace glass refract with wireframe
-							//if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
-							//{
-							//	if (std::string_view(shadername).contains("Refract_DX90"))
-							//	{
-							//		//cmat->vftable->SetShader(cmat, "Wireframe");
-							//		int x = 1;
-							//	}
-							//}
 						}
+						else if (sname.contains("vgui_coop_progress_board")
+							  || sname.contains("p2_lightboard_vgui")
+							  || sname.contains("elevator_video_overlay"))
+						{
+							//do_not_render_next_mesh = true;
+							BufferedState_t state = {};
+							shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+
+							dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
+
+							// no need to set fvf here?
+							//dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_TEX4);
+
+							dev->GetVertexShader(&ff_vgui::s_shader01);
+							dev->SetVertexShader(nullptr);
+						}
+						else if (sname.contains("elevator_video_lines"))
+						{
+							BufferedState_t state = {};
+							shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+
+							dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
+
+							//IDirect3DBaseTexture9* vid = nullptr;
+							//dev->GetTexture(1, &vid);
+							//IDirect3DBaseTexture9* vid = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, state.m_BoundTexture[0]);
+							//dev->SetTexture(0, vid);
+
+							dev->GetVertexShader(&ff_vgui::s_shader01);
+							dev->SetVertexShader(nullptr);
+						}
+						else if (sname.contains("vgui_white"))
+						{
+							int x = 1;
+						}
+						else
+						{
+							int x = 1; 
+						}
+						
+						int y = 1; 
+
+						// replace glass refract with wireframe
+						//if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+						//{
+						//	if (std::string_view(shadername).contains("Refract_DX90"))
+						//	{
+						//		//cmat->vftable->SetShader(cmat, "Wireframe");
+						//		int x = 1;
+						//	}
+						//}
 					}
 				}
 
@@ -1184,7 +1199,7 @@ namespace components
 			else if (mesh->m_VertexFormat == 0x92480005)
 			{
 				//do_not_render_next_mesh = true;
-				int zz = 1; 
+				int zz = 1;  
 			}
 
 			// on portal open - spark fx (center)
@@ -1195,7 +1210,7 @@ namespace components
 				//do_not_render_next_mesh = true;
 				// stride 0x70 - 112
 				
-				int zz = 1;
+				int zz = 1; 
 
 #if 0
 				if (auto shaderapi = game::get_shaderapi(); shaderapi)
@@ -1238,7 +1253,7 @@ namespace components
 				//do_not_render_next_mesh = true;
 
 				// tc @ 28
-				dev->SetFVF(D3DFVF_XYZB4 | D3DFVF_TEX3);
+				dev->SetFVF(D3DFVF_XYZB4 | D3DFVF_TEX3); 
 				dev->GetVertexShader(&ff_terrain::s_shader);
 				dev->SetVertexShader(nullptr);
 			}
@@ -1246,7 +1261,7 @@ namespace components
 			// hanging cables - requires vertex shader - verts not modified on the cpu
 			else if (mesh->m_VertexFormat == 0x24900005)
 			{
-				//do_not_render_next_mesh = true;
+				do_not_render_next_mesh = true; // they can freak out sometimes so just ignore them for now
 				// tc @ 28
 
 				int z = 0;
@@ -1358,6 +1373,7 @@ namespace components
 			else if (mesh->m_VertexFormat == 0x2480037)
 			{
 				// stride = 0x50 - 80
+				//do_not_render_next_mesh = true;
 
 				// tc at 28
 				dev->SetFVF(D3DFVF_XYZB4 | D3DFVF_TEX7 | D3DFVF_TEXCOORDSIZE1(4)); // 84 - 4 as last tc is one float
