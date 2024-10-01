@@ -24,6 +24,37 @@ namespace components
 		return found;
 	}
 
+
+	D3DCOLORVALUE g_old_light_to_texture_color = {};
+
+	// only supports 1 saved state for now (should be enough)
+	// values also influence radiance (can be larger than 1)
+	void add_light_to_texture_color_push(const float& r, const float& g, const float& b)
+	{
+		const auto dev = game::get_d3d_device();
+
+		D3DMATERIAL9 temp_mat = {};
+		dev->GetMaterial(&temp_mat);
+
+		// save prev. color
+		g_old_light_to_texture_color = temp_mat.Diffuse;
+
+		temp_mat.Diffuse = { .r = r, .g = g, .b = b };
+		dev->SetMaterial(&temp_mat);
+	}
+
+	// restore color
+	void add_light_to_texture_color_pop()
+	{
+		const D3DMATERIAL9 temp_mat = 
+		{
+			.Diffuse = {.r = g_old_light_to_texture_color.r, .g = g_old_light_to_texture_color.g, .b = g_old_light_to_texture_color.b }
+		};
+
+		game::get_d3d_device()->SetMaterial(&temp_mat);
+	}
+
+
 	void __fastcall tbl_hk::model_renderer::DrawModelExecute::Detour(void* ecx, void* edx, void* oo, const DrawModelState_t& state, const ModelRenderInfo_t& pInfo, matrix3x4_t* pCustomBoneToWorld)
 	{
 		const auto dev = game::get_d3d_device();
@@ -313,17 +344,14 @@ namespace components
 						if (std::string_view(name).contains("props_destruction/glass_"))
 						{
 							//do_not_render_next_mesh = true;
-
 							if (tex_glass_shards)
 							{
 								dev->SetTexture(0, tex_glass_shards);
 							}
-							
 						}
 					}
 				}
 			}
-
 
 			//if (!is_portalgun_viewmodel)
 			{

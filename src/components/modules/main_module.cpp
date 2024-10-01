@@ -319,6 +319,14 @@ namespace components
 
 		main_module::framecount++; // used for debug anim
 
+
+		// set a default material with diffuse set to a warm white
+		// so that add light to texture works and does not require rtx.effectLightPlasmaBall (animated)
+		D3DMATERIAL9 dmat = {};
+		dmat.Diffuse.r = 1.0f;
+		dmat.Diffuse.g = 0.8f;
+		dmat.Diffuse.b = 0.8f;
+		dev->SetMaterial(&dmat);
 	}
 
 	HOOK_RETN_PLACE_DEF(yyy_retn);
@@ -437,7 +445,11 @@ namespace components
 		// ^ :: backface check -> jnz to je
 		utils::hook::set<BYTE>(ENGINE_BASE + 0xE69CD, 0x74);
 
-		// ents - needs r_PortalTestEnts to be 0 -> je to jmp (0xEB)
+		// CClientLeafSystem::ExtractCulledRenderables :: disable 'engine->CullBox' check to disable entity culling in leafs
+		// needs r_PortalTestEnts to be 0 -> je to jmp (0xEB)
 		utils::hook::set<BYTE>(CLIENT_BASE + 0xDE4D5, 0xEB);
+
+		// DrawDisplacementsInLeaf :: nop 'Frustum_t::CullBox' check to disable displacement (terrain) culling in leafs
+		utils::hook::nop(ENGINE_BASE + 0xE6384, 2);
 	}
 }
