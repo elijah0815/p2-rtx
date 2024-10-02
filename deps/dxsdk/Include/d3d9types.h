@@ -477,7 +477,7 @@ typedef enum _D3DMATERIALCOLORSOURCE
  */
 typedef enum _D3DTEXTURESTAGESTATETYPE
 {
-    opD3DTSS_COLOROP        =  1, /* D3DTEXTUREOP - per-stage blending controls for color channels */
+    D3DTSS_COLOROP        =  1, /* D3DTEXTUREOP - per-stage blending controls for color channels */
     D3DTSS_COLORARG1      =  2, /* D3DTA_* (texture arg) */
     D3DTSS_COLORARG2      =  3, /* D3DTA_* (texture arg) */
     D3DTSS_ALPHAOP        =  4, /* D3DTEXTUREOP - per-stage blending controls for alpha channel */
