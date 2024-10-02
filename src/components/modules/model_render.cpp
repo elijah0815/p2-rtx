@@ -599,8 +599,36 @@ namespace components
 				was_world = true;
 				//do_not_render_next_mesh = true;
 
+				//if (auto shaderapi = game::get_shaderapi(); shaderapi)
+				//{
+				//	if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
+				//	{
+				//		if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+				//		{
+				//			BufferedState_t state = {};
+				//			shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+
+				//			if (std::string_view(shadername).contains("WorldVertexTransition"))
+				//			{
+				//				int x = 1;
+				//			}
+
+				//			if (auto name = cmat->vftable->GetName(cmat); name)
+				//			{
+				//				if (std::string_view(name).contains("elevator_screen"))
+				//				{
+				//					//do_not_render_next_mesh = true;
+				//					int x = 1;
+				//					//render_second_pass_with_basetexture2 = false;
+				//				}
+				//			}
+				//		}
+				//	}
+				//}
+
 				// tc @ 24
-				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
+				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
+				dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_TEX7);
 				dev->GetVertexShader(&ff_worldmodel::s_shader);
 				dev->SetVertexShader(nullptr);
 				//dev->GetTransform(D3DTS_WORLD, &saved_world_mtx_unk);
@@ -1292,7 +1320,7 @@ namespace components
 			// terrain - "WorldVertexTransition"
 			else if (mesh->m_VertexFormat == 0x480007)
 			{
-				do_not_render_next_mesh = true;
+				//do_not_render_next_mesh = true;
 
 				const auto shaderapi = game::get_shaderapi();
 				if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
