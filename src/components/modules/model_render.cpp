@@ -322,6 +322,23 @@ namespace components
 		mtx.m[3][2] = model_to_world_mtx->m[2][3];
 		mtx.m[3][3] = game::identity[3][3];
 
+		std::string_view current_material_name;
+		const auto shaderapi = game::get_shaderapi();
+		if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
+		{
+			current_material_name = cmat->vftable->GetName(cmat);
+
+			if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+			{
+				int x = 1;
+			}
+
+			if (current_material_name.contains("blendwhitefloor_dirt01"))
+			{
+				int x = 1;
+			}
+		}
+
 		if (og_bmodel_shader && mesh->m_VertexFormat == 0x2480033)
 		{
 			//do_not_render_next_mesh = true;
@@ -331,7 +348,10 @@ namespace components
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
 			dev->SetVertexShader(nullptr);
 		}
-		else if (og_model_shader && mesh->m_VertexFormat == 0xa0003 /*stride == 48*/) // player model - gun - grabable stuff - portal button - portal door
+
+		// player model - gun - grabable stuff - portal button - portal door
+		// stairs
+		else if (og_model_shader && mesh->m_VertexFormat == 0xa0003) 
 		{
 			//do_not_render_next_mesh = true;
 
@@ -349,6 +369,11 @@ namespace components
 								dev->SetTexture(0, tex_glass_shards);
 							}
 						}
+						// oddly lit staircase
+						/*else if (std::string_view(name).contains("railing_bts"))
+						{
+							do_not_render_next_mesh = false;
+						}*/
 					}
 				}
 			}
@@ -562,7 +587,7 @@ namespace components
 				int x = 0;
 				
 			}
-			// world geo? - floor / walls
+			// world geo? - floor / walls --- "LightmappedGeneric"
 			else if (mesh->m_VertexFormat == 0x2480033)
 			{
 				was_world = true;
@@ -582,7 +607,7 @@ namespace components
 				//do_not_render_next_mesh = true;
 
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX2);
-				dev->GetVertexShader(&ff_beamtransport::s_shader);
+				dev->GetVertexShader(&ff_beamtransport::s_shader); 
 				dev->SetVertexShader(nullptr);
 
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
@@ -821,6 +846,7 @@ namespace components
 
 			// related to props like portalgun, pickup-ables
 			// does not have a visibile texture set? (setting one manually makes it show up)
+			// renders decals/simpleshadow
 			else if (mesh->m_VertexFormat == 0x6c0005)
 			{
 				//do_not_render_next_mesh = true;
@@ -829,6 +855,16 @@ namespace components
 				{
 					int z = 1;
 				}
+
+				/*const auto shaderapi = game::get_shaderapi();
+				if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
+				{
+					if (auto name = cmat->vftable->GetName(cmat); name)
+					{
+						int x = 1;
+					}
+				}*/
+
 				// stride 48
 				int x = 1;
 				dev->SetFVF(D3DFVF_XYZB1 | D3DFVF_TEX5);
@@ -1247,15 +1283,36 @@ namespace components
 				dev->SetVertexShader(nullptr);
 			}
 
-			// terrain
+			// terrain - "WorldVertexTransition"
 			else if (mesh->m_VertexFormat == 0x480007)
 			{
 				//do_not_render_next_mesh = true;
 
+				const auto shaderapi = game::get_shaderapi();
+				if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
+				{
+					if (auto name = cmat->vftable->GetName(cmat); name)
+					{
+						const auto sname = std::string_view(name);  
+						if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+						{
+							int x = 1;
+						}
+					}
+				}
+
+				// m_BoundTexture[7] = first blend colormap
+				// m_BoundTexture[12] = second blend colormap
+				//BufferedState_t state = {};
+				//shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+				//IDirect3DBaseTexture9* vid = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, state.m_BoundTexture[7]); 
+				//dev->SetTexture(0, vid); 
+
 				// tc @ 28
-				dev->SetFVF(D3DFVF_XYZB4 | D3DFVF_TEX3); 
+				dev->SetFVF(D3DFVF_XYZB4 | D3DFVF_TEX3); // no vertex colors :(
+				//dev->SetFVF(D3DFVF_XYZB5 | D3DFVF_NORMAL | D3DFVF_DIFFUSE | D3DFVF_TEX3);
 				dev->GetVertexShader(&ff_terrain::s_shader);
-				dev->SetVertexShader(nullptr);
+				dev->SetVertexShader(nullptr); 
 			}
 
 			// hanging cables - requires vertex shader - verts not modified on the cpu

@@ -7,6 +7,7 @@
 
 // r_PortalTestEnts 0 -- needed for anti culling of entities
 // portal_ghosts_disable 1 ----- almost fixes chell in portals
+// r_portal_stencil_depth 0 --- can be 0 if all culling is disabled or with tweaked pvs -- disables portalstencildecal rendering
 
 
 // cl_particles_show_bbox 1 can be used to see fx names
@@ -464,5 +465,8 @@ namespace components
 
 		// C_VGuiScreen::DrawModel :: vgui screens (world) :: nop C_VGuiScreen::IsBackfacing check
 		utils::hook::nop(CLIENT_BASE + 0xCA14E, 2);
+
+		// C_Portal_Player::DrawModel :: disable 'C_Portal_Player::ShouldSkipRenderingViewpointPlayerForThisView' check to always render chell
+		utils::hook::nop(CLIENT_BASE + 0x274FFB, 2);
 	}
 }
