@@ -1582,16 +1582,15 @@ namespace components
 				DWORD og_alphablend = {};
 				dev->GetRenderState(D3DRS_ALPHABLENDENABLE, &og_alphablend);
 
-				DWORD og_alphaop = {}, og_alphaarg2 = {};
+				DWORD og_alphaop = {}, og_alphaarg1 = {}, og_alphaarg2 = {};
 				dev->GetTextureStageState(0, D3DTSS_ALPHAOP, &og_alphaop);
+				dev->GetTextureStageState(0, D3DTSS_ALPHAARG1, &og_alphaarg1);
 				dev->GetTextureStageState(0, D3DTSS_ALPHAARG2, &og_alphaarg2);
 
-				DWORD og_colorop = {}, og_colorarg2 = {};
+				DWORD og_colorop = {}, og_colorarg1 = {}, og_colorarg2 = {};
 				dev->GetTextureStageState(0, D3DTSS_COLOROP, &og_colorop);
+				dev->GetTextureStageState(0, D3DTSS_COLORARG1, &og_colorarg1);
 				dev->GetTextureStageState(0, D3DTSS_COLORARG2, &og_colorarg2);
-
-
-
 
 				// assign basemap2 to textureslot 0
 				if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, state.m_BoundTexture[7]);
@@ -1621,10 +1620,12 @@ namespace components
 				// restore texture, renderstates and texturestates
 				dev->SetTexture(0, og_tex0);
 				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, og_alphablend);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, og_alphaarg1);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, og_alphaarg2);
 				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, og_alphaop);
-				dev->SetTextureStageState(0, D3DTSS_COLORARG2, og_alphaarg2);
-				dev->SetTextureStageState(0, D3DTSS_COLOROP, og_colorop);
+				dev->SetTextureStageState(0, D3DTSS_COLORARG1, og_colorarg1);
 				dev->SetTextureStageState(0, D3DTSS_COLORARG2, og_colorarg2);
+				dev->SetTextureStageState(0, D3DTSS_COLOROP, og_colorop);
 			}
 		}
 
