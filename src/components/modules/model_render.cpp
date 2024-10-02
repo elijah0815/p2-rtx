@@ -1,5 +1,10 @@
 #include "std_include.hpp"
 
+// blending of multiple basemaps:
+// blending of basemap1 and basemap2 is not supported and would require larger code changes
+// vertex layout has (eg) position uv color ... but fixed function expects color to be infront of uv's
+// so even a second, separate renderpass of the same surface would not get us proper blended results 
+
 namespace components
 {
 	IDirect3DVertexShader9* og_model_shader = nullptr;
@@ -262,6 +267,7 @@ namespace components
 	LPDIRECT3DTEXTURE9 tex_glass_window_refract;
 
 	int do_not_render_next_mesh = false;
+	bool render_second_pass_with_basetexture2 = false;
 	std::uint64_t tick_on_first_no_render = 0;
 	
 
@@ -1286,31 +1292,62 @@ namespace components
 			// terrain - "WorldVertexTransition"
 			else if (mesh->m_VertexFormat == 0x480007)
 			{
-				//do_not_render_next_mesh = true;
+				do_not_render_next_mesh = true;
 
 				const auto shaderapi = game::get_shaderapi();
 				if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
 				{
-					if (auto name = cmat->vftable->GetName(cmat); name)
+					auto name = cmat->vftable->GetName(cmat);
+					if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
 					{
-						const auto sname = std::string_view(name);  
-						if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+						if (std::string_view(shadername).contains("WorldVertexTransition_DX9"))
 						{
-							int x = 1;
+							render_second_pass_with_basetexture2 = true;
 						}
 					}
+
+					/*if (auto name = cmat->vftable->GetName(cmat); name)
+					{
+						const auto sname = std::string_view(name);
+
+						if (sname.contains("blendwhitefloor_dirt01"))
+						{
+							render_second_pass_with_basetexture2 = true;
+						}
+					}*/
 				}
 
 				// m_BoundTexture[7] = first blend colormap
 				// m_BoundTexture[12] = second blend colormap
-				//BufferedState_t state = {};
-				//shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
-				//IDirect3DBaseTexture9* vid = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, state.m_BoundTexture[7]); 
-				//dev->SetTexture(0, vid); 
+				
+				// if envmap is present,  VERTEX_TANGENT_S | VERTEX_TANGENT_T | VERTEX_NORMAL is set
+				// if basetex2 is present, vertex color is set
+				// if bumpmap is present, tc count = 3 ... else 2
+
+				// texcoord0 : base texcoord
+				// texcoord1 : lightmap texcoord
+				// texcoord2 : lightmap texcoord offset
+				
+#if 0			// can be used to look into the vertex buffer to figure out the layout
+				{
+					IDirect3DVertexBuffer9* buff = nullptr;
+					UINT t_stride = 0u, t_offset = 0u;
+					dev->GetStreamSource(0, &buff, &t_offset, &t_stride);
+
+					void* buffer_data;
+					if (buff)
+					{
+						if (const auto hr = buff->Lock(0, 48u * 100u, &buffer_data, D3DLOCK_READONLY); hr >= 0)
+						{
+							buff->Unlock(); // break here
+						}
+					}
+				}
+#endif
 
 				// tc @ 28
-				dev->SetFVF(D3DFVF_XYZB4 | D3DFVF_TEX3); // no vertex colors :(
-				//dev->SetFVF(D3DFVF_XYZB5 | D3DFVF_NORMAL | D3DFVF_DIFFUSE | D3DFVF_TEX3);
+				//dev->SetFVF(D3DFVF_XYZB4 | D3DFVF_TEX3 | D3DFVF_TEXCOORDSIZE1(2));
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_DIFFUSE | D3DFVF_TEX3 | D3DFVF_TEXCOORDSIZE1(2));
 				dev->GetVertexShader(&ff_terrain::s_shader);
 				dev->SetVertexShader(nullptr); 
 			}
@@ -1487,9 +1524,81 @@ namespace components
 
 	// #
 
-	void cmeshdx8_renderpass_post_draw(std::uint32_t num_prims_rendered)
+	//void cmeshdx8_renderpass_post_draw(std::uint32_t num_prims_rendered)
+	void cmeshdx8_renderpass_post_draw([[maybe_unused]] void* device_ptr, D3DPRIMITIVETYPE type, std::int32_t base_vert_index, std::uint32_t min_vert_index, std::uint32_t num_verts, std::uint32_t start_index, std::uint32_t prim_count)
 	{
 		const auto dev = game::get_d3d_device();
+
+		// do not render next surface if set
+		if (!do_not_render_next_mesh)
+		{
+			dev->DrawIndexedPrimitive(type, base_vert_index, min_vert_index, num_verts, start_index, prim_count);
+		}
+
+		// render the current surface a second time (alpha blended) if set
+		// only works with shaders using basemap2 in sampler7
+		if (render_second_pass_with_basetexture2)
+		{
+			BufferedState_t state = {};
+			const auto shaderapi = game::get_shaderapi();
+			shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+
+			// check if basemap2 is assigned
+			if (state.m_BoundTexture[7])
+			{
+				// save texture, renderstates and texturestates
+
+				IDirect3DBaseTexture9* og_tex0 = nullptr;
+				dev->GetTexture(0, &og_tex0);
+
+				DWORD og_alphablend = {};
+				dev->GetRenderState(D3DRS_ALPHABLENDENABLE, &og_alphablend);
+
+				DWORD og_alphaop = {}, og_alphaarg2 = {};
+				dev->GetTextureStageState(0, D3DTSS_ALPHAOP, &og_alphaop);
+				dev->GetTextureStageState(0, D3DTSS_ALPHAARG2, &og_alphaarg2);
+
+				DWORD og_colorop = {}, og_colorarg2 = {};
+				dev->GetTextureStageState(0, D3DTSS_COLOROP, &og_colorop);
+				dev->GetTextureStageState(0, D3DTSS_COLORARG2, &og_colorarg2);
+
+
+
+
+				// assign basemap2 to textureslot 0
+				if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, state.m_BoundTexture[7]);
+					basemap2)
+				{
+					dev->SetTexture(0, basemap2);
+				}
+
+				// enable blending
+				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, 1);
+
+				// can be used to lighten up the albedo and add a little more alpha
+				dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 30));
+				dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+				dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+				dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_ADD);
+
+				// add a little more alpha
+				//dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(255, 0, 0, 10));
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_ADD);
+
+				// draw second surface
+				dev->DrawIndexedPrimitive(type, base_vert_index, min_vert_index, num_verts, start_index, prim_count);
+
+				// restore texture, renderstates and texturestates
+				dev->SetTexture(0, og_tex0);
+				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, og_alphablend);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, og_alphaop);
+				dev->SetTextureStageState(0, D3DTSS_COLORARG2, og_alphaarg2);
+				dev->SetTextureStageState(0, D3DTSS_COLOROP, og_colorop);
+				dev->SetTextureStageState(0, D3DTSS_COLORARG2, og_colorarg2);
+			}
+		}
 
 		// restore shader if we set it top null right before drawing in the func above
 		if (saved_shader_unk)
@@ -1626,33 +1735,52 @@ namespace components
 		{ dev->SetVertexShader(ff_vgui::s_shader04); dev->SetFVF(NULL); ff_vgui::s_shader04 = nullptr; }
 
 		do_not_render_next_mesh = false;
+		render_second_pass_with_basetexture2 = false;
 	}
 
 	HOOK_RETN_PLACE_DEF(cmeshdx8_renderpass_post_draw_retn_addr);
+	//void __declspec(naked) cmeshdx8_renderpass_post_draw_stub()
+	//{
+	//	__asm
+	//	{
+	//		mov		ecx, [esi + 0x50];
+	//		push	ecx;
+	//		push	eax;
+
+	//		mov		eax, do_not_render_next_mesh;
+	//		test	eax, eax;
+	//		jnz		SKIP;
+
+	//		call	edx; // DrawIndexedPrimitive
+	//		jmp		OG;
+
+	//	SKIP:
+	//		add		esp, 0x1C;
+
+	//	OG:
+	//		pushad;
+	//		push	edi;
+	//		call	cmeshdx8_renderpass_post_draw;
+	//		add		esp, 4;
+	//		popad;
+
+	//		jmp		cmeshdx8_renderpass_post_draw_retn_addr;
+	//	}
+	//}
+
 	void __declspec(naked) cmeshdx8_renderpass_post_draw_stub()
 	{
 		__asm
 		{
+			// og code
 			mov		ecx, [esi + 0x50];
 			push	ecx;
 			push	eax;
 
-			mov		eax, do_not_render_next_mesh;
-			test	eax, eax;
-			jnz		SKIP;
-
-			call	edx; // DrawIndexedPrimitive
-			jmp		OG;
-
-		SKIP:
+			//pushad;
+			call	cmeshdx8_renderpass_post_draw; // instead of 'edx' (DrawIndexedPrimitive)
 			add		esp, 0x1C;
-
-		OG:
-			pushad;
-			push	edi;
-			call	cmeshdx8_renderpass_post_draw;
-			add		esp, 4;
-			popad;
+			//popad;
 
 			jmp		cmeshdx8_renderpass_post_draw_retn_addr;
 		}
@@ -2038,6 +2166,8 @@ namespace components
 		utils::hook(RENDERER_BASE + 0xAD23, cmeshdx8_renderpass_pre_draw_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(cmeshdx8_renderpass_pre_draw_retn_addr, RENDERER_BASE + 0xAD28);
 
+		//utils::hook(RENDERER_BASE + 0xADF5, cmeshdx8_renderpass_post_draw_stub, HOOK_JUMP).install()->quick();
+		//HOOK_RETN_PLACE(cmeshdx8_renderpass_post_draw_retn_addr, RENDERER_BASE + 0xADFC);
 		utils::hook(RENDERER_BASE + 0xADF5, cmeshdx8_renderpass_post_draw_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(cmeshdx8_renderpass_post_draw_retn_addr, RENDERER_BASE + 0xADFC);
 
