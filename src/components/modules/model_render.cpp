@@ -1488,8 +1488,10 @@ namespace components
 			}
 
 			// on portal open - no clue
+			// portal gun pickup effect (pusling lights (not the beam))
 			else if (mesh->m_VertexFormat == 0x114900005)
 			{
+				//do_not_render_next_mesh = true;
 				// stride 96
 				int z = 0;
 				//dev->GetVertexShader(&ff_portalfx_04::s_shader);
@@ -1612,6 +1614,8 @@ namespace components
 			//BufferedState_t state = {};
 			//shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
 			//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
+			//dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[1])); // ew
+			//dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[2])); // ew
 		}
 	}
 
@@ -1657,7 +1661,7 @@ namespace components
 		}
 
 		// debug renderstates and texturestages
-#if 0	
+#if 1	
 		auto x = game::get_cshaderapi();
 
 		D3DSHADEMODE shademode;
@@ -1751,15 +1755,26 @@ namespace components
 				dev->GetTextureStageState(0, D3DTSS_COLORARG1, &og_colorarg1);
 				dev->GetTextureStageState(0, D3DTSS_COLORARG2, &og_colorarg2);
 
+				DWORD og_srcblend = {}, og_destblend = {};
+				dev->GetRenderState(D3DRS_SRCBLEND, &og_srcblend);
+				dev->GetRenderState(D3DRS_DESTBLEND, &og_destblend);
+
+
+				
+
 				// assign basemap2 to textureslot 0
 				if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, state.m_BoundTexture[7]);
 					basemap2)
 				{
-					dev->SetTexture(0, basemap2);
+					dev->SetTexture(0, basemap2); //dev->SetTexture(0, tex_portal_mask);
 				}
 
 				// enable blending
 				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, 1);
+
+				// picking up / moving a cube affects this and causes flickering on the blended surface
+				dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
 
 				// can be used to lighten up the albedo and add a little more alpha
 				dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 30));
@@ -1768,19 +1783,21 @@ namespace components
 				dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_ADD);
 
 				// add a little more alpha
-				//dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(255, 0, 0, 10));
 				dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
 				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
 				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_ADD);
 
+				//state.m_Transform[0].m[3][2] += 40.0f;
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
 
-				// draw second surface
+				// draw second surface 
 				dev->DrawIndexedPrimitive(type, base_vert_index, min_vert_index, num_verts, start_index, prim_count);
 
 				// restore texture, renderstates and texturestates
 				dev->SetTexture(0, og_tex0);
 				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, og_alphablend);
+				dev->SetRenderState(D3DRS_SRCBLEND, og_srcblend);
+				dev->SetRenderState(D3DRS_DESTBLEND, og_destblend);
 				dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, og_alphaarg1);
 				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, og_alphaarg2);
 				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, og_alphaop);
