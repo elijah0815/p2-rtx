@@ -1,13 +1,7 @@
 #include "std_include.hpp"
 
-// blending of multiple basemaps:
-// blending of basemap1 and basemap2 is not supported and would require larger code changes
-// vertex layout has (eg) position uv color ... but fixed function expects color to be infront of uv's
-// so even a second, separate renderpass of the same surface would not get us proper blended results 
-
-// compare all set renderstates by looking into shaderapi->m_DynamicState.m_RenderState (array index = D3DRS_)
-// same for m_DynamicState.m_TextureStage
-// and m_DynamicState.m_SamplerState
+// surface dual render (displacement with blending) gets invisible when skinned objects are moved?
+// eg terrain gets invisible if cube is picked up?
 
 namespace components
 {
@@ -1426,6 +1420,10 @@ namespace components
 					}
 				}
 #endif
+				// not doing this and picking up a skinned model (eg. cube) will break displacement rendering???
+				BufferedState_t state = {};
+				shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
 
 				// tc @ 28
 				//dev->SetFVF(D3DFVF_XYZB4 | D3DFVF_TEX3 | D3DFVF_TEXCOORDSIZE1(2));
@@ -1581,7 +1579,12 @@ namespace components
 				int xx = 1;  
 			}
 
-			int zz = 1; 
+			int zz = 1;
+
+			// this should be fine for everything?
+			//BufferedState_t state = {};
+			//shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+			//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
 		}
 	}
 
@@ -1736,6 +1739,8 @@ namespace components
 				dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_DIFFUSE);
 				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
 				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_ADD);
+
+				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
 
 				// draw second surface
 				dev->DrawIndexedPrimitive(type, base_vert_index, min_vert_index, num_verts, start_index, prim_count);
