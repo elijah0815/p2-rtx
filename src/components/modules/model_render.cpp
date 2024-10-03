@@ -5,7 +5,13 @@
 
 namespace components
 {
-	IDirect3DVertexShader9* og_model_shader = nullptr;
+	namespace ff_model
+	{
+		IDirect3DVertexShader9* s_shader = nullptr;
+		IDirect3DBaseTexture9* s_texture;
+	}
+
+	//IDirect3DVertexShader9* og_model_shader = nullptr;
 	bool is_portalgun_viewmodel = false;
 
 	bool has_materialvar(IMaterialInternal* cmat, const char* var_name, IMaterialVar** out_var = nullptr)
@@ -74,7 +80,7 @@ namespace components
 	void __fastcall tbl_hk::model_renderer::DrawModelExecute::Detour(void* ecx, void* edx, void* oo, const DrawModelState_t& state, const ModelRenderInfo_t& pInfo, matrix3x4_t* pCustomBoneToWorld)
 	{
 		const auto dev = game::get_d3d_device();
-		dev->GetVertexShader(&og_model_shader);
+		dev->GetVertexShader(&ff_model::s_shader);
 		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 
 		D3DMATRIX saved_view = {};
@@ -171,10 +177,16 @@ namespace components
 		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 		dev->SetFVF(NULL);
 
-		if (og_model_shader)
+		if (ff_model::s_shader)
 		{
-			dev->SetVertexShader(og_model_shader);
-			og_model_shader = nullptr;
+			dev->SetVertexShader(ff_model::s_shader);
+			ff_model::s_shader = nullptr;
+
+			if (ff_model::s_texture)
+			{
+				dev->SetTexture(0, ff_model::s_texture);
+				ff_model::s_texture = nullptr;
+			}
 		}
 	}
 
@@ -277,8 +289,17 @@ namespace components
 	LPDIRECT3DTEXTURE9 tex_glass_shards;
 	LPDIRECT3DTEXTURE9 tex_glass_window_refract;
 
+	LPDIRECT3DTEXTURE9 tex_black_shader;
+
 	int do_not_render_next_mesh = false;
 	bool render_second_pass_with_basetexture2 = false;
+
+	namespace ff_water
+	{
+		bool was_water = false;
+		IDirect3DVertexShader9* s_shader = nullptr;
+		IDirect3DBaseTexture9* s_texture;
+	}
 
 	bool render_with_new_stride = false;
 	std::uint32_t new_stride = 0u;
@@ -323,6 +344,11 @@ namespace components
 			D3DXCreateTextureFromFileA(dev, "glass_window_refract.png", &tex_glass_window_refract);
 		}
 
+		if (!tex_black_shader)
+		{
+			D3DXCreateTextureFromFileA(dev, "black_shader.png", &tex_black_shader);
+		}
+
 		//do_not_render_next_mesh = true;
 
 		VMatrix mtx = {};
@@ -355,6 +381,7 @@ namespace components
 			current_material_name = cmat->vftable->GetName(cmat);
 			current_shader_name = cmat->vftable->GetShaderName(cmat);
 
+#if 1
 			if (current_shader_name.contains("Water"))
 			{
 				IMaterialVar* var = nullptr;
@@ -379,11 +406,16 @@ namespace components
 						// put the normalmap into texture slot 0
 						else
 						{
+							
+
 							//  BindTexture( SHADER_SAMPLER2, TEXTURE_BINDFLAGS_NONE, NORMALMAP, BUMPFRAME );
 							IDirect3DBaseTexture9* tex = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, buffer_state.m_BoundTexture[2]);
 							if (tex)
 							{
+								// save og texture
+								dev->GetTexture(0, &ff_water::s_texture);
 								dev->SetTexture(0, tex);
+								ff_water::was_water = true;
 							}
 						}
 
@@ -416,6 +448,7 @@ namespace components
 				}
 				int x = 1;
 			}
+#endif
 
 			if (current_material_name.contains("water"))
 			{
@@ -443,7 +476,7 @@ namespace components
 
 		// player model - gun - grabable stuff - portal button - portal door
 		// stairs
-		else if (og_model_shader && mesh->m_VertexFormat == 0xa0003) 
+		else if (ff_model::s_shader && mesh->m_VertexFormat == 0xa0003)
 		{
 			//do_not_render_next_mesh = true;
 
@@ -488,7 +521,7 @@ namespace components
 
 		// this also renders the glass? infront of white panel lamps
 		// also renders some foliage (2nd level - emissive)
-		else if (og_model_shader) // should be stride 30
+		else if (ff_model::s_shader) // should be stride 30
 		{
 			//do_not_render_next_mesh = true;
 			if (auto shaderapi = game::get_shaderapi(); shaderapi)  
@@ -498,10 +531,9 @@ namespace components
 					if (auto name = cmat->vftable->GetName(cmat); name)
 					{
 						const auto sname = std::string_view(name);
-
-						if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+						const auto shadername = std::string_view(cmat->vftable->GetShaderName(cmat));
 						{
-							if (std::string_view(shadername).contains("Refract_DX90"))
+							if (shadername.contains("Refract_DX90"))
 							{
 								cmat->vftable->SetShader(cmat, "Wireframe");
 							}
@@ -519,6 +551,7 @@ namespace components
 						{
 							if (tex_glass_window_refract)
 							{
+								dev->GetTexture(0, &ff_model::s_texture);
 								dev->SetTexture(0, tex_glass_window_refract);
 							}
 
@@ -530,9 +563,17 @@ namespace components
 							//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
 						}
 
+						if (shadername.contains("Black"))
+						{
+							dev->SetTexture(0, tex_black_shader);
+						}
 						// replace glass refract with wireframe so that we can see our custom texture
 						
 					}
+				}
+				else
+				{
+					int x = 1;
 				}
 			}
 
@@ -692,35 +733,24 @@ namespace components
 			// this renders water but not the $bottommaterial
 			else if (mesh->m_VertexFormat == 0x2480033)
 			{
-				was_world = true;
 				//do_not_render_next_mesh = true;
 
-				//if (auto shaderapi = game::get_shaderapi(); shaderapi)
-				//{
-				//	if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
-				//	{
-				//		if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
-				//		{
-				//			BufferedState_t state = {};
-				//			shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
+				// tc @ 24
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3);
+				//dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_TEX7);
 
-				//			if (std::string_view(shadername).contains("WorldVertexTransition"))
-				//			{
-				//				int x = 1;
-				//			}
+				if (ff_water::was_water)
+				{
+					dev->GetVertexShader(&ff_water::s_shader);
+				}
+				else
+				{
+					was_world = true;
+					dev->GetVertexShader(&ff_worldmodel::s_shader);
+				}
 
-				//			if (auto name = cmat->vftable->GetName(cmat); name)
-				//			{
-				//				if (std::string_view(name).contains("elevator_screen"))
-				//				{
-				//					//do_not_render_next_mesh = true;
-				//					int x = 1;
-				//					//render_second_pass_with_basetexture2 = false;
-				//				}
-				//			}
-				//		}
-				//	}
-				//}
+				dev->SetVertexShader(nullptr);
+				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 
 #if 0			// can be used to look into the vertex buffer to figure out the layout
 				{
@@ -740,32 +770,6 @@ namespace components
 					}
 				}
 #endif
-				/*if (auto shaderapi = game::get_shaderapi(); shaderapi)
-				{
-					if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
-					{
-						if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
-						{
-							auto name = cmat->vftable->GetName(cmat);
-							auto alpha_tested = cmat->vftable->GetMaterialVarFlag(cmat, nullptr, MATERIAL_VAR_ALPHATEST);
-							if (std::string_view(shadername).contains("LightmappedGeneric"))
-							{
-								cmat->vftable->SetShader(cmat, "TreeLeaf"); // crashes - cant be done while rendering I guess
-							}
-							
-							int x = 1;
-						}
-					}
-				}*/
-
-				// tc @ 24
-				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3);
-				//dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_TEX7);
-				dev->GetVertexShader(&ff_worldmodel::s_shader);
-				dev->SetVertexShader(nullptr);
-				//dev->GetTransform(D3DTS_WORLD, &saved_world_mtx_unk);
-
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 			}
 			// transporting beams
 			else if (mesh->m_VertexFormat == 0x80005) // stride 0x20
@@ -1406,7 +1410,7 @@ namespace components
 			else if (mesh->m_VertexFormat == 0x92480005) 
 			{
 				//do_not_render_next_mesh = true;
-				int zz = 1;  
+				int zz = 1;   
 			}
 
 			// on portal open - spark fx (center)
@@ -1569,7 +1573,7 @@ namespace components
 			else if (mesh->m_VertexFormat == 0x2900005)
 			{
 				//do_not_render_next_mesh = true;
-				int z = 0;
+				int z = 0; 
 			} 
 
 			// on portal open - no clue
@@ -1661,7 +1665,7 @@ namespace components
 			}
 
 			// decals
-			else if (mesh->m_VertexFormat == 0x2480037)
+			else if (mesh->m_VertexFormat == 0x2480037) 
 			{
 				// stride = 0x50 - 80
 				//do_not_render_next_mesh = true;
@@ -1749,7 +1753,7 @@ namespace components
 		}
 
 		// debug renderstates and texturestages
-#if 1	
+#if 0	
 		auto x = game::get_cshaderapi();
 
 		D3DSHADEMODE shademode;
@@ -1895,14 +1899,11 @@ namespace components
 			}
 		}
 
-		// restore shader if we set it top null right before drawing in the func above
 		if (saved_shader_unk)
 		{
 			dev->SetVertexShader(saved_shader_unk);
 			dev->SetFVF(NULL);
 			saved_shader_unk = nullptr;
-			//dev->SetTransform(D3DTS_WORLD, &saved_world_mtx_unk);
-			//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 		}
 
 		if (ff_terrain::s_shader)
@@ -1910,6 +1911,20 @@ namespace components
 			dev->SetVertexShader(ff_terrain::s_shader);
 			dev->SetFVF(NULL);
 			ff_terrain::s_shader = nullptr;
+		}
+
+		if (ff_water::s_shader)
+		{
+			dev->SetVertexShader(ff_water::s_shader);
+			dev->SetFVF(NULL);
+			ff_water::s_shader = nullptr;
+		}
+
+		if (ff_water::was_water)
+		{
+			dev->SetTexture(0, ff_water::s_texture);
+			ff_water::s_texture = nullptr;
+			ff_water::was_water = false;
 		}
 
 		if (ff_worldmodel::s_shader)
@@ -2255,7 +2270,7 @@ namespace components
 							{
 								IDirect3DBaseTexture9* aa = nullptr;
 								dev->GetTexture(1, &aa);
-								dev->SetTexture(0, aa);
+								dev->SetTexture(0, aa); 
 							}
 							else if (sname.contains("vacum_pipe_glass")) 
 							{
