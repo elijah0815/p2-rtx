@@ -8,6 +8,19 @@ namespace components
 	IDirect3DVertexShader9* og_model_shader = nullptr;
 	bool is_portalgun_viewmodel = false;
 
+	bool has_materialvar(IMaterialInternal* cmat, const char* var_name, IMaterialVar** out_var = nullptr)
+	{
+		bool found = false;
+		auto var = cmat->vftable->FindVar(cmat, nullptr, var_name, &found, false);
+
+		if (out_var)
+		{
+			*out_var = var;
+		}
+
+		return found;
+	}
+
 	// returns true if exists
 	bool add_nocull_materialvar(IMaterialInternal* cmat)
 	{
@@ -331,20 +344,91 @@ namespace components
 		mtx.m[3][3] = game::identity[3][3];
 
 		std::string_view current_material_name;
+		std::string_view current_shader_name;
 		const auto shaderapi = game::get_shaderapi();
+
+		BufferedState_t buffer_state = {};
+		shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &buffer_state);
+
 		if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
 		{
 			current_material_name = cmat->vftable->GetName(cmat);
+			current_shader_name = cmat->vftable->GetShaderName(cmat);
 
-			if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+			if (current_shader_name.contains("Water"))
 			{
+				IMaterialVar* var = nullptr;
+				if (has_materialvar(cmat, "$basetexture", &var)) 
+				{
+					// if material has NO defined basetexture
+					if (var && !var->vftable->IsDefined(var))
+					{
+						// check if it has a defined bottommaterial
+						var = nullptr;
+						const auto has_bottom_mat = has_materialvar(cmat, "$bottommaterial", &var);
+
+						if (!has_bottom_mat /*&& var && var->vftable->IsDefined(var)*/)
+						{
+							// do not render water surfaces that have no bottom material (this is the surface below the water)
+							// could just check $abovewater I guess? lmao
+
+							// we only need one surface
+							do_not_render_next_mesh = true;
+						}
+
+						// put the normalmap into texture slot 0
+						else
+						{
+							//  BindTexture( SHADER_SAMPLER2, TEXTURE_BINDFLAGS_NONE, NORMALMAP, BUMPFRAME );
+							IDirect3DBaseTexture9* tex = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, buffer_state.m_BoundTexture[2]);
+							if (tex)
+							{
+								dev->SetTexture(0, tex);
+							}
+						}
+
+						//if (has_materialvar(cmat, "$bottommaterial", &var))
+						//{
+						//	if (var)
+						//	{
+						//		// do not render the current surface if there is a bottom material
+						//		// we only need one surface
+						//		if (var->vftable->IsDefined(var))
+						//		{
+						//			do_not_render_next_mesh = true;
+						//		}
+						//		// if there is no bottom material put the normalmap into texture slot 0
+						//		else
+						//		{
+						//			//  BindTexture( SHADER_SAMPLER2, TEXTURE_BINDFLAGS_NONE, NORMALMAP, BUMPFRAME );
+						//			IDirect3DBaseTexture9* tex = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, buffer_state.m_BoundTexture[2]);
+						//			if (tex)
+						//			{
+						//				dev->SetTexture(0, tex);
+						//			}
+						//		}
+						//	}
+
+						auto asdasd = var->vftable->GetStringValue(var);
+						int y = 1;
+					}
+					int yz = 1;
+				}
 				int x = 1;
 			}
 
-			if (current_material_name.contains("blendwhitefloor_dirt01"))
+			if (current_material_name.contains("water"))
 			{
+				//do_not_render_next_mesh = true;
 				int x = 1;
 			}
+
+			if (current_material_name.contains("toxicslime002a_beneath"))
+			{
+				//do_not_render_next_mesh = true;
+				int x = 1;
+			}
+
 		}
 
 		if (og_bmodel_shader && mesh->m_VertexFormat == 0x2480033)
@@ -369,7 +453,8 @@ namespace components
 				{
 					if (auto name = cmat->vftable->GetName(cmat); name)
 					{
-						if (std::string_view(name).contains("props_destruction/glass_"))
+						const auto cname = std::string_view(name);
+						if (cname.contains("props_destruction/glass_"))
 						{
 							//do_not_render_next_mesh = true;
 							if (tex_glass_shards)
@@ -377,6 +462,10 @@ namespace components
 								dev->SetTexture(0, tex_glass_shards);
 							}
 						}
+						/*else if (cname.contains("chell"))
+						{
+							do_not_render_next_mesh = true;
+						}*/
 						// oddly lit staircase
 						/*else if (std::string_view(name).contains("railing_bts"))
 						{
@@ -600,6 +689,7 @@ namespace components
 				
 			}
 			// world geo? - floor / walls --- "LightmappedGeneric"
+			// this renders water but not the $bottommaterial
 			else if (mesh->m_VertexFormat == 0x2480033)
 			{
 				was_world = true;
@@ -786,7 +876,7 @@ namespace components
 							// vgui/signage/vgui_indicator_checked
 							else if (sname.contains("vgui_indicator_checked"))
 							{
-								int x = 1;
+								int x = 1; 
 								/*BufferedState_t state = {};
 								shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
 								dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
@@ -803,24 +893,19 @@ namespace components
 
 				dev->GetVertexShader(&ff_laser::s_shader); 
 				
-				if (mesh->m_Mode == D3DPT_TRIANGLELIST)
+				//if (mesh->m_Mode == D3DPT_TRIANGLELIST)
 				{
-					// tc @ 12
-					//dev->SetFVF(D3DFVF_XYZW | D3DFVF_NORMAL | D3DFVF_TEX1 |
-					//	D3DFVF_TEXCOORDSIZE2(0) | // tc0 uses 2 floats
-					//	//D3DFVF_TEXCOORDSIZE2(1) | // tc1 uses 2 floats
-					//	D3DFVF_TEXCOORDSIZE1(1)); // tc2 uses 1 float
-
-					dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1 | D3DFVF_TEXCOORDSIZE2(0));
+					// noticed some normal issues on vgui_indicator's .. disable normals for now?
+					dev->SetFVF(D3DFVF_XYZB3 /*| D3DFVF_NORMAL*/ | D3DFVF_TEX1 | D3DFVF_TEXCOORDSIZE2(0));
 					dev->SetVertexShader(nullptr);
 
 					//swing = true;
 				}
-				if (mesh->m_Mode == D3DPT_TRIANGLESTRIP)
+				/*if (mesh->m_Mode == D3DPT_TRIANGLESTRIP)
 				{
 					dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1 | D3DFVF_TEXCOORDSIZE2(0));
 					dev->SetVertexShader(nullptr);
-				}
+				}*/
 
 				/*float mtx[4][4] = {};
 				mtx[0][0] = game::identity[0][0];
@@ -1318,7 +1403,7 @@ namespace components
 			}
 
 			// ?
-			else if (mesh->m_VertexFormat == 0x92480005)
+			else if (mesh->m_VertexFormat == 0x92480005) 
 			{
 				//do_not_render_next_mesh = true;
 				int zz = 1;  
@@ -1383,7 +1468,7 @@ namespace components
 			}
 
 			// ? bed
-			else if (mesh->m_VertexFormat == 0xa0103) 
+			else if (mesh->m_VertexFormat == 0xa0103)  
 			{
 				//do_not_render_next_mesh = true;
 				// tc @ 24
@@ -1485,7 +1570,7 @@ namespace components
 			{
 				//do_not_render_next_mesh = true;
 				int z = 0;
-			}
+			} 
 
 			// on portal open - no clue
 			// portal gun pickup effect (pusling lights (not the beam))
@@ -1554,6 +1639,7 @@ namespace components
 			}
 
 			// portal clearing gate
+			// renders water $bottommaterial
 			else if (mesh->m_VertexFormat == 0x80033)
 			{
 				//stride = 0x40 
@@ -1564,6 +1650,8 @@ namespace components
 					BufferedState_t state = {};
 					shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
 					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
+
+
 				}
 
 				// tc @ 24

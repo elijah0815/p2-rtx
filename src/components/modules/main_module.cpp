@@ -3,11 +3,11 @@
 // -novid -disable_d3d9_hacks -limitvsconst -disallowhwmorph -no_compressed_verts -maxdxlevel 90 -dxlevel 90 +sv_cheats 1 +developer 1 +cl_brushfastpath 0 +cl_modelfastpath 0 +r_ShowViewerArea 1 +mat_fullbright 1  +mat_queue_mode 0 +mat_softwarelighting 1 +mat_softwareskin 1 +mat_phong 1 +mat_parallaxmap 0 +mat_frame_sync_enable 0 +mat_fastnobump 1 +mat_disable_bloom 1 +mat_dof_enabled 0 +mat_displacementmap 0 +mat_drawflat 1 +mat_normalmaps 0 +mat_normals 0 +sv_lan 1 +map devtest
 
 // dxlevel 100 required
-// -novid -disable_d3d9_hacks -limitvsconst -disallowhwmorph -no_compressed_verts +sv_cheats 1 +r_PortalTestEnts 0 +r_portal_earlyz 0 +r_portal_use_complex_frustums 0 +r_portal_use_pvs_optimization 0 +r_portalstencildisable 0 +portal_stencil_depth 1 +portal_draw_ghosting 1 +r_staticprop_lod 0 +r_lod 0 +r_threaded_particles 0 +developer 1 +r_entityclips 0 +cl_brushfastpath 0 +cl_showpos 1 +cl_tlucfastpath 0 +cl_modelfastpath 0 +r_ShowViewerArea 1 +mat_fullbright 1 +mat_queue_mode 0 +mat_softwarelighting 0 +mat_softwareskin 1 +mat_phong 1 +mat_parallaxmap 0 +mat_frame_sync_enable 0 +mat_fastnobump 1 +mat_disable_bloom 1 +mat_dof_enabled 0 +mat_displacementmap 0 +mat_drawflat 1 +mat_normalmaps 0 +mat_normals 0 +sv_lan 1 +map sp_a1_intro1
+// -novid -disable_d3d9_hacks -limitvsconst -disallowhwmorph -no_compressed_verts +sv_cheats 1 +developer 1 +r_ShowViewerArea 1 +cl_showpos 1 +r_PortalTestEnts 0 +portal_ghosts_disable 0 +r_portal_earlyz 0 +r_portal_use_complex_frustums 0 +r_portal_use_pvs_optimization 0 +r_portalstencildisable 0 +portal_stencil_depth 1 +portal_draw_ghosting 0 +r_staticprop_lod 0 +r_lod 0 +r_threaded_particles 0 +r_entityclips 0 +cl_brushfastpath 0 +cl_tlucfastpath 0 +cl_modelfastpath 0 +mat_fullbright 1 +mat_queue_mode 0 +mat_softwarelighting 0 +mat_softwareskin 1 +mat_phong 1 +mat_parallaxmap 0 +mat_frame_sync_enable 0 +mat_fastnobump 1 +mat_disable_bloom 1 +mat_dof_enabled 0 +mat_displacementmap 0 +mat_drawflat 1 +mat_normalmaps 0 +mat_normals 0 +sv_lan 1 +map sp_a1_intro2
 
-// r_PortalTestEnts 0 -- needed for anti culling of entities
-// portal_ghosts_disable 1 ----- almost fixes chell in portals
-// r_portal_stencil_depth 0 --- can be 0 if all culling is disabled or with tweaked pvs -- disables portalstencildecal rendering
+// r_PortalTestEnts			:: 0 = needed for anti culling of entities
+// portal_ghosts_disable	:: 0 = okay until virtual instances are working (see cportalghost_should_draw)			|| 1 = disable rendering of ghost models
+// r_portal_stencil_depth	:: 0 = okay as long most/all culling is disabled (may still produce missing surfaces)	|| 1 = might lower performance but should fix invisible surfaces
 
 
 // cl_particles_show_bbox 1 can be used to see fx names
@@ -416,6 +416,57 @@ namespace components
 		}
 	}*/
 
+	// return nullptr a nullptr to skip rendering of ghost - return ent otherwise
+	// - currently used to disable ghosts of chell and the world portalgun so that we can set 'portal_disable_ghosts' to 0
+	// - useful if we move a cube through a portal
+	// #TODO: fixme when remix virtual instances work?
+	C_BaseEntity* cportalghost_should_draw(C_BaseEntity* ent)
+	{
+		if (ent && ent->model)
+		{
+			//const auto mdl_name = std::string_view(ent->model->szPathName);
+			//if (mdl_name.contains("chell") || mdl_name.contains("portalgun"))
+			if (ent->model->radius == 0.0f || ent->model->radius == 24.6587677f)
+			{
+				return nullptr; 
+			}
+		}
+
+		return ent;
+	}
+
+	HOOK_RETN_PLACE_DEF(cportalghost_should_draw_retn);
+	__declspec(naked) void cportalghost_should_draw_stub()
+	{
+		__asm
+		{
+			movss   dword ptr[esp], xmm0; // og
+
+			mov		ecx, eax; // save og entity
+
+			pushad;
+			push	eax; // C_BaseEntity
+			call	cportalghost_should_draw;
+			add		esp, 4;
+
+			test	eax, eax;
+			jz		SKIP;
+			popad;
+
+			mov		eax, ecx; // restore og entity
+			jmp		cportalghost_should_draw_retn; // continue normally
+
+		SKIP:
+			popad;
+			add		esp, 4; // ecx was pushed 1 instr. before the hook
+			xor		al, al;
+			pop     esi;
+			mov     esp, ebp;
+			pop     ebp;
+			retn;
+		}
+	}
+
 	main_module::main_module()
 	{
 		/*HOOK_RETN_PLACE(pl_view_stub_retn, CLIENT_BASE + 0x4DA02);
@@ -468,5 +519,9 @@ namespace components
 
 		// C_Portal_Player::DrawModel :: disable 'C_Portal_Player::ShouldSkipRenderingViewpointPlayerForThisView' check to always render chell
 		utils::hook::nop(CLIENT_BASE + 0x274FFB, 2);
+
+
+		utils::hook(CLIENT_BASE + 0x27D4AC, cportalghost_should_draw_stub).install()->quick();
+		HOOK_RETN_PLACE(cportalghost_should_draw_retn, CLIENT_BASE + 0x27D4B1);
 	}
 }
