@@ -5,6 +5,10 @@
 // vertex layout has (eg) position uv color ... but fixed function expects color to be infront of uv's
 // so even a second, separate renderpass of the same surface would not get us proper blended results 
 
+// compare all set renderstates by looking into shaderapi->m_DynamicState.m_RenderState (array index = D3DRS_)
+// same for m_DynamicState.m_TextureStage
+// and m_DynamicState.m_SamplerState
+
 namespace components
 {
 	IDirect3DVertexShader9* og_model_shader = nullptr;
@@ -414,6 +418,10 @@ namespace components
 							{
 								cmat->vftable->SetShader(cmat, "Wireframe");
 							}
+							/*else if (std::string_view(shadername).contains("TreeLeaf"))
+							{
+								int x = 1;
+							}*/
 							else
 							{
 								int x = 1;
@@ -626,9 +634,45 @@ namespace components
 				//	}
 				//}
 
+#if 0			// can be used to look into the vertex buffer to figure out the layout
+				{
+					IDirect3DVertexBuffer9* buff = nullptr;
+					UINT t_stride = 0u, t_offset = 0u;
+					dev->GetStreamSource(0, &buff, &t_offset, &t_stride);
+
+					// looking at the data, the actual stride seems to be 48?
+
+					void* buffer_data;
+					if (buff) 
+					{
+						if (const auto hr = buff->Lock(0, t_stride * 10u, &buffer_data, D3DLOCK_READONLY); hr >= 0)
+						{
+							buff->Unlock(); // break here
+						}
+					}
+				}
+#endif
+				/*if (auto shaderapi = game::get_shaderapi(); shaderapi)
+				{
+					if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
+					{
+						if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+						{
+							auto name = cmat->vftable->GetName(cmat);
+							auto alpha_tested = cmat->vftable->GetMaterialVarFlag(cmat, nullptr, MATERIAL_VAR_ALPHATEST);
+							if (std::string_view(shadername).contains("LightmappedGeneric"))
+							{
+								cmat->vftable->SetShader(cmat, "TreeLeaf"); // crashes - cant be done while rendering I guess
+							}
+							
+							int x = 1;
+						}
+					}
+				}*/
+
 				// tc @ 24
-				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
-				dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_TEX7);
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3);
+				//dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_TEX7);
 				dev->GetVertexShader(&ff_worldmodel::s_shader);
 				dev->SetVertexShader(nullptr);
 				//dev->GetTransform(D3DTS_WORLD, &saved_world_mtx_unk);
@@ -704,6 +748,7 @@ namespace components
 			// lasers - indicator dots - some of the white light stripes
 			// this also renders the the wireframe portal if hook enabled to render wireframe for portals
 			// also renders white stuff behind sliding doors
+			// treeleaf shader
 			// + skybox
 			else if (mesh->m_VertexFormat == 0x80003)
 			{
@@ -716,6 +761,15 @@ namespace components
 						if (auto name = cmat->vftable->GetName(cmat); name)
 						{
 							const auto sname = std::string_view(name);
+
+							/*if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+							{
+								if (std::string_view(shadername).contains("TreeLeaf"))
+								{
+									int x = 1; 
+								}
+								int y = 1;
+							}*/
 
 							// fix sliding door background
 							if (sname.contains("decals/portalstencildecal")) 
@@ -730,11 +784,6 @@ namespace components
 							else if (sname.contains("light_panel_"))
 							{
 								add_nocull_materialvar(cmat);
-
-								if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
-								{
-									int x = 1; 
-								}
 							}
 							// vgui/signage/vgui_indicator_checked
 							else if (sname.contains("vgui_indicator_checked"))
@@ -745,6 +794,11 @@ namespace components
 								dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
 								was_transform_set = true;*/
 							}
+							/*else if (sname.contains("blendwhitefloor_dirt01"))
+							{
+								dev->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_ALWAYS);
+								render_second_pass_with_basetexture2 = true;
+							}*/
 						}
 					}
 				}
@@ -1557,11 +1611,71 @@ namespace components
 	{
 		const auto dev = game::get_d3d_device();
 
+		// use Gamma 1.0 (fixes dark albedo)
+		dev->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, 0);
+
 		// do not render next surface if set
 		if (!do_not_render_next_mesh)
 		{
 			dev->DrawIndexedPrimitive(type, base_vert_index, min_vert_index, num_verts, start_index, prim_count);
 		}
+
+		// debug renderstates and texturestages
+#if 0	
+		auto x = game::get_cshaderapi();
+
+		D3DSHADEMODE shademode;
+		dev->GetRenderState(D3DRS_SHADEMODE, (DWORD*)&shademode);
+
+		DWORD alpharef, alphafunc;
+		dev->GetRenderState(D3DRS_ALPHAREF, (DWORD*)&alpharef);
+		dev->GetRenderState(D3DRS_ALPHAFUNC, (DWORD*)&alphafunc);
+
+		D3DBLEND srcblend, destblend;
+		dev->GetRenderState(D3DRS_SRCBLEND, (DWORD*)&srcblend);
+		dev->GetRenderState(D3DRS_DESTBLEND, (DWORD*)&destblend);
+
+		D3DBLENDOP blendop, blendop_alpha;
+		dev->GetRenderState(D3DRS_BLENDOP, (DWORD*)&blendop);
+		dev->GetRenderState(D3DRS_BLENDOPALPHA, (DWORD*)&blendop_alpha);
+
+		D3DCOLOR blend_factor;
+		dev->GetRenderState(D3DRS_BLENDFACTOR, (DWORD*)&blend_factor);
+
+		D3DCOLOR texfactor;
+		dev->GetRenderState(D3DRS_TEXTUREFACTOR, (DWORD*)&texfactor);
+
+		DWORD colorvertex, vertexblend, colorwrite1, colorwrite2, colorwrite3, srgbwrite;
+		dev->GetRenderState(D3DRS_COLORVERTEX, (DWORD*)&colorvertex);
+		dev->GetRenderState(D3DRS_VERTEXBLEND, (DWORD*)&vertexblend);
+		dev->GetRenderState(D3DRS_COLORWRITEENABLE1, (DWORD*)&colorwrite1);
+		dev->GetRenderState(D3DRS_COLORWRITEENABLE2, (DWORD*)&colorwrite2);
+		dev->GetRenderState(D3DRS_COLORWRITEENABLE3, (DWORD*)&colorwrite3);
+		dev->GetRenderState(D3DRS_SRGBWRITEENABLE, (DWORD*)&srgbwrite);
+
+		DWORD sepalphablend;
+		D3DBLENDOP srcblendalpha, destblendalpha;
+		dev->GetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, (DWORD*)&sepalphablend);
+		dev->GetRenderState(D3DRS_SRCBLENDALPHA, (DWORD*)&srcblendalpha);
+		dev->GetRenderState(D3DRS_DESTBLENDALPHA, (DWORD*)&destblendalpha);
+
+		DWORD tss_colorarg0, tss_colorarg1, tss_colorarg2, tss_alphaarg0, tss_alphaarg1, tss_alphaarg2;
+		dev->GetTextureStageState(0, D3DTSS_COLORARG0, &tss_colorarg0);
+		dev->GetTextureStageState(0, D3DTSS_COLORARG1, &tss_colorarg1);
+		dev->GetTextureStageState(0, D3DTSS_COLORARG2, &tss_colorarg2);
+		dev->GetTextureStageState(0, D3DTSS_ALPHAARG0, &tss_alphaarg0);
+		dev->GetTextureStageState(0, D3DTSS_ALPHAARG0, &tss_alphaarg0);
+		dev->GetTextureStageState(0, D3DTSS_ALPHAARG1, &tss_alphaarg1);
+		dev->GetTextureStageState(0, D3DTSS_ALPHAARG2, &tss_alphaarg2);
+
+		D3DTEXTUREOP tss_colorop, tss_alphaop;
+		dev->GetTextureStageState(0, D3DTSS_COLOROP, (DWORD*)&tss_colorop);
+		dev->GetTextureStageState(0, D3DTSS_ALPHAOP, (DWORD*)&tss_alphaop);
+
+		DWORD sampler_gamma;
+		dev->GetSamplerState(0, D3DSAMP_SRGBTEXTURE, &sampler_gamma);
+		dev->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, 0);
+#endif
 
 		// render the current surface a second time (alpha blended) if set
 		// only works with shaders using basemap2 in sampler7
@@ -1574,6 +1688,15 @@ namespace components
 			// check if basemap2 is assigned
 			if (state.m_BoundTexture[7])
 			{
+				//auto asd = x->m_DynamicState.m_SamplerState[7].m_TextureEnable;
+
+				/*dev->SetRenderState(D3DRS_ALPHAREF, 127);
+				dev->SetRenderState(D3DRS_ALPHAFUNC, 5);
+				dev->SetRenderState(D3DRS_SRGBWRITEENABLE, 0);
+				dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);*/
+
+
 				// save texture, renderstates and texturestates
 
 				IDirect3DBaseTexture9* og_tex0 = nullptr;

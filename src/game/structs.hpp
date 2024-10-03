@@ -206,6 +206,14 @@ namespace components
 		float m[4][4];
 	};
 
+	struct IntVector4D
+	{
+		int x;
+		int y;
+		int z;
+		int w;
+	};
+
 	struct colorVec
 	{
 		unsigned int r;
@@ -838,60 +846,60 @@ namespace components
 	struct IMaterialInternal_vtbl
 	{
 		const char* (__fastcall* GetName)(IMaterialInternal*);
-		const char* (__thiscall* GetTextureGroupName)(IMaterial*);
-		PreviewImageRetVal_t(__thiscall* GetPreviewImageProperties)(IMaterial*, int*, int*, ImageFormat*, bool*);
-		PreviewImageRetVal_t(__thiscall* GetPreviewImage)(IMaterial*, unsigned __int8*, int, int, ImageFormat);
-		int(__thiscall* GetMappingWidth)(IMaterial*);
-		int(__thiscall* GetMappingHeight)(IMaterial*);
-		int(__thiscall* GetNumAnimationFrames)(IMaterial*);
-		bool(__thiscall* InMaterialPage)(IMaterial*);
-		void(__thiscall* GetMaterialOffset)(IMaterial*, float*);
-		void(__thiscall* GetMaterialScale)(IMaterial*, float*);
-		IMaterial* (__thiscall* GetMaterialPage)(IMaterial*);
+		const char* (__thiscall* GetTextureGroupName)(IMaterialInternal*);
+		PreviewImageRetVal_t(__thiscall* GetPreviewImageProperties)(IMaterialInternal*, int*, int*, ImageFormat*, bool*);
+		PreviewImageRetVal_t(__thiscall* GetPreviewImage)(IMaterialInternal*, unsigned __int8*, int, int, ImageFormat);
+		int(__thiscall* GetMappingWidth)(IMaterialInternal*);
+		int(__thiscall* GetMappingHeight)(IMaterialInternal*);
+		int(__thiscall* GetNumAnimationFrames)(IMaterialInternal*);
+		bool(__thiscall* InMaterialPage)(IMaterialInternal*);
+		void(__thiscall* GetMaterialOffset)(IMaterialInternal*, float*);
+		void(__thiscall* GetMaterialScale)(IMaterialInternal*, float*);
+		IMaterialInternal* (__thiscall* GetMaterialPage)(IMaterialInternal*);
 		IMaterialVar* (__fastcall* FindVar)(IMaterialInternal*, void* null, const char*, bool*, bool);
-		void(__thiscall* IncrementReferenceCount)(IMaterial*);
-		void(__thiscall* DecrementReferenceCount)(IMaterial*);
-		int(__thiscall* GetEnumerationID)(IMaterial*);
-		void(__thiscall* GetLowResColorSample)(IMaterial*, float, float, float*);
-		void(__thiscall* RecomputeStateSnapshots)(IMaterial*);
-		bool(__thiscall* IsTranslucent)(IMaterial*);
-		bool(__thiscall* IsAlphaTested)(IMaterial*);
-		bool(__thiscall* IsVertexLit)(IMaterial*);
-		unsigned __int64(__fastcall* GetVertexFormat)(IMaterial*, void* null);
-		bool(__thiscall* HasProxy)(IMaterial*);
-		bool(__thiscall* UsesEnvCubemap)(IMaterial*);
-		bool(__thiscall* NeedsTangentSpace)(IMaterial*);
-		bool(__thiscall* NeedsPowerOfTwoFrameBufferTexture)(IMaterial*, bool);
-		bool(__thiscall* NeedsFullFrameBufferTexture)(IMaterial*, bool);
-		bool(__thiscall* NeedsSoftwareSkinning)(IMaterial*);
-		void(__thiscall* AlphaModulate)(IMaterial*, float);
-		void(__thiscall* ColorModulate)(IMaterial*, float, float, float);
-		void(__thiscall* SetMaterialVarFlag)(IMaterial*, MaterialVarFlags_t, bool);
-		bool(__thiscall* GetMaterialVarFlag)(IMaterial*, MaterialVarFlags_t);
-		void(__thiscall* GetReflectivity)(IMaterial*, Vector*);
-		bool(__thiscall* GetPropertyFlag)(IMaterial*, MaterialPropertyTypes_t);
-		bool(__thiscall* IsTwoSided)(IMaterial*);
+		void(__thiscall* IncrementReferenceCount)(IMaterialInternal*);
+		void(__thiscall* DecrementReferenceCount)(IMaterialInternal*);
+		int(__thiscall* GetEnumerationID)(IMaterialInternal*);
+		void(__thiscall* GetLowResColorSample)(IMaterialInternal*, float, float, float*);
+		void(__thiscall* RecomputeStateSnapshots)(IMaterialInternal*);
+		bool(__thiscall* IsTranslucent)(IMaterialInternal*);
+		bool(__thiscall* IsAlphaTested)(IMaterialInternal*);
+		bool(__thiscall* IsVertexLit)(IMaterialInternal*);
+		unsigned __int64(__fastcall* GetVertexFormat)(IMaterialInternal*, void* null);
+		bool(__thiscall* HasProxy)(IMaterialInternal*);
+		bool(__thiscall* UsesEnvCubemap)(IMaterialInternal*);
+		bool(__thiscall* NeedsTangentSpace)(IMaterialInternal*);
+		bool(__thiscall* NeedsPowerOfTwoFrameBufferTexture)(IMaterialInternal*, bool);
+		bool(__thiscall* NeedsFullFrameBufferTexture)(IMaterialInternal*, bool);
+		bool(__thiscall* NeedsSoftwareSkinning)(IMaterialInternal*);
+		void(__thiscall* AlphaModulate)(IMaterialInternal*, float);
+		void(__thiscall* ColorModulate)(IMaterialInternal*, float, float, float);
+		void(__thiscall* SetMaterialVarFlag)(IMaterialInternal*, MaterialVarFlags_t, bool);
+		bool(__fastcall* GetMaterialVarFlag)(IMaterialInternal*, void* null, MaterialVarFlags_t);
+		void(__thiscall* GetReflectivity)(IMaterialInternal*, Vector*);
+		bool(__thiscall* GetPropertyFlag)(IMaterialInternal*, MaterialPropertyTypes_t);
+		bool(__thiscall* IsTwoSided)(IMaterialInternal*);
 		void(__thiscall* SetShader)(IMaterialInternal*, const char*);
-		int(__thiscall* GetNumPasses)(IMaterial*);
-		int(__thiscall* GetTextureMemoryBytes)(IMaterial*);
-		void(__thiscall* Refresh)(IMaterial*);
-		bool(__thiscall* NeedsLightmapBlendAlpha)(IMaterial*);
-		bool(__thiscall* NeedsSoftwareLighting)(IMaterial*);
-		int(__thiscall* ShaderParamCount)(IMaterial*);
-		IMaterialVar** (__thiscall* GetShaderParams)(IMaterial*);
-		bool(__thiscall* IsErrorMaterial)(IMaterial*);
-		void(__thiscall* Unused)(IMaterial*);
-		float(__thiscall* GetAlphaModulation)(IMaterial*);
-		void(__thiscall* GetColorModulation)(IMaterial*, float*, float*, float*);
-		bool(__thiscall* IsTranslucentUnderModulation)(IMaterial*, float);
-		IMaterialVar* (__fastcall* FindVarFast)(IMaterial*, void* null, const char*, unsigned int*);
-		void(__thiscall* SetShaderAndParams)(IMaterial*, KeyValues*);
+		int(__thiscall* GetNumPasses)(IMaterialInternal*);
+		int(__thiscall* GetTextureMemoryBytes)(IMaterialInternal*);
+		void(__thiscall* Refresh)(IMaterialInternal*);
+		bool(__thiscall* NeedsLightmapBlendAlpha)(IMaterialInternal*);
+		bool(__thiscall* NeedsSoftwareLighting)(IMaterialInternal*);
+		int(__thiscall* ShaderParamCount)(IMaterialInternal*);
+		IMaterialVar** (__thiscall* GetShaderParams)(IMaterialInternal*);
+		bool(__thiscall* IsErrorMaterial)(IMaterialInternal*);
+		void(__thiscall* Unused)(IMaterialInternal*);
+		float(__thiscall* GetAlphaModulation)(IMaterialInternal*);
+		void(__thiscall* GetColorModulation)(IMaterialInternal*, float*, float*, float*);
+		bool(__thiscall* IsTranslucentUnderModulation)(IMaterialInternal*, float);
+		IMaterialVar* (__fastcall* FindVarFast)(IMaterialInternal*, void* null, const char*, unsigned int*);
+		void(__thiscall* SetShaderAndParams)(IMaterialInternal*, KeyValues*);
 		const char* (__fastcall* GetShaderName)(IMaterialInternal*);
-		void(__thiscall* DeleteIfUnreferenced)(IMaterial*);
-		bool(__thiscall* IsSpriteCard)(IMaterial*);
-		void(__thiscall* CallBindProxy)(IMaterial*, void*, void*); // ICallQueue
-		void(__thiscall* RefreshPreservingMaterialVars)(IMaterial*);
-		bool(__thiscall* WasReloadedFromWhitelist)(IMaterial*);
+		void(__thiscall* DeleteIfUnreferenced)(IMaterialInternal*);
+		bool(__thiscall* IsSpriteCard)(IMaterialInternal*);
+		void(__thiscall* CallBindProxy)(IMaterialInternal*, void*, void*); // ICallQueue
+		void(__thiscall* RefreshPreservingMaterialVars)(IMaterialInternal*);
+		bool(__thiscall* WasReloadedFromWhitelist)(IMaterialInternal*);
 		int(__thiscall* GetReferenceCount)(IMaterialInternal*);
 		void(__thiscall* SetEnumerationID)(IMaterialInternal*, int);
 		void(__thiscall* SetNeedsWhiteLightmap)(IMaterialInternal*, bool);
@@ -1891,6 +1899,294 @@ namespace components
 		void* m_PixelShader;
 	};
 
+	struct InstanceInfo_t
+	{
+		__int8 m_bAmbientCubeCompiled : 1;
+		__int8 m_bPixelShaderLocalLightsCompiled : 1;
+		__int8 m_bVertexShaderLocalLightsCompiled : 1;
+		__int8 m_bSetSkinConstants : 1;
+		__int8 m_bSetLightVertexShaderConstants : 1;
+	};
+
+	struct CompiledLightingState_t
+	{
+		Vector4D m_AmbientLightCube[6];
+		int m_nLocalLightCount;
+		Vector4D m_PixelShaderLocalLights[6];
+		Vector4D m_VertexShaderLocalLights[20];
+		int m_VertexShaderLocalLightLoopControl[4];
+		int m_VertexShaderLocalLightEnable[4];
+	};
+
+	struct __declspec(align(4)) LightState_t
+	{
+		int m_nNumLights;
+		bool m_bAmbientLight;
+		bool m_bStaticLight;
+	};
+
+	enum MaterialHeightClipMode_t : __int32
+	{
+		MATERIAL_HEIGHTCLIPMODE_DISABLE = 0x0,
+		MATERIAL_HEIGHTCLIPMODE_RENDER_ABOVE_HEIGHT = 0x1,
+		MATERIAL_HEIGHTCLIPMODE_RENDER_BELOW_HEIGHT = 0x2,
+	};
+
+	enum TextureBindFlags_t : __int32
+	{
+		TEXTURE_BINDFLAGS_SRGBREAD = 0x80000000,
+		TEXTURE_BINDFLAGS_SHADOWDEPTH = 0x40000000,
+		TEXTURE_BINDFLAGS_NONE = 0x0,
+	};
+
+	struct __declspec(align(4)) SamplerState_t
+	{
+		int m_BoundTexture;
+		_D3DTEXTUREADDRESS m_UTexWrap;
+		_D3DTEXTUREADDRESS m_VTexWrap;
+		_D3DTEXTUREADDRESS m_WTexWrap;
+		_D3DTEXTUREFILTERTYPE m_MagFilter;
+		_D3DTEXTUREFILTERTYPE m_MinFilter;
+		_D3DTEXTUREFILTERTYPE m_MipFilter;
+		TextureBindFlags_t m_nTextureBindFlags;
+		int m_nAnisotropicLevel;
+		unsigned int m_bShadowFilterEnable;
+		bool m_TextureEnable;
+	};
+	STATIC_ASSERT_SIZE(SamplerState_t, 44);
+
+	struct VertexTextureState_t
+	{
+		int m_BoundVertexTexture;
+		_D3DTEXTUREADDRESS m_UTexWrap;
+		_D3DTEXTUREADDRESS m_VTexWrap;
+		_D3DTEXTUREFILTERTYPE m_MagFilter;
+		_D3DTEXTUREFILTERTYPE m_MinFilter;
+		_D3DTEXTUREFILTERTYPE m_MipFilter;
+	};
+
+	enum TessellationMode_t : __int32
+	{
+		TESSELLATION_MODE_DISABLED = 0x0,
+		TESSELLATION_MODE_ACC_PATCHES_EXTRA = 0x1,
+		TESSELLATION_MODE_ACC_PATCHES_REG = 0x2,
+	};
+
+	struct D3DRENDERSTATETYPE_array
+	{
+		uint32_t unused0;
+		uint32_t TEXTUREHANDLE;
+		uint32_t ANTIALIAS;
+		uint32_t TEXTUREADDRESS;
+		uint32_t TEXTUREPERSPECTIVE;
+		uint32_t WRAPU;
+		uint32_t WRAPV;
+		D3DZBUFFERTYPE xD3DRS_ZENABLE; //7;    /* D3DZBUFFERTYPE (or TRUE/FALSE for legacy) */
+		D3DFILLMODE xD3DRS_FILLMODE; //8;    /* D3DFILLMODE */
+		D3DSHADEMODE xD3DRS_SHADEMODE; //9;    /* D3DSHADEMODE */
+		uint32_t LINEPATTERN;
+		uint32_t MONOENABLE;
+		uint32_t ROP2;
+		uint32_t PLANEMASK;
+		uint32_t xD3DRS_ZWRITEENABLE; //14;   /* TRUE to enable z writes */
+		uint32_t xD3DRS_ALPHATESTENABLE; //15;   /* TRUE to enable alpha tests */
+		uint32_t xD3DRS_LASTPIXEL; //16;   /* TRUE for last-pixel on lines */
+		uint32_t TEXTUREMAG;
+		uint32_t TEXTUREMIN;
+		D3DBLEND xD3DRS_SRCBLEND; //19;   /* D3DBLEND */
+		D3DBLEND xD3DRS_DESTBLEND; //20;   /* D3DBLEND */
+		uint32_t TEXTUREMAPBLEND;
+		D3DCULL xD3DRS_CULLMODE; //22;   /* D3DCULL */
+		D3DCMPFUNC xD3DRS_ZFUNC; //23;   /* D3DCMPFUNC */
+		uint32_t xD3DRS_ALPHAREF; //24;   /* D3DFIXED */
+		D3DCMPFUNC xD3DRS_ALPHAFUNC; //25;   /* D3DCMPFUNC */
+		uint32_t xD3DRS_DITHERENABLE; //26;   /* TRUE to enable dithering */
+		uint32_t xD3DRS_ALPHABLENDENABLE; //27;   /* TRUE to enable alpha blending */
+		uint32_t xD3DRS_FOGENABLE; //28;   /* TRUE to enable fog blending */
+		uint32_t xD3DRS_SPECULARENABLE; //29;   /* TRUE to enable specular */
+		uint32_t ZVISIBLE;
+		uint32_t SUBPIXEL;
+		uint32_t SUBPIXELX;
+		uint32_t STIPPLEDALPHA;
+		D3DCOLOR xD3DRS_FOGCOLOR; //34;   /* D3DCOLOR */
+		D3DFOGMODE xD3DRS_FOGTABLEMODE; //35;   /* D3DFOGMODE */
+		uint32_t xD3DRS_FOGSTART; //36;   /* Fog start (for both vertex and pixel fog) */
+		uint32_t xD3DRS_FOGEND; //37;   /* Fog end      */
+		uint32_t xD3DRS_FOGDENSITY; //38;   /* Fog density  */
+		uint32_t STIPPLEENABLE;
+		uint32_t EDGEANTIALIAS;
+		uint32_t COLORKEYENABLE;
+		uint32_t unused42;
+		uint32_t BORDERCOLOR;
+		uint32_t TEXTUREADDRESSU;
+		uint32_t TEXTUREADDRESSV;
+		uint32_t MIPMAPLODBIAS;
+		uint32_t ZBIAS;
+		uint32_t xD3DRS_RANGEFOGENABLE; //48;   /* Enables range-based fog */
+		uint32_t ANISOTROPY;
+		uint32_t FLUSHBATCH;
+		uint32_t TRANSLUCENTSORTINDEPENDENT;
+		uint32_t xD3DRS_STENCILENABLE; //52;   /* BOOL enable/disable stenciling */
+		D3DSTENCILOP xD3DRS_STENCILFAIL; //53;   /* D3DSTENCILOP to do if stencil test fails */
+		D3DSTENCILOP xD3DRS_STENCILZFAIL; //54;   /* D3DSTENCILOP to do if stencil test passes and Z test fails */
+		D3DSTENCILOP xD3DRS_STENCILPASS; //55;   /* D3DSTENCILOP to do if both stencil and Z tests pass */
+		D3DCMPFUNC xD3DRS_STENCILFUNC; //56;   /* D3DCMPFUNC fn.  Stencil Test passes if ((ref & mask) stencilfn (stencil & mask)) is true */
+		uint32_t xD3DRS_STENCILREF; //57;   /* Reference value used in stencil test */
+		uint32_t xD3DRS_STENCILMASK; //58;   /* Mask value used in stencil test */
+		uint32_t xD3DRS_STENCILWRITEMASK; //59;   /* Write mask applied to values written to stencil buffer */
+		uint32_t xD3DRS_TEXTUREFACTOR; //60;   /* D3DCOLOR used for multi-texture blend */
+		uint32_t pad[67];
+		uint32_t xD3DRS_WRAP0; //128;  /* wrap for 1st texture coord. set */
+		uint32_t xD3DRS_WRAP1; //129;  /* wrap for 2nd texture coord. set */
+		uint32_t xD3DRS_WRAP2; //130;  /* wrap for 3rd texture coord. set */
+		uint32_t xD3DRS_WRAP3; //131;  /* wrap for 4th texture coord. set */
+		uint32_t xD3DRS_WRAP4; //132;  /* wrap for 5th texture coord. set */
+		uint32_t xD3DRS_WRAP5; //133;  /* wrap for 6th texture coord. set */
+		uint32_t xD3DRS_WRAP6; //134;  /* wrap for 7th texture coord. set */
+		uint32_t xD3DRS_WRAP7; //135;  /* wrap for 8th texture coord. set */
+		uint32_t xD3DRS_CLIPPING; //136;
+		uint32_t xD3DRS_LIGHTING; //137;
+		uint32_t EXTENTS;
+		uint32_t xD3DRS_AMBIENT; //139;
+		uint32_t xD3DRS_FOGVERTEXMODE; //140;
+		uint32_t xD3DRS_COLORVERTEX; //141;
+		uint32_t xD3DRS_LOCALVIEWER; //142;
+		uint32_t xD3DRS_NORMALIZENORMALS; //143;
+		uint32_t COLORKEYBLENDENABLE;
+		uint32_t xD3DRS_DIFFUSEMATERIALSOURCE; //145;
+		uint32_t xD3DRS_SPECULARMATERIALSOURCE; //146;
+		uint32_t xD3DRS_AMBIENTMATERIALSOURCE; //147;
+		uint32_t xD3DRS_EMISSIVEMATERIALSOURCE; //148;
+		uint32_t unused149;
+		uint32_t unused150;
+		uint32_t xD3DRS_VERTEXBLEND; //151;
+		uint32_t xD3DRS_CLIPPLANEENABLE; //152;
+		uint32_t unused153;
+		uint32_t xD3DRS_POINTSIZE; //154;   /* float point size */
+		uint32_t xD3DRS_POINTSIZE_MIN; //155;   /* float point size min threshold */
+		uint32_t xD3DRS_POINTSPRITEENABLE; //156;   /* BOOL point texture coord control */
+		uint32_t xD3DRS_POINTSCALEENABLE; //157;   /* BOOL point size scale enable */
+		uint32_t xD3DRS_POINTSCALE_A; //158;   /* float point attenuation A value */
+		uint32_t xD3DRS_POINTSCALE_B; //159;   /* float point attenuation B value */
+		uint32_t xD3DRS_POINTSCALE_C; //160;   /* float point attenuation C value */
+		uint32_t xD3DRS_MULTISAMPLEANTIALIAS; //161;  // BOOL - set to do FSAA with multisample buffer
+		uint32_t xD3DRS_MULTISAMPLEMASK; //162;  // DWORD - per-sample enable/disable
+		uint32_t xD3DRS_PATCHEDGESTYLE; //163;  // Sets whether patch edges will use float style tessellation
+		uint32_t unused164;
+		uint32_t xD3DRS_DEBUGMONITORTOKEN; //165;  // DEBUG ONLY - token to debug monitor
+		uint32_t xD3DRS_POINTSIZE_MAX; //166;   /* float point size max threshold */
+		uint32_t xD3DRS_INDEXEDVERTEXBLENDENABLE; //167;
+		uint32_t xD3DRS_COLORWRITEENABLE; //168;  // per-channel write enable
+		uint32_t unused169;
+		uint32_t xD3DRS_TWEENFACTOR; //170;   // float tween factor
+		D3DBLENDOP xD3DRS_BLENDOP; //171;   // D3DBLENDOP setting
+		uint32_t xD3DRS_POSITIONDEGREE; //172;   // NPatch position interpolation degree. D3DDEGREE_LINEAR or D3DDEGREE_CUBIC (default)
+		uint32_t xD3DRS_NORMALDEGREE; //173;   // NPatch normal interpolation degree. D3DDEGREE_LINEAR (default) or D3DDEGREE_QUADRATIC
+		uint32_t xD3DRS_SCISSORTESTENABLE; //174;
+		uint32_t xD3DRS_SLOPESCALEDEPTHBIAS; //175;
+		uint32_t xD3DRS_ANTIALIASEDLINEENABLE; //176;
+		uint32_t unused177;
+		uint32_t xD3DRS_MINTESSELLATIONLEVEL; //178;
+		uint32_t xD3DRS_MAXTESSELLATIONLEVEL; //179;
+		uint32_t xD3DRS_ADAPTIVETESS_X; //180;
+		uint32_t xD3DRS_ADAPTIVETESS_Y; //181;
+		uint32_t xD3DRS_ADAPTIVETESS_Z; //182;
+		uint32_t xD3DRS_ADAPTIVETESS_W; //183;
+		uint32_t xD3DRS_ENABLEADAPTIVETESSELLATION; //184;
+		uint32_t xD3DRS_TWOSIDEDSTENCILMODE; //185;   /* BOOL enable/disable 2 sided stenciling */
+		D3DSTENCILOP xD3DRS_CCW_STENCILFAIL; //186;   /* D3DSTENCILOP to do if ccw stencil test fails */
+		D3DSTENCILOP xD3DRS_CCW_STENCILZFAIL; //187;   /* D3DSTENCILOP to do if ccw stencil test passes and Z test fails */
+		D3DSTENCILOP xD3DRS_CCW_STENCILPASS; //188;   /* D3DSTENCILOP to do if both ccw stencil and Z tests pass */
+		D3DCMPFUNC xD3DRS_CCW_STENCILFUNC; //189;   /* D3DCMPFUNC fn.  ccw Stencil Test passes if ((ref & mask) stencilfn (stencil & mask)) is true */
+		uint32_t xD3DRS_COLORWRITEENABLE1; //190;   /* Additional ColorWriteEnables for the devices that support D3DPMISCCAPS_INDEPENDENTWRITEMASKS */
+		uint32_t xD3DRS_COLORWRITEENABLE2; //191;   /* Additional ColorWriteEnables for the devices that support D3DPMISCCAPS_INDEPENDENTWRITEMASKS */
+		uint32_t xD3DRS_COLORWRITEENABLE3; //192;   /* Additional ColorWriteEnables for the devices that support D3DPMISCCAPS_INDEPENDENTWRITEMASKS */
+		D3DCOLOR xD3DRS_BLENDFACTOR; //193;   /* D3DCOLOR used for a constant blend factor during alpha blending for devices that support D3DPBLENDCAPS_BLENDFACTOR */
+		uint32_t xD3DRS_SRGBWRITEENABLE; //194;   /* Enable rendertarget writes to be DE-linearized to SRGB (for formats that expose D3DUSAGE_QUERY_SRGBWRITE) */
+		uint32_t xD3DRS_DEPTHBIAS; //195;
+		uint32_t unused196;
+		uint32_t unused197;
+		uint32_t xD3DRS_WRAP8; //198;   /* Additional wrap states for vs_3_0+ attributes with D3DDECLUSAGE_TEXCOORD */
+		uint32_t xD3DRS_WRAP9; //199;
+		uint32_t xD3DRS_WRAP10; //200;
+		uint32_t xD3DRS_WRAP11; //201;
+		uint32_t xD3DRS_WRAP12; //202;
+		uint32_t xD3DRS_WRAP13; //203;
+		uint32_t xD3DRS_WRAP14; //204;
+		uint32_t xD3DRS_WRAP15; //205;
+		uint32_t xD3DRS_SEPARATEALPHABLENDENABLE; //206;  /* TRUE to enable a separate blending function for the alpha channel */
+		D3DBLEND xD3DRS_SRCBLENDALPHA; //207;  /* SRC blend factor for the alpha channel when D3DRS_SEPARATEDESTALPHAENABLE is TRUE */
+		D3DBLEND xD3DRS_DESTBLENDALPHA; //208;  /* DST blend factor for the alpha channel when D3DRS_SEPARATEDESTALPHAENABLE is TRUE */
+		D3DBLENDOP xD3DRS_BLENDOPALPHA; //209;  /* Blending operation for the alpha channel when D3DRS_SEPARATEDESTALPHAENABLE is TRUE */
+	}; STATIC_ASSERT_SIZE(D3DRENDERSTATETYPE_array, 840);
+
+	struct __declspec(align(8)) DynamicState_t
+	{
+		_D3DVIEWPORT9 m_Viewport;
+		D3DXMATRIX m_Transform[11];
+		unsigned __int8 m_TransformType[11];
+		unsigned __int8 m_TransformChanged[11];
+		InstanceInfo_t m_InstanceInfo;
+		CompiledLightingState_t m_CompiledLightingState;
+		MaterialLightingState_t m_LightingState;
+		LightState_t m_ShaderLightState;
+		bool m_bLightStateComputed;
+		int m_nLocalEnvCubemapSamplers;
+		int m_nLightmapSamplers;
+		int m_nPaintmapSamplers;
+		_D3DSHADEMODE m_ShadeMode;
+		unsigned int m_ClearColor;
+		unsigned int m_FogColor;
+		Vector4D m_vecPixelFogColor;
+		Vector4D m_vecPixelFogColorLinear;
+		bool m_bFogGammaCorrectionDisabled;
+		bool m_FogEnable;
+		_D3DFOGMODE m_FogMode;
+		float m_FogStart;
+		float m_FogEnd;
+		float m_FogZ;
+		float m_FogMaxDensity;
+		float m_HeightClipZ;
+		MaterialHeightClipMode_t m_HeightClipMode;
+		int m_UserClipPlaneEnabled;
+		int m_UserClipPlaneChanged;
+		D3DXPLANE m_UserClipPlaneWorld[6];
+		D3DXPLANE m_UserClipPlaneProj[6];
+		bool m_UserClipLastUpdatedUsingFixedFunction;
+		bool m_FastClipEnabled;
+		bool m_bFastClipPlaneChanged;
+		D3DXPLANE m_FastClipPlane;
+		bool m_bUserClipTransformOverride;
+		D3DXMATRIX m_UserClipTransform;
+		_D3DCULL m_DesiredCullMode;
+		_D3DCULL m_CullMode;
+		bool m_bCullEnabled;
+		D3DVERTEXBLENDFLAGS m_VertexBlend; // NEW
+		int m_NumBones;
+		Vector4D* m_pVectorVertexShaderConstant;
+		int* m_pBooleanVertexShaderConstant;
+		IntVector4D* m_pIntegerVertexShaderConstant;
+		Vector4D* m_pVectorPixelShaderConstant;
+		int* m_pBooleanPixelShaderConstant;
+		IntVector4D* m_pIntegerPixelShaderConstant;
+		SamplerState_t m_SamplerState[16];
+		VertexTextureState_t m_VertexTextureState[4];
+		//unsigned int m_RenderState[210];
+		D3DRENDERSTATETYPE_array m_RenderState;
+		tagRECT m_ScissorRect;
+		IDirect3DVertexDeclaration9* m_pVertexDecl;
+		unsigned __int64 m_DeclVertexFormat;
+		bool m_bDeclHasColorMesh;
+		bool m_bDeclUsingFlex;
+		bool m_bDeclUsingMorph;
+		bool m_bDeclUsingPreTessPatch;
+		bool m_bSRGBWritesEnabled;
+		bool m_bHWMorphingEnabled;
+		TessellationMode_t m_TessellationMode;
+	};
+	STATIC_ASSERT_OFFSET(DynamicState_t, m_SamplerState, 2172); // <6240 (offset from shaderapi 0x0> - <40 (m_TextureEnable offset)> - <4028 (pad in IShaderAPIDX8)>
+	STATIC_ASSERT_OFFSET(DynamicState_t, m_RenderState, 2972);
+
 	struct IShaderAPIDX8_vtbl
 	{
 		char pad[1016];
@@ -1914,5 +2210,46 @@ namespace components
 	{
 		IShaderAPIDX8_vtbl* vtbl;
 	};
+	
+	struct CShaderAPIDX8_vtbl
+	{
+		void* null;
+	};
+
+	struct CShaderAPIDx8
+	{
+		CShaderAPIDX8_vtbl* vtbl;
+		char pad0[4028];
+		DynamicState_t m_DynamicState;
+		DynamicState_t m_DesiredState;
+		unsigned __int8 m_pCommitFlags[2][1];
+		char m_CommitFuncs_0[0x14];
+		char m_CommitFuncs_1[0x14];
+		CMeshBase* m_pRenderMesh;
+		int m_nRenderInstanceCount;
+		const MeshInstanceData_t* m_pRenderInstances;
+		CompiledLightingState_t* m_pRenderCompiledState;
+		InstanceInfo_t* m_pRenderInstanceInfo;
+		ShaderStencilState_t m_RenderInitialStencilState;
+		bool m_bRenderHasSetStencil;
+		int m_nDynamicVBSize;
+		IMaterialInternal* m_pMaterial;
+		float m_fShadowSlopeScaleDepthBias;
+		float m_fShadowDepthBias;
+		__int8 m_bReadPixelsEnabled : 1;
+		__int8 m_bFlipCulling : 1;
+		__int8 m_bSinglePassFlashlightMode : 1;
+		__int8 m_UsingTextureRenderTarget : 1;
+		int m_ViewportMaxWidth;
+		int m_ViewportMaxHeight;
+		int m_hCachedRenderTarget;
+		bool m_bUsingSRGBRenderTarget;
+		int m_CurrentFrame;
+		int m_ModifyTextureHandle;
+		char m_ModifyTextureLockedLevel;
+		unsigned __int8 m_ModifyTextureLockedFace;
+	}; STATIC_ASSERT_OFFSET(CShaderAPIDx8, m_DynamicState, 0xFC0);
 }
+
+
 
