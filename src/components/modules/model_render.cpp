@@ -282,17 +282,36 @@ namespace components
 
 	C_BaseEntity* current_render_ent = nullptr;
 
-	LPDIRECT3DTEXTURE9 tex_portal_mask;
-	LPDIRECT3DTEXTURE9 tex_portal_blue;
-	LPDIRECT3DTEXTURE9 tex_portal_orange;
+	namespace tex_addons
+	{
+		LPDIRECT3DTEXTURE9 portal_mask;
+		LPDIRECT3DTEXTURE9 portal_blue;
+		LPDIRECT3DTEXTURE9 portal_orange;
+		LPDIRECT3DTEXTURE9 glass_shards;
+		LPDIRECT3DTEXTURE9 glass_window_refract;
+		LPDIRECT3DTEXTURE9 black_shader;
+		LPDIRECT3DTEXTURE9 sky_gray_ft;
+		LPDIRECT3DTEXTURE9 sky_gray_bk;
+		LPDIRECT3DTEXTURE9 sky_gray_lf;
+		LPDIRECT3DTEXTURE9 sky_gray_rt;
+		LPDIRECT3DTEXTURE9 sky_gray_up;
+		LPDIRECT3DTEXTURE9 sky_gray_dn;
+	}
 
-	LPDIRECT3DTEXTURE9 tex_glass_shards;
-	LPDIRECT3DTEXTURE9 tex_glass_window_refract;
-
-	LPDIRECT3DTEXTURE9 tex_black_shader;
+	
 
 	int do_not_render_next_mesh = false;
 	bool render_second_pass_with_basetexture2 = false;
+
+	namespace render_next_mesh
+	{
+		bool with_high_gamma = false;
+
+		void reset()
+		{
+			with_high_gamma = false;
+		}
+	}
 
 	namespace ff_water
 	{
@@ -305,7 +324,25 @@ namespace components
 	std::uint32_t new_stride = 0u;
 
 	std::uint64_t tick_on_first_no_render = 0;
-	
+
+	// #TODO call from somewhere appropriate
+	void model_render::init_texture_addons()
+	{
+		const auto dev = game::get_d3d_device();
+
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_mask.png", &tex_addons::portal_mask);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_blue.png", &tex_addons::portal_blue);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_orange.png", &tex_addons::portal_orange);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_shards.png", &tex_addons::glass_shards);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_window_refract.png", &tex_addons::glass_window_refract);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\black_shader.png", &tex_addons::black_shader);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_ft.png", &tex_addons::sky_gray_ft);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_bk.png", &tex_addons::sky_gray_bk);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_lf.png", &tex_addons::sky_gray_lf);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_rt.png", &tex_addons::sky_gray_rt);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_up.png", &tex_addons::sky_gray_up);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_dn.png", &tex_addons::sky_gray_dn);
+	}
 
 	void cmeshdx8_renderpass_pre_draw(CMeshDX8* mesh)
 	{
@@ -317,37 +354,6 @@ namespace components
 
 		Vector* model_org = reinterpret_cast<Vector*>(ENGINE_BASE + 0x50DA90);
 		VMatrix* model_to_world_mtx = reinterpret_cast<VMatrix*>(ENGINE_BASE + 0x637158);
-
-		// #TODO init textures elsewhere
-		if (!tex_portal_mask)
-		{
-			D3DXCreateTextureFromFileA(dev, "portal_mask.png", &tex_portal_mask);
-		}
-
-		if (!tex_portal_blue)
-		{
-			D3DXCreateTextureFromFileA(dev, "portal_blue.png", &tex_portal_blue);
-		}
-
-		if (!tex_portal_orange)
-		{
-			D3DXCreateTextureFromFileA(dev, "portal_orange.png", &tex_portal_orange);
-		}
-
-		if (!tex_glass_shards)
-		{
-			D3DXCreateTextureFromFileA(dev, "glass_shards.png", &tex_glass_shards);
-		}
-
-		if (!tex_glass_window_refract)
-		{
-			D3DXCreateTextureFromFileA(dev, "glass_window_refract.png", &tex_glass_window_refract);
-		}
-
-		if (!tex_black_shader)
-		{
-			D3DXCreateTextureFromFileA(dev, "black_shader.png", &tex_black_shader);
-		}
 
 		//do_not_render_next_mesh = true;
 
@@ -490,9 +496,9 @@ namespace components
 						if (cname.contains("props_destruction/glass_"))
 						{
 							//do_not_render_next_mesh = true;
-							if (tex_glass_shards)
+							if (tex_addons::glass_shards)
 							{
-								dev->SetTexture(0, tex_glass_shards);
+								dev->SetTexture(0, tex_addons::glass_shards);
 							}
 						}
 						/*else if (cname.contains("chell"))
@@ -549,10 +555,10 @@ namespace components
 
 						if (sname.contains("glasswindow_refract"))
 						{
-							if (tex_glass_window_refract)
+							if (tex_addons::glass_window_refract)
 							{
 								dev->GetTexture(0, &ff_model::s_texture);
-								dev->SetTexture(0, tex_glass_window_refract);
+								dev->SetTexture(0, tex_addons::glass_window_refract);
 							}
 
 							// does nothing?
@@ -565,7 +571,7 @@ namespace components
 
 						if (shadername.contains("Black"))
 						{
-							dev->SetTexture(0, tex_black_shader);
+							dev->SetTexture(0, tex_addons::black_shader);
 						}
 						// replace glass refract with wireframe so that we can see our custom texture
 						
@@ -612,16 +618,16 @@ namespace components
 						{
 							//if (!model_render::portal1_render_count)  
 							{
-								if (tex_portal_mask)
+								if (tex_addons::portal_mask)
 								{
 									dev->GetTexture(1, &ff_portalfx_03::s_texture2);
-									dev->SetTexture(1, tex_portal_mask);
+									dev->SetTexture(1, tex_addons::portal_mask);
 								}
 
-								if (tex_portal_blue)
+								if (tex_addons::portal_blue)
 								{
 									dev->GetTexture(0, &ff_portalfx_03::s_texture1);
-									dev->SetTexture(0, tex_portal_blue);
+									dev->SetTexture(0, tex_addons::portal_blue);
 								}
 							}
 
@@ -646,16 +652,16 @@ namespace components
 						{
 							//if (!model_render::portal2_render_count)
 							{
-								if (tex_portal_mask)
+								if (tex_addons::portal_mask)
 								{
 									dev->GetTexture(1, &ff_portalfx_03::s_texture2);
-									dev->SetTexture(1, tex_portal_mask);
+									dev->SetTexture(1, tex_addons::portal_mask);
 								}
 
-								if (tex_portal_orange) 
+								if (tex_addons::portal_orange)
 								{
 									dev->GetTexture(0, &ff_portalfx_03::s_texture1);
-									dev->SetTexture(0, tex_portal_orange);
+									dev->SetTexture(0, tex_addons::portal_orange);
 								}
 							}
 							/*else
@@ -869,7 +875,7 @@ namespace components
 								//do_not_render_next_mesh = true;
 
 								// todo set unique texture
-								dev->SetTexture(0, tex_portal_mask);
+								dev->SetTexture(0, tex_addons::portal_mask);
 
 								int yy = 1; 
 							}
@@ -1345,6 +1351,10 @@ namespace components
 								do_not_render_next_mesh = true;
 							}
 						}
+						else if (sname.contains("vgui_white"))
+						{
+							int x = 1;
+						}
 						else if (sname.contains("vgui_coop_progress_board")
 							  || sname.contains("p2_lightboard_vgui")
 							  || sname.contains("elevator_video_overlay"))
@@ -1376,9 +1386,9 @@ namespace components
 							dev->GetVertexShader(&ff_vgui::s_shader01);
 							dev->SetVertexShader(nullptr);
 						}
-						else if (sname.contains("vgui_white"))
+						else if (sname.contains("loading_screens"))
 						{
-							int x = 1;
+							render_next_mesh::with_high_gamma = true;
 						}
 						else
 						{
@@ -1737,8 +1747,9 @@ namespace components
 	{
 		const auto dev = game::get_d3d_device();
 
-		// use Gamma 1.0 (fixes dark albedo)
-		dev->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, 0);
+		// 0 = Gamma 1.0 (fixes dark albedo) :: 1 = Gamma 2.2
+		dev->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, render_next_mesh::with_high_gamma ? 1u : 0u);
+		
 
 		// do not render next surface if set
 		if (!do_not_render_next_mesh)
@@ -2047,6 +2058,9 @@ namespace components
 		do_not_render_next_mesh = false;
 		render_second_pass_with_basetexture2 = false;
 		render_with_new_stride = false;
+
+		// reset all mesh tweakables
+		render_next_mesh::reset();
 	}
 
 	HOOK_RETN_PLACE_DEF(cmeshdx8_renderpass_post_draw_retn_addr);

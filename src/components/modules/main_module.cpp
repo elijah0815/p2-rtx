@@ -301,6 +301,9 @@ namespace components
 				main_module::m_initialized = true;
 				//remixapi::bridge_setRemixApiCallbacks(nullptr, &endscene_cb, nullptr);
 			}
+
+			// init addon textures
+			model_render::init_texture_addons();
 		}
 
 		endscene_cb();
