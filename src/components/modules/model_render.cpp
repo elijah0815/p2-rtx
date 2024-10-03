@@ -266,6 +266,10 @@ namespace components
 
 	int do_not_render_next_mesh = false;
 	bool render_second_pass_with_basetexture2 = false;
+
+	bool render_with_new_stride = false;
+	std::uint32_t new_stride = 0u;
+
 	std::uint64_t tick_on_first_no_render = 0;
 	
 
@@ -1322,6 +1326,7 @@ namespace components
 
 			// on portal open - spark fx (center)
 			// also portal clearing gate (blue sweeping beam)
+			// + portal gun pickup effect
 			// can be rendered but also requires vertexshader + position
 			else if (mesh->m_VertexFormat == 0x924900005)
 			{
@@ -1330,28 +1335,50 @@ namespace components
 				
 				int zz = 1; 
 
-#if 0
+#if 1
 				if (auto shaderapi = game::get_shaderapi(); shaderapi)
 				{
+					if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
+					{
+						auto name = cmat->vftable->GetName(cmat);
+						
+						if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+						{
+							int x = 1;
+						}
+					}
+
 					BufferedState_t state = {};
 					shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
-
-					float mtx[4][4] = {};
-					mtx[0][0] = game::identity[0][0];
-					mtx[1][1] = game::identity[1][1];
-					mtx[2][2] = game::identity[2][2];
-					
-					mtx[3][0] = -706.0f;
-					mtx[3][1] = 3830.0f;
-					mtx[3][2] = 2750.0f /*+ sinf((float)main_module::framecount * 0.05f) * 6.0f*/;
-					mtx[3][3] = game::identity[3][3];
-
-					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
+					dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[1]));
+					dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[2]));
 				}
 
-				//dev->SetFVF(D3DFVF_XYZB5 | D3DFVF_NORMAL | D3DFVF_TEX2); // 80
-				dev->GetVertexShader(&ff_terrain::s_shader);
-				dev->SetPixelShader(nullptr);
+#if 0			// can be used to look into the vertex buffer to figure out the layout
+				{
+					IDirect3DVertexBuffer9* buff = nullptr;
+					UINT t_stride = 0u, t_offset = 0u;
+					dev->GetStreamSource(0, &buff, &t_offset, &t_stride);
+
+					//dev->SetStreamSource(0, buff, t_offset, 44u);
+					//render_with_new_stride = true;
+					//new_stride = 112;
+
+					void* buffer_data;
+					if (buff)
+					{
+						if (const auto hr = buff->Lock(0, 48u * 100u, &buffer_data, D3DLOCK_READONLY); hr >= 0)
+						{
+							buff->Unlock(); // break here
+						}
+					}
+				}
+#endif
+
+				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3); // 80
+				//dev->GetVertexShader(&ff_vgui::s_shader04);
+				//dev->SetVertexShader(nullptr);
 #endif
 			}
 
@@ -1620,6 +1647,12 @@ namespace components
 		// do not render next surface if set
 		if (!do_not_render_next_mesh)
 		{
+			if (render_with_new_stride)
+			{
+				num_verts *= 3;
+				prim_count *= 3;
+			}
+
 			dev->DrawIndexedPrimitive(type, base_vert_index, min_vert_index, num_verts, start_index, prim_count);
 		}
 
@@ -1893,6 +1926,7 @@ namespace components
 
 		do_not_render_next_mesh = false;
 		render_second_pass_with_basetexture2 = false;
+		render_with_new_stride = false;
 	}
 
 	HOOK_RETN_PLACE_DEF(cmeshdx8_renderpass_post_draw_retn_addr);
