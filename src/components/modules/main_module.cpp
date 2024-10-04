@@ -520,9 +520,16 @@ namespace components
 		// C_VGuiScreen::DrawModel :: vgui screens (world) :: nop C_VGuiScreen::IsBackfacing check
 		utils::hook::nop(CLIENT_BASE + 0xCA14E, 2);
 
+
+		// CSimpleWorldView::Setup :: nop 'DoesViewPlaneIntersectWater' check
+		utils::hook::nop(CLIENT_BASE + 0x1E5693, 2);
+
+		// ^ next instruction :: OR m_DrawFlags with 0x60 instead of 0x30
+		utils::hook::set<BYTE>(CLIENT_BASE + 0x1E5695 + 6, 0x60);
+
+
 		// C_Portal_Player::DrawModel :: disable 'C_Portal_Player::ShouldSkipRenderingViewpointPlayerForThisView' check to always render chell
 		utils::hook::nop(CLIENT_BASE + 0x274FFB, 2);
-
 
 		utils::hook(CLIENT_BASE + 0x27D4AC, cportalghost_should_draw_stub).install()->quick();
 		HOOK_RETN_PLACE(cportalghost_should_draw_retn, CLIENT_BASE + 0x27D4B1);
