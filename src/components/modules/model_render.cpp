@@ -1375,6 +1375,11 @@ namespace components
 				// GetBufferedState
 				// GetCullMode
 
+				// always render UI and world ui with high gamma?
+				// NO this breaks terrain blending !?
+				// huh no it does not ...
+				render_next_mesh::with_high_gamma = true;
+
 				auto shaderapi = game::get_shaderapi();
 
 				if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
@@ -1433,6 +1438,10 @@ namespace components
 						{
 							render_next_mesh::with_high_gamma = true;
 						}
+						/*else if (sname.starts_with("console/"))
+						{
+							render_next_mesh::with_high_gamma = true;
+						}*/
 						else
 						{
 							int x = 1; 
@@ -1629,16 +1638,44 @@ namespace components
 				int z = 0; 
 			} 
 
+			// SpriteCard shader
 			// on portal open - no clue
 			// portal gun pickup effect (pusling lights (not the beam))
+			// other particles like smoke - wakeup scene ring - water splash
 			else if (mesh->m_VertexFormat == 0x114900005)
 			{
 				//do_not_render_next_mesh = true;
 				// stride 96
 				int z = 0;
-				//dev->GetVertexShader(&ff_portalfx_04::s_shader);
-				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5);
+
+
+#if 0			// can be used to look into the vertex buffer to figure out the layout
+				{
+					IDirect3DVertexBuffer9* buff = nullptr;
+					UINT t_stride = 0u, t_offset = 0u;
+					dev->GetStreamSource(0, &buff, &t_offset, &t_stride);
+
+					void* buffer_data;
+					if (buff)
+					{
+						if (const auto hr = buff->Lock(0, 48u * 100u, &buffer_data, D3DLOCK_READONLY); hr >= 0)
+						{
+							buff->Unlock(); // break here
+						}
+					}
+
+					//dev->SetStreamSource(0, buff, t_offset, 48*4); // times 48*4 is almost good lmao
+				}
+#endif
+				//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[0])); 
+				//dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[1]));
+				//dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[2]));
+				//dev->GetVertexShader(&ff_portalfx_04::s_shader); 
+				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3); // vertex fmt looks like pos normal 3xtc (float2)
 				//dev->SetVertexShader(nullptr);
+
+				//dev->SetTexture(0, tex_addons::portal_mask);
+				//render_with_new_stride = true;
 			}
 
 			// on portal open - blob in the middle (impact)
@@ -1693,6 +1730,7 @@ namespace components
 				//dev->GetVertexShader(&ff_portalfx_04::s_shader);
 				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_TEX5);
 				//dev->SetVertexShader(nullptr);
+				int x = 1;
 			}
 
 			// portal clearing gate
@@ -1734,6 +1772,38 @@ namespace components
 					shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
 					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
 				}
+			}
+
+			// Sprite shader
+			else if (mesh->m_VertexFormat == 0x914900005)
+			{
+#if 0			// can be used to look into the vertex buffer to figure out the layout
+				{
+					IDirect3DVertexBuffer9* buff = nullptr;
+					UINT t_stride = 0u, t_offset = 0u;
+					dev->GetStreamSource(0, &buff, &t_offset, &t_stride);
+
+					void* buffer_data;
+					if (buff)
+					{
+						if (const auto hr = buff->Lock(0, 48u * 100u, &buffer_data, D3DLOCK_READONLY); hr >= 0)
+						{
+							buff->Unlock(); // break here
+						}
+					}
+
+					//dev->SetStreamSource(0, buff, t_offset, 112 * 4); // times 48*4 is almost good lmao
+				}
+#endif
+				//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[0]));
+				//dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[1]));
+				//dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[2]));
+				//dev->GetVertexShader(&ff_portalfx_04::s_shader);
+				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3); // vertex fmt looks like pos normal 3xtc (float2)
+				//dev->SetVertexShader(nullptr);
+
+				//dev->SetTexture(0, tex_addons::portal_mask);
+				//render_with_new_stride = true;
 			}
 			else
 			{
@@ -1801,6 +1871,7 @@ namespace components
 			{
 				num_verts *= 1;
 				prim_count *= 1;
+				type = D3DPT_TRIANGLELIST;
 			}
 
 			//bool skip_other_sky_surfs = false;
@@ -1914,15 +1985,6 @@ namespace components
 			// check if basemap2 is assigned
 			if (state.m_BoundTexture[7])
 			{
-				//auto asd = x->m_DynamicState.m_SamplerState[7].m_TextureEnable;
-
-				/*dev->SetRenderState(D3DRS_ALPHAREF, 127);
-				dev->SetRenderState(D3DRS_ALPHAFUNC, 5);
-				dev->SetRenderState(D3DRS_SRGBWRITEENABLE, 0);
-				dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
-				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);*/
-
-
 				// save texture, renderstates and texturestates
 
 				IDirect3DBaseTexture9* og_tex0 = nullptr;
@@ -1952,7 +2014,8 @@ namespace components
 				if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, state.m_BoundTexture[7]);
 					basemap2)
 				{
-					dev->SetTexture(0, basemap2); //dev->SetTexture(0, tex_portal_mask);
+					dev->SetTexture(0, basemap2);
+					//dev->SetTexture(0, tex_addons::portal_mask);
 				}
 
 				// enable blending
