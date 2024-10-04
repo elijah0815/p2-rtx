@@ -330,6 +330,8 @@ namespace components
 
 		main_module::framecount++; // used for debug anim
 
+		// reset this once every frame
+		model_render::rendered_first_sky_surface = false;
 
 		// set a default material with diffuse set to a warm white
 		// so that add light to texture works and does not require rtx.effectLightPlasmaBall (animated)

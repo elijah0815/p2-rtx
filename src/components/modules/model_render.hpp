@@ -152,6 +152,8 @@ namespace components
 
 		static inline uint32_t portal1_render_count = 0;
 		static inline uint32_t portal2_render_count = 0;
+
+		static inline bool rendered_first_sky_surface = false;
 	private:
 	};
 }

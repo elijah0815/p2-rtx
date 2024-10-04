@@ -306,10 +306,12 @@ namespace components
 	namespace render_next_mesh
 	{
 		bool with_high_gamma = false;
+		bool as_sky = false;
 
 		void reset()
 		{
 			with_high_gamma = false;
+			as_sky = false;
 		}
 	}
 
@@ -336,12 +338,12 @@ namespace components
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_shards.png", &tex_addons::glass_shards);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_window_refract.png", &tex_addons::glass_window_refract);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\black_shader.png", &tex_addons::black_shader);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_ft.png", &tex_addons::sky_gray_ft);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_bk.png", &tex_addons::sky_gray_bk);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_lf.png", &tex_addons::sky_gray_lf);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_rt.png", &tex_addons::sky_gray_rt);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_up.png", &tex_addons::sky_gray_up);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_dn.png", &tex_addons::sky_gray_dn);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_ft.jpg", &tex_addons::sky_gray_ft);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_bk.jpg", &tex_addons::sky_gray_bk);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_lf.jpg", &tex_addons::sky_gray_lf);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_rt.jpg", &tex_addons::sky_gray_rt);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_up.jpg", &tex_addons::sky_gray_up);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_dn.jpg", &tex_addons::sky_gray_dn);
 	}
 
 	void cmeshdx8_renderpass_pre_draw(CMeshDX8* mesh)
@@ -799,7 +801,7 @@ namespace components
 				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
 			}
 
-			// laser platforms
+			// laser platforms + DebugTextureView
 			else if (mesh->m_VertexFormat == 0x80001)
 			{
 				//do_not_render_next_mesh = true;
@@ -866,32 +868,60 @@ namespace components
 								{
 									int x = 1; 
 								}
-								int y = 1;
+								int y = 1;6
 							}*/
 
-							// fix sliding door background
-							if (sname.contains("decals/portalstencildecal")) 
-							{
-								//do_not_render_next_mesh = true;
-
-								// todo set unique texture
-								dev->SetTexture(0, tex_addons::portal_mask);
-
-								int yy = 1; 
-							}
-							else if (sname.contains("light_panel_"))
+							if (sname.contains("light_panel_"))
 							{
 								add_nocull_materialvar(cmat);
 							}
-							// vgui/signage/vgui_indicator_checked
-							else if (sname.contains("vgui_indicator_checked"))
+							// vgui/signage/
+							/*else if (sname.contains("vgui_indicator_checked")) 
 							{
-								int x = 1; 
-								/*BufferedState_t state = {};
-								shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
-								dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
-								was_transform_set = true;*/
+								dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[0]));
+								was_transform_set = true;
+							}*/
+							else if (sname.contains("decals/portalstencildecal")) 
+							{
+								//do_not_render_next_mesh = true;
+
+								// #TODO set unique texture
+								dev->SetTexture(0, tex_addons::portal_mask);
 							}
+							// unique textures for the white sky so they can be marked
+							else if (sname.contains("sky")) 
+							{
+								if (sname.contains("_white"))
+								{
+									//if (sname.contains("eft")) // sky_whiteft
+									//{
+									//	dev->SetTexture(0, tex_addons::sky_gray_ft);
+									//}
+									//else if (sname.contains("ebk"))
+									//{
+									//	dev->SetTexture(0, tex_addons::sky_gray_bk);
+									//}
+									//else if (sname.contains("elf"))
+									//{
+									//	dev->SetTexture(0, tex_addons::sky_gray_lf);
+									//}
+									//else if (sname.contains("ert"))
+									//{
+									//	dev->SetTexture(0, tex_addons::sky_gray_rt);
+									//}
+									//else if (sname.contains("eup"))
+									//{
+									//	dev->SetTexture(0, tex_addons::sky_gray_up);
+									//}
+									//else if (sname.contains("edn"))
+									//{
+									//	dev->SetTexture(0, tex_addons::sky_gray_dn);
+									//}
+
+									render_next_mesh::as_sky = true;
+								}
+							}
+							
 							/*else if (sname.contains("blendwhitefloor_dirt01"))
 							{
 								dev->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_ALWAYS);
@@ -948,7 +978,20 @@ namespace components
 				{
 					BufferedState_t state = {};
 					shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
-					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0])); 
+
+					/*if (render_next_mesh::as_sky)
+					{
+						state.m_Transform[0].m[0][0] = 1.0f;
+						state.m_Transform[0].m[1][1] = 1.0f;
+						state.m_Transform[0].m[2][2] = 1.0f;
+					}*/
+
+					//dev->SetRenderState(D3DRS_LIGHTING, FALSE);
+					//dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+
+					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
+					/*dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[1]));
+					dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[2]));*/
 				}
 			}
 
@@ -1756,11 +1799,51 @@ namespace components
 		{
 			if (render_with_new_stride)
 			{
-				num_verts *= 3;
-				prim_count *= 3;
+				num_verts *= 1;
+				prim_count *= 1;
 			}
 
+			//bool skip_other_sky_surfs = false;
+
+			DWORD og_texfactor, og_colorarg2, og_colorop;
+			if (render_next_mesh::as_sky)
+			{
+				// uh
+				//dev->SetRenderState(D3DRS_FOGENABLE, FALSE);
+
+				// HACK - as long as sky marking is broken, use WORLD SPACE UI (emissive)
+				// -> means that we can not use a distant light
+				// -> this reduces the emissive intensity
+				dev->GetRenderState(D3DRS_TEXTUREFACTOR, &og_texfactor);
+				dev->GetTextureStageState(0, D3DTSS_COLORARG2, &og_colorarg2);
+				dev->GetTextureStageState(0, D3DTSS_COLOROP, &og_colorop);
+				
+				dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(25, 25, 25, 255));
+				dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+				dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+
+				/*if (!model_render::rendered_first_sky_surface)
+				{
+					model_render::rendered_first_sky_surface = true;
+					num_verts *= 6;
+					prim_count *= 6;
+				}
+				else
+				{
+					skip_other_sky_surfs = true;
+				}*/
+			}
+
+			//if (!skip_other_sky_surfs)
 			dev->DrawIndexedPrimitive(type, base_vert_index, min_vert_index, num_verts, start_index, prim_count);
+
+			// restore emissive sky settings
+			if (render_next_mesh::as_sky)
+			{
+				dev->SetRenderState(D3DRS_TEXTUREFACTOR, og_texfactor);
+				dev->SetTextureStageState(0, D3DTSS_COLORARG2, og_colorarg2);
+				dev->SetTextureStageState(0, D3DTSS_COLOROP, og_colorop);
+			}
 		}
 
 		// debug renderstates and texturestages
