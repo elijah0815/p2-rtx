@@ -278,14 +278,12 @@ namespace components
 				.radiance = remixapi_Float3D {100, 20, 20},
 			};
 
-			const auto result3 = main_module::bridge.CreateLight(&info, &_handle);
+			main_module::bridge.CreateLight(&info, &_handle);
 		}
 		else
 		{
 			main_module::bridge.DrawLightInstance(_handle);
 		}
-
-		int z = 1;
 	}
 
 	// CViewRender::RenderView

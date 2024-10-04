@@ -2249,6 +2249,34 @@ namespace components
 		char m_ModifyTextureLockedLevel;
 		unsigned __int8 m_ModifyTextureLockedFace;
 	}; STATIC_ASSERT_OFFSET(CShaderAPIDx8, m_DynamicState, 0xFC0);
+
+	struct CMaterialReference
+	{
+		IMaterial* m_pMaterial;
+	};
+
+	struct PropPortalRenderingMaterials_t
+	{
+		CMaterialReference m_PortalMaterials[2];
+		CMaterialReference m_PortalRenderFixMaterials[2];
+		CMaterialReference m_PortalDepthDoubler;
+		CMaterialReference m_PortalStaticOverlay[2];
+		CMaterialReference m_PortalStaticOverlay_Tinted;
+		CMaterialReference m_PortalStaticGhostedOverlay[2];
+		CMaterialReference m_PortalStaticGhostedOverlay_Tinted;
+		CMaterialReference m_Portal_Stencil_Hole;
+		CMaterialReference m_Portal_Refract;
+		unsigned int m_nDepthDoubleViewMatrixVarCache;
+		unsigned int m_nStaticOverlayTintedColorGradientLightVarCache;
+		Vector m_coopPlayerPortalColors[2][2];
+		Vector m_singlePlayerPortalColors[2];
+	};
+
+	struct CAutoInitBasicPropPortalDrawingMaterials
+	{
+		char pad[0xC];
+		PropPortalRenderingMaterials_t m_Materials;
+	};
 }
 
 
