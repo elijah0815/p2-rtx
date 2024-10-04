@@ -354,32 +354,76 @@ namespace components
 			current_shader_name = current_material->vftable->GetShaderName(current_material);
 
 #if 1
-			if (current_shader_name.contains("Water"))
+			/*if (current_material_name.contains("slime"))
 			{
-				IMaterialVar* var = nullptr;
-				if (has_materialvar(current_material, "$basetexture", &var))
+				int x = 1;
+			}*/
+
+			// added format check
+			if (mesh->m_VertexFormat == 0x2480033 || mesh->m_VertexFormat == 0x80033)
+			{
+				if (current_shader_name.contains("Water"))
 				{
-					// if material has NO defined basetexture
-					if (var && !var->vftable->IsDefined(var))
+					IMaterialVar* var = nullptr;
+					if (has_materialvar(current_material, "$basetexture", &var))
 					{
-						// check if it has a defined bottommaterial
-						var = nullptr;
-						const auto has_bottom_mat = has_materialvar(current_material, "$bottommaterial", &var);
-
-						if (!has_bottom_mat /*&& var && var->vftable->IsDefined(var)*/)
+						// if material has NO defined basetexture
+						if (var && !var->vftable->IsDefined(var))
 						{
-							// do not render water surfaces that have no bottom material (this is the surface below the water)
-							// could just check $abovewater I guess? lmao
+							// check if it has a defined bottommaterial
+							var = nullptr;
+							const auto has_bottom_mat = has_materialvar(current_material, "$bottommaterial", &var);
 
-							// we only need one surface
-							do_not_render_next_mesh = true;
+							if (!has_bottom_mat /*&& var && var->vftable->IsDefined(var)*/)
+							{
+								// do not render water surfaces that have no bottom material (this is the surface below the water)
+								// could just check $abovewater I guess? lmao
+
+								// we only need one surface
+								do_not_render_next_mesh = true;
+							}
+
+							// put the normalmap into texture slot 0
+							else
+							{
+								//  BindTexture( SHADER_SAMPLER2, TEXTURE_BINDFLAGS_NONE, NORMALMAP, BUMPFRAME );
+								IDirect3DBaseTexture9* tex = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, buffer_state.m_BoundTexture[2]);
+								if (tex)
+								{
+									// save og texture
+									dev->GetTexture(0, &ff_water::s_texture);
+									dev->SetTexture(0, tex);
+									ff_water::was_water = true;
+								}
+							}
+
+							//if (has_materialvar(cmat, "$bottommaterial", &var))
+							//{
+							//	if (var)
+							//	{
+							//		// do not render the current surface if there is a bottom material
+							//		// we only need one surface
+							//		if (var->vftable->IsDefined(var))
+							//		{
+							//			do_not_render_next_mesh = true;
+							//		}
+							//		// if there is no bottom material put the normalmap into texture slot 0
+							//		else
+							//		{
+							//			//  BindTexture( SHADER_SAMPLER2, TEXTURE_BINDFLAGS_NONE, NORMALMAP, BUMPFRAME );
+							//			IDirect3DBaseTexture9* tex = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, buffer_state.m_BoundTexture[2]);
+							//			if (tex)
+							//			{
+							//				dev->SetTexture(0, tex);
+							//			}
+							//		}
+							//	}
 						}
-
-						// put the normalmap into texture slot 0
+						// material has defined a $basetexture
 						else
 						{
-							//  BindTexture( SHADER_SAMPLER2, TEXTURE_BINDFLAGS_NONE, NORMALMAP, BUMPFRAME );
-							IDirect3DBaseTexture9* tex = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, buffer_state.m_BoundTexture[2]);
+							//  sampler 10
+							IDirect3DBaseTexture9* tex = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, buffer_state.m_BoundTexture[10]);
 							if (tex)
 							{
 								// save og texture
@@ -388,29 +432,6 @@ namespace components
 								ff_water::was_water = true;
 							}
 						}
-
-						//if (has_materialvar(cmat, "$bottommaterial", &var))
-						//{
-						//	if (var)
-						//	{
-						//		// do not render the current surface if there is a bottom material
-						//		// we only need one surface
-						//		if (var->vftable->IsDefined(var))
-						//		{
-						//			do_not_render_next_mesh = true;
-						//		}
-						//		// if there is no bottom material put the normalmap into texture slot 0
-						//		else
-						//		{
-						//			//  BindTexture( SHADER_SAMPLER2, TEXTURE_BINDFLAGS_NONE, NORMALMAP, BUMPFRAME );
-						//			IDirect3DBaseTexture9* tex = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, buffer_state.m_BoundTexture[2]);
-						//			if (tex)
-						//			{
-						//				dev->SetTexture(0, tex);
-						//			}
-						//		}
-						//	}
-
 					}
 				}
 			}
@@ -819,6 +840,7 @@ namespace components
 			}
 
 			// fizzle texture that breaks everything and is normally ignored?
+			// engine/shadowbuild
 			else if (mesh->m_VertexFormat == 0xa0003)
 			{
 				do_not_render_next_mesh = true;
