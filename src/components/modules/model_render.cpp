@@ -181,12 +181,11 @@ namespace components
 		{
 			dev->SetVertexShader(ff_model::s_shader);
 			ff_model::s_shader = nullptr;
-
-			if (ff_model::s_texture)
-			{
-				dev->SetTexture(0, ff_model::s_texture);
-				ff_model::s_texture = nullptr;
-			}
+		}
+		if (ff_model::s_texture)
+		{
+			dev->SetTexture(0, ff_model::s_texture);
+			ff_model::s_texture = nullptr;
 		}
 	}
 
@@ -500,6 +499,9 @@ namespace components
 							//do_not_render_next_mesh = true;
 							if (tex_addons::glass_shards)
 							{
+								// this can cause some issues with other glass textures?!
+								// a prob. because: models/props_destruction/glass_fracture_a_inner
+								dev->GetTexture(0, &ff_model::s_texture); // save and restore tex after render
 								dev->SetTexture(0, tex_addons::glass_shards);
 							}
 						}
@@ -531,8 +533,9 @@ namespace components
 		// also renders some foliage (2nd level - emissive)
 		else if (ff_model::s_shader) // should be stride 30
 		{
+			// 0xa0103
 			//do_not_render_next_mesh = true;
-			if (auto shaderapi = game::get_shaderapi(); shaderapi)  
+			if (auto shaderapi = game::get_shaderapi(); shaderapi)   
 			{
 				if (auto cmat = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); cmat)
 				{
@@ -2056,6 +2059,12 @@ namespace components
 			}
 		}
 
+		if (ff_model::s_texture)
+		{
+			dev->SetTexture(0, ff_model::s_texture);
+			ff_model::s_texture = nullptr;
+		}
+
 		if (saved_shader_unk)
 		{
 			dev->SetVertexShader(saved_shader_unk);
@@ -2402,51 +2411,51 @@ namespace components
 							}*/
 
 							// blending is a shader thing I guess?
-							if (sname.contains("portal_door_glass"))
-							{
-								//mat.m[3][1] += sinf((float)main_module::framecount * 0.05f) * 6.0f;
-								dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m));
+							//if (sname.contains("portal_door_glass"))
+							//{
+							//	//mat.m[3][1] += sinf((float)main_module::framecount * 0.05f) * 6.0f;
+							//	dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m));
 
-								if (current_render_ent)
-								{
-									int x = 1;
-								}
+							//	if (current_render_ent)
+							//	{
+							//		int x = 1;
+							//	}
 
-								// setting to VertexLitGeneric results in vertexformat '0xa0003' and gets rendered in 'cmeshdx8_renderpass_pre_draw'
-								//cmat->vftable->SetShader(cmat, "VertexLitGeneric"); 
-								
-								if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
-								{
-								//	//if (std::string_view(shadername).contains("PortalRefract_dx9"))
-								//	/*if (std::string_view(shadername) != "Wireframe_DX9")
-								//	{
-								//		cmat->vftable->SetShader(cmat, "Wireframe");
-								//		int x = 1;
-								//	}*/
-									int x = 1;
-								}
-							}
-							else if (std::string_view(name).contains("props_destruction/glass_"))
+							//	// setting to VertexLitGeneric results in vertexformat '0xa0003' and gets rendered in 'cmeshdx8_renderpass_pre_draw'
+							//	//cmat->vftable->SetShader(cmat, "VertexLitGeneric"); 
+							//	
+							//	if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+							//	{
+							//	//	//if (std::string_view(shadername).contains("PortalRefract_dx9"))
+							//	//	/*if (std::string_view(shadername) != "Wireframe_DX9")
+							//	//	{
+							//	//		cmat->vftable->SetShader(cmat, "Wireframe");
+							//	//		int x = 1;
+							//	//	}*/
+							//		int x = 1;
+							//	}
+							//}
+							/*else*/ if (std::string_view(name).contains("props_destruction/glass_"))
 							{
 								IDirect3DBaseTexture9* aa = nullptr;
 								dev->GetTexture(1, &aa);
 								dev->SetTexture(0, aa); 
 							}
-							else if (sname.contains("vacum_pipe_glass")) 
-							{
-								if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
-								{
-									//if (std::string_view(shadername).contains("PortalRefract_dx9"))
-									if (std::string_view(shadername) != "VertexLitGeneric")
-									{
-										// setting to VertexLitGeneric results in vertexformat '0xa0003' and gets rendered in 'cmeshdx8_renderpass_pre_draw'
-										//cmat->vftable->SetShader(cmat, "VertexLitGeneric");
+							//else if (sname.contains("vacum_pipe_glass")) 
+							//{
+							//	if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+							//	{
+							//		//if (std::string_view(shadername).contains("PortalRefract_dx9"))
+							//		if (std::string_view(shadername) != "VertexLitGeneric")
+							//		{
+							//			// setting to VertexLitGeneric results in vertexformat '0xa0003' and gets rendered in 'cmeshdx8_renderpass_pre_draw'
+							//			//cmat->vftable->SetShader(cmat, "VertexLitGeneric");
 
-										int x = 1;
-									}
-									int x = 1;
-								}
-							}
+							//			int x = 1;
+							//		}
+							//		int x = 1;
+							//	}
+							//}
 						}
 					}
 				}
@@ -2470,21 +2479,21 @@ namespace components
 							//if (std::string_view(name).contains("portal_door_glass"))
 							{
 								// todo set unique texture
-								dev->SetTexture(0, nullptr); //tex_portal_mask);
+								dev->SetTexture(0, nullptr); //tex_portal_mask); 
 
-								if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
-								{
-									//if (std::string_view(shadername).contains("PortalRefract_dx9"))
-									if (std::string_view(shadername) != "VertexLitGeneric") 
-									{
-										// setting to VertexLitGeneric results in vertexformat '0xa0003' and gets rendered in 'cmeshdx8_renderpass_pre_draw'
-										cmat->vftable->SetShader(cmat, "VertexLitGeneric");
-										
-										int x = 1;
-									}
-									int x = 1;
-								}
-								int yy = 1;
+								//if (auto shadername = cmat->vftable->GetShaderName(cmat); shadername)
+								//{
+								//	//if (std::string_view(shadername).contains("PortalRefract_dx9"))
+								//	if (std::string_view(shadername) != "VertexLitGeneric") 
+								//	{
+								//		// setting to VertexLitGeneric results in vertexformat '0xa0003' and gets rendered in 'cmeshdx8_renderpass_pre_draw'
+								//		cmat->vftable->SetShader(cmat, "VertexLitGeneric");
+								//		
+								//		int x = 1;
+								//	}
+								//	int x = 1;
+								//}
+								//int yy = 1;
 							}
 						}
 					}
@@ -2500,6 +2509,14 @@ namespace components
 			{
 				int xx = 1; 
 			}
+		}
+
+		IDirect3DBaseTexture9* ttex = nullptr;
+		dev->GetTexture(0, &ttex);
+
+		if (!ttex)
+		{
+			int xasd = 1;
 		}
 
 		int zz = 1;
