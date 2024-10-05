@@ -470,6 +470,33 @@ namespace components
 		}
 	}
 
+
+
+	void on_set_pixelshader_warning()
+	{
+		int break_me = 0;
+	}
+
+	HOOK_RETN_PLACE_DEF(set_pixelshader_warning_retn);
+	__declspec(naked) void set_pixelshader_warning_stub()
+	{
+		__asm
+		{
+			// og
+			add     esp, 4;
+			pop		edi;
+			pop		esi;
+
+			pushad;
+			call	on_set_pixelshader_warning;
+			popad;
+
+			jmp		set_pixelshader_warning_retn;
+
+		}
+	}
+
+
 	main_module::main_module()
 	{
 		/*HOOK_RETN_PLACE(pl_view_stub_retn, CLIENT_BASE + 0x4DA02);
@@ -533,5 +560,11 @@ namespace components
 
 		utils::hook(CLIENT_BASE + 0x27D4AC, cportalghost_should_draw_stub).install()->quick();
 		HOOK_RETN_PLACE(cportalghost_should_draw_retn, CLIENT_BASE + 0x27D4B1);
+
+
+		// CShaderManager::SetPixelShader :: disable warning print + place stub so we can break and see what type of shader is failing to load
+		utils::hook::nop(RENDERER_BASE + 0x2AAB4, 6); // disable 'Trying to set a pixel shader that failed loading' print
+		utils::hook(RENDERER_BASE + 0x2AABA, set_pixelshader_warning_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(set_pixelshader_warning_retn, RENDERER_BASE + 0x2AABF);
 	}
 }
