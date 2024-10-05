@@ -502,6 +502,7 @@ namespace components
 			// replace all refract shaders with wireframe
 			if (current_shader_name.contains("Refract_DX90"))
 			{
+				// I think we are simply missing basetex0 here
 				current_material->vftable->SetShader(current_material, "Wireframe");
 			}
 
@@ -552,7 +553,7 @@ namespace components
 					current_material->vftable->SetShader(current_material, "Wireframe");
 				}
 				
-
+				//do_not_render_next_mesh = true;
 				was_portal_related = true;
 				model_render::portal1_render_count++;
 			}
@@ -578,11 +579,12 @@ namespace components
 					current_material->vftable->SetShader(current_material, "Wireframe");
 				}
 
+				//do_not_render_next_mesh = true;
 				was_portal_related = true;
 				model_render::portal2_render_count++;
 			}
 
-			if (was_portal_related)
+			if (was_portal_related) 
 			{
 				// through wall overlays
 				if (mesh->m_VertexFormat == 0xa0007)
@@ -595,7 +597,7 @@ namespace components
 					//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 				}
 
-				// actually draws the portals
+				// draws portal stencil hole
 				if (mesh->m_VertexFormat == 0x4a0003)
 				{
 					//do_not_render_next_mesh = true;
@@ -606,7 +608,7 @@ namespace components
 					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
 				}
 
-				// if set to wireframe mode
+				// if set to wireframe mode 
 				if (mesh->m_VertexFormat == 0x80003)
 				{
 					//do_not_render_next_mesh = true;
@@ -751,30 +753,30 @@ namespace components
 				{
 					if (current_material_name.contains("_white"))
 					{
-						//if (current_material_name.contains("eft")) // sky_whiteft
-						//{
-						//	dev->SetTexture(0, tex_addons::sky_gray_ft);
-						//}
-						//else if (current_material_name.contains("ebk"))
-						//{
-						//	dev->SetTexture(0, tex_addons::sky_gray_bk);
-						//}
-						//else if (current_material_name.contains("elf"))
-						//{
-						//	dev->SetTexture(0, tex_addons::sky_gray_lf);
-						//}
-						//else if (current_material_name.contains("ert"))
-						//{
-						//	dev->SetTexture(0, tex_addons::sky_gray_rt);
-						//}
-						//else if (current_material_name.contains("eup"))
-						//{
-						//	dev->SetTexture(0, tex_addons::sky_gray_up);
-						//}
-						//else if (current_material_name.contains("edn"))
-						//{
-						//	dev->SetTexture(0, tex_addons::sky_gray_dn);
-						//}
+						if (current_material_name.contains("eft")) // sky_whiteft
+						{
+							dev->SetTexture(0, tex_addons::sky_gray_ft);
+						}
+						else if (current_material_name.contains("ebk"))
+						{
+							dev->SetTexture(0, tex_addons::sky_gray_bk);
+						}
+						else if (current_material_name.contains("elf"))
+						{
+							dev->SetTexture(0, tex_addons::sky_gray_lf);
+						}
+						else if (current_material_name.contains("ert"))
+						{
+							dev->SetTexture(0, tex_addons::sky_gray_rt);
+						}
+						else if (current_material_name.contains("eup"))
+						{
+							dev->SetTexture(0, tex_addons::sky_gray_up);
+						}
+						else if (current_material_name.contains("edn"))
+						{
+							dev->SetTexture(0, tex_addons::sky_gray_dn);
+						}
 
 						render_next_mesh::as_sky = true;
 					}
@@ -922,6 +924,12 @@ namespace components
 			{
 				//do_not_render_next_mesh = true;
 
+				/*float constant[4] = {};  
+				dev->GetPixelShaderConstantF(5, constant, 1);
+
+				float constant2[4] = {};
+				dev->GetPixelShaderConstantF(6, constant2, 1);*/
+
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[0]));
 				dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[1]));
 				dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[2]));
@@ -929,6 +937,11 @@ namespace components
 				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3); // 80
 				//dev->GetVertexShader(&ff_vgui::s_shader04);
 				//dev->SetVertexShader(nullptr);
+
+				//dev->GetTexture(0, &ff_water::s_texture); 
+				//dev->SetTexture(0, tex_addons::portal_mask);
+				//ff_water::was_water = true;
+				//render_next_mesh::with_high_gamma = false;
 
 #if 0			// can be used to look into the vertex buffer to figure out the layout
 				{
@@ -1022,7 +1035,7 @@ namespace components
 			// on portal open
 			// portal gun pickup effect (pusling lights (not the beam))
 			// other particles like smoke - wakeup scene ring - water splash
-			else if (mesh->m_VertexFormat == 0x114900005) // stride 96
+			else if (mesh->m_VertexFormat == 0x114900005) // stride 96 
 			{
 				//do_not_render_next_mesh = true;
 
@@ -1045,7 +1058,8 @@ namespace components
 					//render_with_new_stride = true;
 				}
 #endif
-				//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[0])); 
+
+				//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[0]));  
 				//dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[1]));
 				//dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[2]));
 
@@ -1057,7 +1071,7 @@ namespace components
 			}
 
 			// on portal open - blob in the middle (impact)
-			else if (mesh->m_VertexFormat == 0x80037) // TODO - test with buffer_state transforms
+			else if (mesh->m_VertexFormat == 0x80037) // TODO - test with buffer_state transforms 
 			{
 				//do_not_render_next_mesh = true;
 				// this needs a position as it spawns on 0 0 0
@@ -1120,7 +1134,7 @@ namespace components
 			}
 
 			// decals
-			else if (mesh->m_VertexFormat == 0x2480037)  // stride 0x50 - 80
+			else if (mesh->m_VertexFormat == 0x2480037)  // stride 0x50 - 80 
 			{
 				//do_not_render_next_mesh = true;
 
@@ -1134,6 +1148,8 @@ namespace components
 			// Sprite shader
 			else if (mesh->m_VertexFormat == 0x914900005)
 			{
+				//do_not_render_next_mesh = true; 
+
 #if 0			// can be used to look into the vertex buffer to figure out the layout
 				{
 					IDirect3DVertexBuffer9* buff = nullptr;
@@ -1161,6 +1177,28 @@ namespace components
 				//dev->SetVertexShader(nullptr);
 
 				//dev->SetTexture(0, tex_addons::portal_mask);
+			}
+
+			// SpriteCard vista smoke 
+			else if (mesh->m_VertexFormat == 0x24914900005) // stride 144 ....
+			{
+				// flipbooks not visible at all so disable them
+				//do_not_render_next_mesh = true;
+
+				//IDirect3DBaseTexture9* tex = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, buffer_state.m_BoundTexture[1]);
+				//if (tex)
+				//{
+				//	// save og texture
+				//	dev->GetTexture(0, &ff_water::s_texture);
+				//	dev->SetTexture(0, tex);
+				//}
+
+				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_TEX7 | D3DFVF_TEXCOORDSIZE1(4)); // 84 - 4 as last tc is one float
+				//dev->GetVertexShader(&ff_vgui::s_shader03);
+				//dev->SetVertexShader(nullptr);
+				//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[0]));
+				//dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[1]));
+				//dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[2]));
 			}
 			else
 			{
