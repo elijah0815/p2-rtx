@@ -270,11 +270,13 @@ namespace components
 	{
 		bool with_high_gamma = false;
 		bool as_sky = false;
+		bool as_transport_beam = false;
 
 		void reset()
 		{
 			with_high_gamma = false;
 			as_sky = false;
+			as_transport_beam = false;
 		}
 	}
 
@@ -676,7 +678,7 @@ namespace components
 			// transporting beams
 			else if (mesh->m_VertexFormat == 0x80005) // stride 0x20
 			{
-				//do_not_render_next_mesh = true;
+				//do_not_render_next_mesh = true; 
 
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX2);
 				dev->GetVertexShader(&ff_beamtransport::s_shader); 
@@ -697,6 +699,7 @@ namespace components
 
 			// laser platforms + DebugTextureView
 			// renders a small quad at 0 0 0 ?
+			// also rendering transporting beams now?
 			else if (mesh->m_VertexFormat == 0x80001)
 			{
 				//do_not_render_next_mesh = true;
@@ -710,7 +713,7 @@ namespace components
 					dev->SetVertexShader(nullptr);
 
 					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
-					dev->GetTransform(D3DTS_TEXTURE0, &ff_laserplatform::s_tc_transform);
+					dev->GetTransform(D3DTS_TEXTURE0, &ff_laserplatform::s_tc_transform); 
 					//dev->GetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, &laserplatform::s_tc_stage);
 
 					// tc scroll
@@ -719,6 +722,9 @@ namespace components
 
 					dev->SetTransform(D3DTS_TEXTURE0, &ret);
 					dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
+
+					// slightly increase the alpha so that the 'fog' becomes visible
+					render_next_mesh::as_transport_beam = true;
 				}
 				else
 				{
@@ -1280,6 +1286,17 @@ namespace components
 					skip_other_sky_surfs = true;
 				}*/
 			}
+			else if (render_next_mesh::as_transport_beam)
+			{
+				dev->GetRenderState(D3DRS_TEXTUREFACTOR, &og_texfactor);
+				dev->GetTextureStageState(0, D3DTSS_ALPHAARG2, &og_colorarg2);
+				dev->GetTextureStageState(0, D3DTSS_ALPHAOP, &og_colorop);
+
+				// slightly increase the alpha so that the 'fog' becomes visible
+				dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 40));
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_ADD);
+			}
 
 			//if (!skip_other_sky_surfs)
 			dev->DrawIndexedPrimitive(type, base_vert_index, min_vert_index, num_verts, start_index, prim_count);
@@ -1290,6 +1307,12 @@ namespace components
 				dev->SetRenderState(D3DRS_TEXTUREFACTOR, og_texfactor);
 				dev->SetTextureStageState(0, D3DTSS_COLORARG2, og_colorarg2);
 				dev->SetTextureStageState(0, D3DTSS_COLOROP, og_colorop);
+			}
+			else if (render_next_mesh::as_transport_beam)
+			{
+				dev->SetRenderState(D3DRS_TEXTUREFACTOR, og_texfactor);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, og_colorarg2);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, og_colorop);
 			}
 		}
 
