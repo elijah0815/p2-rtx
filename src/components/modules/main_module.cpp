@@ -13,6 +13,10 @@
 // cl_particles_show_bbox 1 can be used to see fx names
 // +map sp_a1_intro2
 
+// engine::Shader_WorldEnd interesting for sky
+
+// mat_forcedynamic 1 || mat_drawflat 1 => Shader_DrawChainsDynamic in Shader_DrawChains?
+
 namespace components
 {
 	template <std::size_t Index, typename ReturnType, typename... Args>
@@ -536,6 +540,9 @@ namespace components
 
 		// ^ :: backface check -> jnz to je
 		utils::hook::set<BYTE>(ENGINE_BASE + 0xE69CD, 0x74);
+
+		// R_DrawLeaf :: backface check (emissive lamps) plane normal >= -0.00999f
+		utils::hook::nop(ENGINE_BASE + 0xE65C3, 6);
 
 		// CClientLeafSystem::ExtractCulledRenderables :: disable 'engine->CullBox' check to disable entity culling in leafs
 		// needs r_PortalTestEnts to be 0 -> je to jmp (0xEB)

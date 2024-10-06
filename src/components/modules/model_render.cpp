@@ -162,6 +162,7 @@ namespace components
 			ff_model::s_shader = nullptr;
 		}
 
+		// this tex is only used for refract shaders .. do not reset
 		if (ff_model::s_texture)
 		{
 			dev->SetTexture(0, ff_model::s_texture);
@@ -269,7 +270,8 @@ namespace components
 		LPDIRECT3DTEXTURE9 portal_blue;
 		LPDIRECT3DTEXTURE9 portal_orange;
 		LPDIRECT3DTEXTURE9 glass_shards;
-		LPDIRECT3DTEXTURE9 glass_window_refract;
+		LPDIRECT3DTEXTURE9 glass_window_lamps;
+		LPDIRECT3DTEXTURE9 glass_window_observ;
 		LPDIRECT3DTEXTURE9 black_shader;
 		LPDIRECT3DTEXTURE9 sky_gray_ft;
 		LPDIRECT3DTEXTURE9 sky_gray_bk;
@@ -319,7 +321,8 @@ namespace components
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_blue.png", &tex_addons::portal_blue);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_orange.png", &tex_addons::portal_orange);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_shards.png", &tex_addons::glass_shards);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_window_refract.png", &tex_addons::glass_window_refract);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_window_refract.png", &tex_addons::glass_window_lamps);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_window_observ.png", &tex_addons::glass_window_observ);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\black_shader.png", &tex_addons::black_shader);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_ft.jpg", &tex_addons::sky_gray_ft);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_bk.jpg", &tex_addons::sky_gray_bk);
@@ -470,6 +473,11 @@ namespace components
 			//}
 		}
 
+		if (current_material_name.contains("lab/glassw"))
+		{
+			int x = 1;
+		}
+
 		if (og_bmodel_shader && mesh->m_VertexFormat == 0x2480033)
 		{
 			//do_not_render_next_mesh = true;
@@ -525,18 +533,43 @@ namespace components
 				// I think we are simply missing basetex0 here
 				current_material->vftable->SetShader(current_material, "Wireframe");
 				int x = 1;
+				//dev->GetTexture(0, &ff_model::s_texture);
+				//dev->SetTexture(0, tex_addons::glass_window_refract);
+
+				//if (current_material_name.contains("glass/glassw"))
+				//{
+				//	if (tex_addons::glass_window_lamps)
+				//	{
+				//		dev->GetTexture(0, &ff_model::s_texture);
+				//		dev->SetTexture(0, tex_addons::glass_window_lamps);
+				//	}
+				//}
+
+				//// change observer window shader to wireframe
+				//else if (current_material_name.contains("lab/glassw"))
+				//{
+				//	current_material->vftable->SetShader(current_material, "Wireframe");
+				//}
 			}
 
-			if (current_material_name.contains("glasswindow_refract"))
+			// change observer window texture
+			else if (current_material_name.contains("lab/glassw"))
 			{
-				if (tex_addons::glass_window_refract)
+				if (tex_addons::glass_window_observ)
 				{
 					dev->GetTexture(0, &ff_model::s_texture);
-					dev->SetTexture(0, tex_addons::glass_window_refract);
+					dev->SetTexture(0, tex_addons::glass_window_observ);
 				}
 			}
-
-			if (current_shader_name.contains("Black"))
+			else if (current_material_name.contains("glass/glassw"))
+			{
+				if (tex_addons::glass_window_lamps)
+				{
+					dev->GetTexture(0, &ff_model::s_texture);
+					dev->SetTexture(0, tex_addons::glass_window_lamps);
+				}
+			}
+			else if (current_shader_name.contains("Black"))
 			{
 				dev->SetTexture(0, tex_addons::black_shader);
 			}
@@ -835,6 +868,7 @@ namespace components
 				if (current_material_name.contains("light_panel_"))
 				{
 					add_nocull_materialvar(current_material);
+					//do_not_render_next_mesh = true;
 				}
 				// TODO - create actual portals for this?
 				// requires portal stencil depth of at least 1
@@ -1546,11 +1580,11 @@ namespace components
 			}
 		}
 
-		if (ff_model::s_texture)
+		/*if (ff_model::s_texture)
 		{
 			dev->SetTexture(0, ff_model::s_texture);
 			ff_model::s_texture = nullptr;
-		}
+		}*/
 
 		if (saved_shader_unk)
 		{
