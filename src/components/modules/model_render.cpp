@@ -167,6 +167,7 @@ namespace components
 		{
 			dev->SetTexture(0, ff_model::s_texture);
 			ff_model::s_texture = nullptr;
+			add_light_to_texture_color_restore();
 		}
 	}
 
@@ -532,24 +533,6 @@ namespace components
 			{
 				// I think we are simply missing basetex0 here
 				current_material->vftable->SetShader(current_material, "Wireframe");
-				int x = 1;
-				//dev->GetTexture(0, &ff_model::s_texture);
-				//dev->SetTexture(0, tex_addons::glass_window_refract);
-
-				//if (current_material_name.contains("glass/glassw"))
-				//{
-				//	if (tex_addons::glass_window_lamps)
-				//	{
-				//		dev->GetTexture(0, &ff_model::s_texture);
-				//		dev->SetTexture(0, tex_addons::glass_window_lamps);
-				//	}
-				//}
-
-				//// change observer window shader to wireframe
-				//else if (current_material_name.contains("lab/glassw"))
-				//{
-				//	current_material->vftable->SetShader(current_material, "Wireframe");
-				//}
 			}
 
 			// change observer window texture
@@ -559,6 +542,7 @@ namespace components
 				{
 					dev->GetTexture(0, &ff_model::s_texture);
 					dev->SetTexture(0, tex_addons::glass_window_observ);
+					add_light_to_texture_color_edit(0.9f, 1.3f, 1.5f, 0.05f);
 				}
 			}
 			else if (current_material_name.contains("glass/glassw"))

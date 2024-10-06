@@ -15,7 +15,7 @@
 
 // engine::Shader_WorldEnd interesting for sky
 
-// mat_forcedynamic 1 || mat_drawflat 1 => Shader_DrawChainsDynamic in Shader_DrawChains?
+// Shader_DrawChains:: mat_forcedynamic 1 || mat_drawflat 1 => Shader_DrawChainsDynamic (changes hashes but still unstable)
 
 namespace components
 {
