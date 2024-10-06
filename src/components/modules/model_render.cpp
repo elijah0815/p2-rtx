@@ -5,6 +5,22 @@
 
 namespace components
 {
+	const D3DXMATRIX TC_TRANSLATE_TO_CENTER =
+	{
+		 1.0f,  0.0f, 0.0f, 0.0f,	// identity
+		 0.0f,  1.0f, 0.0f, 0.0f,	// identity
+		 0.0f,  0.0f, 1.0f, 0.0f,	// identity
+		-0.5f, -0.5f, 0.0f, 1.0f,	// translate to center
+	};
+
+	const D3DXMATRIX TC_TRANSLATE_FROM_CENTER_TO_TOP_LEFT =
+	{
+		1.0f, 0.0f, 0.0f, 0.0f,	// identity
+		0.0f, 1.0f, 0.0f, 0.0f,	// identity
+		0.0f, 0.0f, 1.0f, 0.0f,	// identity
+		0.5f, 0.5f, 0.0f, 1.0f,	// translate back to the top left corner
+	};
+
 	namespace ff_model
 	{
 		IDirect3DVertexShader9* s_shader = nullptr;
@@ -201,6 +217,8 @@ namespace components
 		IDirect3DVertexShader9* s_shader = nullptr;
 		IDirect3DBaseTexture9* s_texture1;
 		IDirect3DBaseTexture9* s_texture2;
+		D3DMATRIX s_tc_transform = {};
+		DWORD s_tc_transform_flag = 0u;
 	}
 
 	namespace ff_portalfx_04
@@ -425,7 +443,7 @@ namespace components
 						else
 						{
 							//  sampler 10
-							IDirect3DBaseTexture9* tex = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, buffer_state.m_BoundTexture[10]);
+							IDirect3DBaseTexture9* tex = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, buffer_state.m_BoundTexture[10]); 
 							if (tex)
 							{
 								// save og texture
@@ -498,7 +516,7 @@ namespace components
 		// also renders some foliage (2nd level - emissive)
 		else if (ff_model::s_shader) // should be stride 30
 		{
-			// 0xa0103
+			// 0xa0103 
 			// do_not_render_next_mesh = true;
 
 			// replace all refract shaders with wireframe
@@ -506,6 +524,7 @@ namespace components
 			{
 				// I think we are simply missing basetex0 here
 				current_material->vftable->SetShader(current_material, "Wireframe");
+				int x = 1;
 			}
 
 			if (current_material_name.contains("glasswindow_refract"))
@@ -528,6 +547,16 @@ namespace components
 		else
 		{
 			bool was_portal_related = false;
+
+			/*if (current_material_name.contains("portals/portal_refract_"))
+			{
+				do_not_render_next_mesh = true;
+				was_portal_related = true;
+			}*/
+
+			// open / close anim ideas:
+			// CPortalRender -> m_portalIsOpening vector to check for portal openings
+			// C_Prop_Portal -> m_fOpenAmount ?
 
 			// r_portal_stencil_depth 0 heavy influence
 			if (current_material_name.contains("portal_stencil"))
@@ -554,7 +583,38 @@ namespace components
 				{
 					current_material->vftable->SetShader(current_material, "Wireframe");
 				}
-				
+
+				// #
+				// scale portal on opening
+
+				// no need to save the transform - we'll set it back to identity after rendering
+				//dev->GetTransform(D3DTS_TEXTURE0, &ff_portalfx_03::s_tc_transform);
+				//dev->GetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, &ff_portalfx_03::s_tc_transform_flag);
+
+				// portal opening value is eased in -> apply inverse ease-in
+				float s = std::sqrtf(model_render::portal1_open_amount); 
+
+				// ease out - but not really
+				s = 1 - (1 - s) * (1 - s);
+				s = 1 - (1 - s) * (1 - s);
+				s *= s * s;
+
+				// map to a different range because a scalar > 1 => smaller portal
+				// opening factor of 0 means that we start at with a 6x smaller portal
+				s = -5.0f * s + 6.0f;
+
+				// create a scaling matrix
+				D3DXMATRIX scaleMatrix;
+				D3DXMatrixScaling(&scaleMatrix, s, s, 1.0f);
+
+				// translate uv's to the center, scale from the center and translate back 
+				scaleMatrix = TC_TRANSLATE_TO_CENTER * scaleMatrix * TC_TRANSLATE_FROM_CENTER_TO_TOP_LEFT;
+
+				dev->SetTransform(D3DTS_TEXTURE0, &scaleMatrix);
+				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
+
+
+
 				//do_not_render_next_mesh = true;
 				was_portal_related = true;
 				model_render::portal1_render_count++;
@@ -580,6 +640,37 @@ namespace components
 				{
 					current_material->vftable->SetShader(current_material, "Wireframe");
 				}
+
+
+				// #
+				// scale portal on opening
+
+				// no need to save the transform - we'll set it back to identity after rendering
+				//dev->GetTransform(D3DTS_TEXTURE0, &ff_portalfx_03::s_tc_transform); 
+				//dev->GetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, &ff_portalfx_03::s_tc_transform_flag);
+
+				// portal opening value is eased in -> apply inverse ease-in
+				float s = std::sqrtf(model_render::portal2_open_amount);
+
+				// ease out - but not really
+				s = 1 - (1 - s) * (1 - s);
+				s = 1 - (1 - s) * (1 - s);
+				s *= s * s;
+
+				// map to a different range because a scalar > 1 => smaller portal
+				// opening factor of 0 means that we start at with a 6x smaller portal
+				s = -5.0f * s + 6.0f;
+
+				// create a scaling matrix
+				D3DXMATRIX scaleMatrix;
+				D3DXMatrixScaling(&scaleMatrix, s, s, 1.0f);
+
+				// translate uv's to the center, scale from the center and translate back 
+				scaleMatrix = TC_TRANSLATE_TO_CENTER * scaleMatrix * TC_TRANSLATE_FROM_CENTER_TO_TOP_LEFT;
+
+				dev->SetTransform(D3DTS_TEXTURE0, &scaleMatrix);
+				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
+
 
 				//do_not_render_next_mesh = true;
 				was_portal_related = true;
@@ -1513,7 +1604,7 @@ namespace components
 			ff_laserplatform::s_shader = nullptr;
 
 			dev->SetTransform(D3DTS_TEXTURE0, &ff_laserplatform::s_tc_transform);
-			dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE); //laserplatform::s_tc_stage);
+			dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
 		}
 
 		if (ff_laser::s_shader)
@@ -1568,6 +1659,12 @@ namespace components
 				dev->SetTexture(0, ff_portalfx_03::s_texture2);
 				ff_portalfx_03::s_texture2 = nullptr;
 			}
+
+			//dev->SetTransform(D3DTS_TEXTURE0, &ff_portalfx_03::s_tc_transform);
+			//dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, ff_portalfx_03::s_tc_transform_flag);
+
+			dev->SetTransform(D3DTS_TEXTURE0, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+			dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
 
 			dev->SetVertexShader(ff_portalfx_03::s_shader);
 			dev->SetFVF(NULL);
@@ -1950,6 +2047,55 @@ namespace components
 		}
 	}
 
+	// -----
+
+	void prop_portal_client_think_hk(C_Prop_Portal* portal)
+	{
+		if (portal)
+		{
+			if (!portal->m_bIsPortal2)
+			{
+				model_render::portal1_open_amount = portal->m_fOpenAmount;
+
+				if (portal->m_pLinkedPortal)
+				{
+					int x = 1;
+				}
+				
+				model_render::portal1_open_amount_rev = portal->m_pLinkedPortal ? portal->m_pLinkedPortal->m_fStaticAmount : portal->m_fStaticAmount;
+				
+			}
+			else
+			{
+				model_render::portal2_open_amount = portal->m_fOpenAmount;
+
+				if (portal->m_pLinkedPortal)
+				{
+					int x = 1;
+				}
+				
+					model_render::portal2_open_amount_rev = portal->m_pLinkedPortal ? portal->m_pLinkedPortal->m_fStaticAmount : portal->m_fStaticAmount;
+				
+			}
+		}
+	}
+
+	void __declspec(naked) prop_portal_client_think_stub()
+	{
+		__asm
+		{
+			pushad;
+			push	esi; // C_Prop_Portal ptr
+			call	prop_portal_client_think_hk;
+			add		esp, 4;
+			popad;
+
+			// og
+			pop     esi;
+			retn;
+		}
+	}
+
 	model_render::model_render()
 	{
 		tbl_hk::model_renderer::_interface = utils::module_interface.get<tbl_hk::model_renderer::IVModelRender*>("engine.dll", "VEngineModel016");
@@ -1985,9 +2131,13 @@ namespace components
 		HOOK_RETN_PLACE(cmeshdx8_renderpasswithvertexindexbuffer_retn_addr, RENDERER_BASE + 0xA68D);
 #endif
 
+		// TODO: remove?
 		utils::hook::nop(CLIENT_BASE + 0x1E4A18, 6);
 		utils::hook(CLIENT_BASE + 0x1E4A18, drawrenderable_pre_draw_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(drawrenderable_pre_draw_retn_addr, CLIENT_BASE + 0x1E4A1E);
+
+		// C_Prop_Portal::ClientThink :: hook to get portal 1/2 m_fOpenAmount member var
+		utils::hook(CLIENT_BASE + 0x280012, prop_portal_client_think_stub, HOOK_JUMP).install()->quick();
 	}
 }
 

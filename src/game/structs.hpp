@@ -2277,6 +2277,46 @@ namespace components
 		char pad[0xC];
 		PropPortalRenderingMaterials_t m_Materials;
 	};
+
+	// same struct as C_Prop_Portal for ease of use
+	// m_pLinkedPortal points to an address that is 0xC infront of the C_Prop_Portal object?
+	struct CPortalRenderable_FlatBasic
+	{
+		char pad1[4112];
+		CPortalRenderable_FlatBasic* m_pLinkedPortal; //0x1010 
+		Vector m_ptOrigin; //0x1014 
+		Vector m_vForward; //0x1020 
+		Vector m_vUp; //0x102C 
+		Vector m_vRight; //0x1038 
+		Vector m_qAbsAngle; //0x1044 
+		unsigned char m_bIsPortal2; //0x1050 
+		char pad_0x1051[0x3]; //0x1051
+		float m_fHalfWidth; //0x1054 
+		float m_fHalfHeight; //0x1058 
+		char pad2[9396]; //0x11A5888 
+		float m_fStaticAmount; //0x3510 
+		float m_fSecondaryStaticAmount; //0x3514 
+		float m_fOpenAmount; //0x3518 
+	}; //Size=0x351C
+
+	struct C_Prop_Portal
+	{
+		char pad1[4100];
+		CPortalRenderable_FlatBasic* m_pLinkedPortal; //0x1004 
+		Vector m_ptOrigin; //0x1008 
+		Vector m_vForward; //0x1014 
+		Vector m_vUp; //0x1020 
+		Vector m_vRight; //0x102C 
+		Vector m_qAbsAngle; //0x1038 
+		unsigned char m_bIsPortal2; //0x1044 
+		char pad_0x1045[0x3]; //0x1045
+		float m_fHalfWidth; //0x1048 
+		float m_fHalfHeight; //0x104C 
+		char pad2[9396]; //0x11A5888 
+		float m_fStaticAmount; //0x3504 
+		float m_fSecondaryStaticAmount; //0x3508 
+		float m_fOpenAmount; //0x350C 
+	}; //Size=0x3510
 }
 
 
