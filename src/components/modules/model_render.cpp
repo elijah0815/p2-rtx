@@ -274,6 +274,7 @@ namespace components
 		LPDIRECT3DTEXTURE9 glass_window_lamps;
 		LPDIRECT3DTEXTURE9 glass_window_observ;
 		LPDIRECT3DTEXTURE9 black_shader;
+		LPDIRECT3DTEXTURE9 blue_laser_dualrender;
 		LPDIRECT3DTEXTURE9 sky_gray_ft;
 		LPDIRECT3DTEXTURE9 sky_gray_bk;
 		LPDIRECT3DTEXTURE9 sky_gray_lf;
@@ -292,12 +293,16 @@ namespace components
 		bool with_high_gamma = false;
 		bool as_sky = false;
 		bool as_transport_beam = false;
+		bool dual_render_with_specified_texture = false;
+		IDirect3DTexture9* dual_render_texture = nullptr;
 
 		void reset()
 		{
 			with_high_gamma = false;
 			as_sky = false;
 			as_transport_beam = false;
+			dual_render_with_specified_texture = false;
+			dual_render_texture = nullptr;
 		}
 	}
 
@@ -325,6 +330,7 @@ namespace components
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_window_refract.png", &tex_addons::glass_window_lamps);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_window_observ.png", &tex_addons::glass_window_observ);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\black_shader.png", &tex_addons::black_shader);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\laser_blue_dualrender_alpha_col.png", &tex_addons::blue_laser_dualrender);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_ft.jpg", &tex_addons::sky_gray_ft);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_bk.jpg", &tex_addons::sky_gray_bk);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_lf.jpg", &tex_addons::sky_gray_lf);
@@ -849,10 +855,20 @@ namespace components
 			{
 				//do_not_render_next_mesh = true;
 
-				if (current_material_name.contains("light_panel_"))
+				if (current_material_name.contains("light_panel_")) 
 				{
 					add_nocull_materialvar(current_material);
 					//do_not_render_next_mesh = true;
+				}
+				// side beams of light bridges - effects/projected_wall_rail
+				else if (current_material_name.contains("ed_wall_ra"))
+				{
+					//do_not_render_next_mesh = true;
+					if (tex_addons::blue_laser_dualrender)
+					{
+						render_next_mesh::dual_render_with_specified_texture = true;
+						render_next_mesh::dual_render_texture = tex_addons::blue_laser_dualrender;
+					}
 				}
 				// TODO - create actual portals for this?
 				// requires portal stencil depth of at least 1
@@ -1481,6 +1497,22 @@ namespace components
 		dev->GetSamplerState(0, D3DSAMP_SRGBTEXTURE, &sampler_gamma);
 		dev->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, 0);
 #endif
+
+		if (render_next_mesh::dual_render_with_specified_texture)
+		{
+			// save og texture
+			IDirect3DBaseTexture9* og_tex0 = nullptr;
+			dev->GetTexture(0, &og_tex0);
+
+			// set new texture
+			dev->SetTexture(0, render_next_mesh::dual_render_texture);
+
+			// re-draw surface
+			dev->DrawIndexedPrimitive(type, base_vert_index, min_vert_index, num_verts, start_index, prim_count);
+
+			// restore texture
+			dev->SetTexture(0, og_tex0);
+		}
 
 		// render the current surface a second time (alpha blended) if set
 		// only works with shaders using basemap2 in sampler7
