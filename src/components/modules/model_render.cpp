@@ -269,7 +269,9 @@ namespace components
 	{
 		LPDIRECT3DTEXTURE9 portal_mask;
 		LPDIRECT3DTEXTURE9 portal_blue;
+		LPDIRECT3DTEXTURE9 portal_blue_closed;
 		LPDIRECT3DTEXTURE9 portal_orange;
+		LPDIRECT3DTEXTURE9 portal_orange_closed;
 		LPDIRECT3DTEXTURE9 glass_shards;
 		LPDIRECT3DTEXTURE9 glass_window_lamps;
 		LPDIRECT3DTEXTURE9 glass_window_observ;
@@ -287,6 +289,7 @@ namespace components
 
 	int do_not_render_next_mesh = false;
 	bool render_second_pass_with_basetexture2 = false;
+	bool render_portal_as_closed = false;
 
 	namespace render_next_mesh
 	{
@@ -325,7 +328,9 @@ namespace components
 
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_mask.png", &tex_addons::portal_mask);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_blue.png", &tex_addons::portal_blue);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_blue_closed.png", &tex_addons::portal_blue_closed);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_orange.png", &tex_addons::portal_orange);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_orange_closed.png", &tex_addons::portal_orange_closed);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_shards.png", &tex_addons::glass_shards);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_window_refract.png", &tex_addons::glass_window_lamps);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_window_observ.png", &tex_addons::glass_window_observ);
@@ -480,10 +485,10 @@ namespace components
 			//}
 		}
 
-		if (current_material_name.contains("lab/glassw"))
+		/*if (current_material_name.contains("lab/glassw"))
 		{
 			int x = 1;
-		}
+		}*/
 
 		if (og_bmodel_shader && mesh->m_VertexFormat == 0x2480033)
 		{
@@ -592,7 +597,16 @@ namespace components
 				if (tex_addons::portal_mask)
 				{
 					dev->GetTexture(1, &ff_portalfx_03::s_texture2);
-					dev->SetTexture(1, tex_addons::portal_mask);
+
+					// do not set portal mask here if we dual render - mask will be set on the second pass
+					if (!model_render::portal1_is_linked)
+					{
+						render_portal_as_closed = true;
+					}
+					else
+					{
+						dev->SetTexture(1, tex_addons::portal_mask);
+					}
 				}
 
 				if (tex_addons::portal_blue)
@@ -635,8 +649,6 @@ namespace components
 
 				dev->SetTransform(D3DTS_TEXTURE0, &scaleMatrix);
 				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
-
-
 
 				//do_not_render_next_mesh = true;
 				was_portal_related = true;
@@ -734,11 +746,11 @@ namespace components
 					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
 				}
 
-				// fizzle
-				if (mesh->m_VertexFormat == 0xa0003)
+				// fizzle - nope shadow building
+				/*if (mesh->m_VertexFormat == 0xa0003)
 				{
 					int break_me = 1; 
-				}
+				}*/
 			}
 					
 				
@@ -1423,6 +1435,34 @@ namespace components
 				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_ADD);
 			}
 
+
+			if (render_portal_as_closed)
+			{
+				// enable blending
+				dev->SetRenderState(D3DRS_ALPHABLENDENABLE,1);
+				//dev->SetRenderState(D3DRS_ZFUNC, D3DCMP_NEVER);
+
+				// picking up / moving a cube affects this and causes flickering on the blended surface
+				dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
+				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+				
+
+				
+				//dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 0));
+				//dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+				//dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TFACTOR);
+				//dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+
+				dev->SetTexture(0, tex_addons::portal_blue_closed);
+				// hopefully renders the opaque portal
+				dev->DrawIndexedPrimitive(type, base_vert_index, min_vert_index, num_verts, start_index, prim_count);
+
+				dev->SetRenderState(D3DRS_ZFUNC, D3DCMP_ALWAYS);
+				dev->SetTexture(0, tex_addons::portal_blue);
+				// set the mask for the actual portal
+				dev->SetTexture(1, tex_addons::portal_mask);
+			}
+
 			//if (!skip_other_sky_surfs)
 			dev->DrawIndexedPrimitive(type, base_vert_index, min_vert_index, num_verts, start_index, prim_count);
 
@@ -1756,6 +1796,7 @@ namespace components
 		do_not_render_next_mesh = false;
 		render_second_pass_with_basetexture2 = false;
 		render_with_new_stride = false;
+		render_portal_as_closed = false;
 
 		// reset all mesh tweakables
 		render_next_mesh::reset();
@@ -2109,10 +2150,10 @@ namespace components
 
 				if (portal->m_pLinkedPortal)
 				{
-					int x = 1;
+					int break_me = 1;
 				}
 				
-				model_render::portal1_open_amount_rev = portal->m_pLinkedPortal ? portal->m_pLinkedPortal->m_fStaticAmount : portal->m_fStaticAmount;
+				model_render::portal1_is_linked = portal->m_pLinkedPortal ? true : false;
 				
 			}
 			else
@@ -2121,10 +2162,10 @@ namespace components
 
 				if (portal->m_pLinkedPortal)
 				{
-					int x = 1;
+					int break_me = 1;
 				}
 				
-					model_render::portal2_open_amount_rev = portal->m_pLinkedPortal ? portal->m_pLinkedPortal->m_fStaticAmount : portal->m_fStaticAmount;
+				model_render::portal2_is_linked = portal->m_pLinkedPortal ? true : false;
 				
 			}
 		}

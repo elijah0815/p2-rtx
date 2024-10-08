@@ -154,9 +154,9 @@ namespace components
 		static inline uint32_t portal2_render_count = 0;
 
 		static inline float portal1_open_amount = 0.0f;
-		static inline float portal1_open_amount_rev = 0.0f;
+		static inline bool  portal1_is_linked = false;
 		static inline float portal2_open_amount = 0.0f;
-		static inline float portal2_open_amount_rev = 0.0f;
+		static inline bool  portal2_is_linked = false;
 
 		static inline bool rendered_first_sky_surface = false;
 	private:
