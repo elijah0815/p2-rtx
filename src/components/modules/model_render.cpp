@@ -221,6 +221,8 @@ namespace components
 		IDirect3DBaseTexture9* s_texture2;
 		D3DMATRIX s_tc_transform = {};
 		DWORD s_tc_transform_flag = 0u;
+		DWORD s_texture_factor = 0u;
+		DWORD s_alphaarg2 = 0u;
 	}
 
 	namespace ff_portalfx_04
@@ -597,16 +599,7 @@ namespace components
 				if (tex_addons::portal_mask)
 				{
 					dev->GetTexture(1, &ff_portalfx_03::s_texture2);
-
-					// do not set portal mask here if we dual render - mask will be set on the second pass
-					if (!model_render::portal1_is_linked)
-					{
-						render_portal_as_closed = true;
-					}
-					else
-					{
-						dev->SetTexture(1, tex_addons::portal_mask);
-					}
+					dev->SetTexture(1, tex_addons::portal_mask);
 				}
 
 				if (tex_addons::portal_blue)
@@ -638,7 +631,7 @@ namespace components
 
 				// map to a different range because a scalar > 1 => smaller portal
 				// opening factor of 0 means that we start at with a 6x smaller portal
-				s = -5.0f * s + 6.0f;
+				s = -4.0f * s + 5.0f;
 
 				// create a scaling matrix
 				D3DXMATRIX scaleMatrix;
@@ -648,7 +641,33 @@ namespace components
 				scaleMatrix = TC_TRANSLATE_TO_CENTER * scaleMatrix * TC_TRANSLATE_FROM_CENTER_TO_TOP_LEFT;
 
 				dev->SetTransform(D3DTS_TEXTURE0, &scaleMatrix);
+				//dev->SetTransform(D3DTS_TEXTURE1, &scaleMatrix);
 				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
+
+
+
+				// #
+				// inactive / active portal state
+
+				dev->GetRenderState(D3DRS_TEXTUREFACTOR, &ff_portalfx_03::s_texture_factor);
+				dev->GetTextureStageState(0, D3DTSS_ALPHAARG2, &ff_portalfx_03::s_alphaarg2);
+
+				if (!model_render::portal1_is_linked)
+				{
+					dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 255));
+					dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+					
+				}
+				else
+				{
+					// transition n
+					int t = static_cast<int>(std::roundf(((1.0f - std::sqrtf(model_render::portal2_open_amount)) - 0.1f) * (255.0f / 0.9f)));
+						t = static_cast<int>(std::clamp(t, 0, 255)) ;
+
+					dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, t));
+					dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+				}
+
 
 				//do_not_render_next_mesh = true;
 				was_portal_related = true;
@@ -706,6 +725,28 @@ namespace components
 				dev->SetTransform(D3DTS_TEXTURE0, &scaleMatrix);
 				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
 
+
+				// #
+				// inactive / active portal state
+
+				dev->GetRenderState(D3DRS_TEXTUREFACTOR, &ff_portalfx_03::s_texture_factor);
+				dev->GetTextureStageState(0, D3DTSS_ALPHAARG2, &ff_portalfx_03::s_alphaarg2);
+
+				if (!model_render::portal2_is_linked)
+				{
+					dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 255));
+					dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+
+				}
+				else
+				{
+					// transition n
+					int t = static_cast<int>(std::roundf(((1.0f - std::sqrtf(model_render::portal1_open_amount)) - 0.1f) * (255.0f / 0.9f)));
+					t = static_cast<int>(std::clamp(t, 0, 255));
+
+					dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, t));
+					dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+				}
 
 				//do_not_render_next_mesh = true;
 				was_portal_related = true;
@@ -1755,6 +1796,10 @@ namespace components
 
 			dev->SetTransform(D3DTS_TEXTURE0, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 			dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
+
+
+			dev->SetRenderState(D3DRS_TEXTUREFACTOR, ff_portalfx_03::s_texture_factor);
+			dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, ff_portalfx_03::s_alphaarg2);
 
 			dev->SetVertexShader(ff_portalfx_03::s_shader);
 			dev->SetFVF(NULL);
