@@ -180,14 +180,6 @@ namespace components
 		D3DMATRIX s_world_mtx = {};
 	}
 
-	namespace ff_beamtransport
-	{
-		IDirect3DVertexShader9* s_shader = nullptr;
-		D3DMATRIX s_world_mtx = {};
-		D3DMATRIX s_tc_transform = {};
-		DWORD s_tc_stage = NULL;
-	}
-
 	namespace ff_laserplatform
 	{
 		IDirect3DVertexShader9* s_shader = nullptr;
@@ -212,17 +204,6 @@ namespace components
 	{
 		IDirect3DVertexShader9* s_shader = nullptr;
 		IDirect3DBaseTexture9* s_texture;
-	}
-
-	namespace ff_portalfx_03
-	{
-		IDirect3DVertexShader9* s_shader = nullptr;
-		IDirect3DBaseTexture9* s_texture1;
-		IDirect3DBaseTexture9* s_texture2;
-		D3DMATRIX s_tc_transform = {};
-		DWORD s_tc_transform_flag = 0u;
-		DWORD s_texture_factor = 0u;
-		DWORD s_alphaarg2 = 0u;
 	}
 
 	namespace ff_portalfx_04
@@ -311,13 +292,6 @@ namespace components
 		}
 	}
 
-	namespace ff_water
-	{
-		bool was_water = false;
-		IDirect3DVertexShader9* s_shader = nullptr;
-		IDirect3DBaseTexture9* s_texture;
-	}
-
 	bool render_with_new_stride = false;
 	std::uint32_t new_stride = 0u;
 	std::uint64_t tick_on_first_no_render = 0;
@@ -396,7 +370,7 @@ namespace components
 							var = nullptr;
 							const auto has_bottom_mat = has_materialvar(ctx.info.material, "$bottommaterial", &var);
 
-							if (!has_bottom_mat /*&& var && var->vftable->IsDefined(var)*/)
+							if (!has_bottom_mat)
 							{
 								// do not render water surfaces that have no bottom material (this is the surface below the water)
 								// could just check $abovewater I guess? lmao
@@ -413,37 +387,13 @@ namespace components
 								if (tex)
 								{
 									// save og texture
-									//dev->GetTexture(0, &ff_water::s_texture);
-									//ff_water::was_water = true;
-
 									ctx.modifiers.as_water = true;
 									ctx.save_texture(dev, 0);
 									dev->SetTexture(0, tex);
 								}
 							}
-
-							//if (has_materialvar(cmat, "$bottommaterial", &var))
-							//{
-							//	if (var)
-							//	{
-							//		// do not render the current surface if there is a bottom material
-							//		// we only need one surface
-							//		if (var->vftable->IsDefined(var))
-							//		{
-							//			do_not_render_next_mesh = true;
-							//		}
-							//		// if there is no bottom material put the normalmap into texture slot 0
-							//		else
-							//		{
-							//			//  BindTexture( SHADER_SAMPLER2, TEXTURE_BINDFLAGS_NONE, NORMALMAP, BUMPFRAME );
-							//			IDirect3DBaseTexture9* tex = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, buffer_state.m_BoundTexture[2]);
-							//			if (tex)
-							//			{
-							//				dev->SetTexture(0, tex);
-							//			}
-							//		}
-							//	}
 						}
+
 						// material has defined a $basetexture
 						else
 						{
@@ -452,9 +402,6 @@ namespace components
 							if (tex)
 							{
 								// save og texture
-								//dev->GetTexture(0, &ff_water::s_texture);
-								//ff_water::was_water = true;
-
 								ctx.modifiers.as_water = true;
 								ctx.save_texture(dev, 0);
 								dev->SetTexture(0, tex);
@@ -464,23 +411,21 @@ namespace components
 				}
 			}
 
-			//if (current_material_name.contains("water"))
+			//if (ctx.info.material_name.contains("water"))
 			//{
 			//	//do_not_render_next_mesh = true;
-			//	int x = 1;
 			//}
 
-			//if (current_material_name.contains("toxicslime002a_beneath"))
+			//if (ctx.info.material_name.contains("toxicslime002a_beneath"))
 			//{
 			//	//do_not_render_next_mesh = true;
-			//	int x = 1;
 			//}
 		}
 
-		/*if (current_material_name.contains("lab/glassw"))
-		{
-			int x = 1;
-		}*/
+		//if (ctx.info.material_name.contains("lab/glassw"))
+		//{
+		//	int break_me = 1;
+		//}
 
 		if (og_bmodel_shader && mesh->m_VertexFormat == 0x2480033)
 		{
@@ -502,7 +447,6 @@ namespace components
 				{
 					// this can cause some issues with other glass textures?!
 					// a prob. because: models/props_destruction/glass_fracture_a_inner
-					//dev->GetTexture(0, &ff_model::s_texture); // save and restore tex after render
 					ctx.save_texture(dev, 0);
 					dev->SetTexture(0, tex_addons::glass_shards);
 				}
@@ -519,8 +463,6 @@ namespace components
 
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX6);
 			dev->SetVertexShader(nullptr); // vertexformat 0x00000000000a0003 
-
-			//mtx[3][2] = sinf((float)main_module::framecount * 0.05f) * 10.0f;
 		}
 
 		// this also renders the glass? infront of white panel lamps
@@ -569,12 +511,6 @@ namespace components
 		{
 			bool was_portal_related = false;
 
-			/*if (current_material_name.contains("portals/portal_refract_"))
-			{
-				do_not_render_next_mesh = true;
-				was_portal_related = true;
-			}*/
-
 			// open / close anim ideas:
 			// CPortalRender -> m_portalIsOpening vector to check for portal openings
 			// C_Prop_Portal -> m_fOpenAmount ?
@@ -589,14 +525,12 @@ namespace components
 			{
 				if (tex_addons::portal_mask)
 				{
-					//dev->GetTexture(1, &ff_portalfx_03::s_texture2);
 					ctx.save_texture(dev, 1);
 					dev->SetTexture(1, tex_addons::portal_mask);
 				}
 
 				if (tex_addons::portal_blue)
 				{
-					//dev->GetTexture(0, &ff_portalfx_03::s_texture1);
 					ctx.save_texture(dev, 0);
 					dev->SetTexture(0, tex_addons::portal_blue);
 				}
@@ -609,10 +543,6 @@ namespace components
 
 				// #
 				// scale portal on opening
-
-				// no need to save the transform - we'll set it back to identity after rendering
-				//dev->GetTransform(D3DTS_TEXTURE0, &ff_portalfx_03::s_tc_transform);
-				//dev->GetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, &ff_portalfx_03::s_tc_transform_flag);
 
 				// portal opening value is eased in -> apply inverse ease-in
 				float s = std::sqrtf(model_render::portal1_open_amount); 
@@ -640,13 +570,10 @@ namespace components
 				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
 
 
-
 				// #
 				// inactive / active portal state
 
-				//dev->GetRenderState(D3DRS_TEXTUREFACTOR, &ff_portalfx_03::s_texture_factor);
 				ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
-				//dev->GetTextureStageState(0, D3DTSS_ALPHAARG2, &ff_portalfx_03::s_alphaarg2);
 				ctx.save_tss(dev, D3DTSS_ALPHAARG2);
 
 				if (!model_render::portal1_is_linked)
@@ -675,14 +602,12 @@ namespace components
 				{
 					if (tex_addons::portal_mask)
 					{
-						//dev->GetTexture(1, &ff_portalfx_03::s_texture2);
 						ctx.save_texture(dev, 1);
 						dev->SetTexture(1, tex_addons::portal_mask);
 					}
 
 					if (tex_addons::portal_orange)
 					{
-						//dev->GetTexture(0, &ff_portalfx_03::s_texture1);
 						ctx.save_texture(dev, 0);
 						dev->SetTexture(0, tex_addons::portal_orange);
 					}
@@ -697,10 +622,6 @@ namespace components
 
 				// #
 				// scale portal on opening
-
-				// no need to save the transform - we'll set it back to identity after rendering
-				//dev->GetTransform(D3DTS_TEXTURE0, &ff_portalfx_03::s_tc_transform); 
-				//dev->GetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, &ff_portalfx_03::s_tc_transform_flag);
 
 				// portal opening value is eased in -> apply inverse ease-in
 				float s = std::sqrtf(model_render::portal2_open_amount);
@@ -731,9 +652,7 @@ namespace components
 				// #
 				// inactive / active portal state
 
-				//dev->GetRenderState(D3DRS_TEXTUREFACTOR, &ff_portalfx_03::s_texture_factor);
 				ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
-				//dev->GetTextureStageState(0, D3DTSS_ALPHAARG2, &ff_portalfx_03::s_alphaarg2);
 				ctx.save_tss(dev, D3DTSS_ALPHAARG2);
 
 				if (!model_render::portal2_is_linked)
@@ -760,21 +679,15 @@ namespace components
 			if (was_portal_related) 
 			{
 				// through wall overlays
-				if (mesh->m_VertexFormat == 0xa0007)
+				/*if (mesh->m_VertexFormat == 0xa0007)
 				{
 					int break_me = 1;
-					//do_not_render_next_mesh = true;
-					//dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_NORMAL | D3DFVF_TEX5 | D3DFVF_TEXCOORDSIZE1(4)); // 68 - 4 as last tc is one float
-					//dev->GetVertexShader(&ff_portalfx_01::s_shader);
-					//dev->SetVertexShader(nullptr);
-					//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
-				}
+				}*/
 
 				// draws portal stencil hole
 				if (mesh->m_VertexFormat == 0x4a0003)
 				{
 					//do_not_render_next_mesh = true;
-					//dev->GetVertexShader(&ff_portalfx_03::s_shader);
 					ctx.save_vs(dev);
 					dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
 					dev->SetVertexShader(nullptr);
@@ -782,29 +695,14 @@ namespace components
 				}
 
 				// if set to wireframe mode 
-				if (mesh->m_VertexFormat == 0x80003)
+				else if (mesh->m_VertexFormat == 0x80003)
 				{
 					//do_not_render_next_mesh = true;
-					//dev->GetVertexShader(&ff_portalfx_03::s_shader);
 					ctx.save_vs(dev);
 					dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1 | D3DFVF_TEXCOORDSIZE2(0));
 					dev->SetVertexShader(nullptr);
 					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
 				}
-
-				// fizzle - nope shadow building
-				/*if (mesh->m_VertexFormat == 0xa0003)
-				{
-					int break_me = 1; 
-				}*/
-			}
-					
-				
-			
-
-			if (was_portal_related)
-			{
-				int break_me = 0;
 			}
 
 			// world geo - floor / walls --- "LightmappedGeneric"
@@ -812,22 +710,9 @@ namespace components
 			else if (mesh->m_VertexFormat == 0x2480033)
 			{
 				//do_not_render_next_mesh = true;
-
-				// tc @ 24
-				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3);
-				
-				//if (ff_water::was_water)
-				//if (ctx.modifiers.as_water)
-				//{
-					//dev->GetVertexShader(&ff_water::s_shader);
-					ctx.save_vs(dev);
-				//}
-				/*else
-				{
-					dev->GetVertexShader(&ff_worldmodel::s_shader);
-				}*/
-
+				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr);
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3); // tc @ 24
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 
 #if 0			// can be used to look into the vertex buffer to figure out the layout
@@ -852,22 +737,21 @@ namespace components
 			// transporting beams
 			else if (mesh->m_VertexFormat == 0x80005) // stride 0x20
 			{
-				//do_not_render_next_mesh = true; 
+				//do_not_render_next_mesh = true;
 
-				dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX2);
-				dev->GetVertexShader(&ff_beamtransport::s_shader); 
+				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr);
-
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX2);
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 
-				dev->GetTransform(D3DTS_TEXTURE0, &ff_beamtransport::s_tc_transform);
-				//dev->GetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, &beamtransport::s_tc_stage);
-
+				D3DXMATRIX ret = {};
+				dev->GetTransform(D3DTS_TEXTURE0, &ret);
+				
 				// tc scroll
-				D3DXMATRIX ret = ff_beamtransport::s_tc_transform;
 				ret(3, 1) = (float)main_module::framecount * 0.0015f;
 
-				dev->SetTransform(D3DTS_TEXTURE0, &ret);
+				ctx.set_texture_transform(dev, &ret);
+				ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
 				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
 			}
 
@@ -1027,7 +911,7 @@ namespace components
 			{
 				do_not_render_next_mesh = true;
 
-				dev->GetVertexShader(&ff_portalfx_03::s_shader); 
+				ctx.save_vs(dev);
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
 				dev->SetVertexShader(nullptr);
 			}
@@ -1115,24 +999,9 @@ namespace components
 			{
 				//do_not_render_next_mesh = true;
 
-				/*float constant[4] = {};  
-				dev->GetPixelShaderConstantF(5, constant, 1);
-
-				float constant2[4] = {};
-				dev->GetPixelShaderConstantF(6, constant2, 1);*/
-
 				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 				dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);
 				dev->SetTransform(D3DTS_PROJECTION, &ctx.info.buffer_state.m_Transform[2]);
-
-				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3); // 80
-				//dev->GetVertexShader(&ff_vgui::s_shader04);
-				//dev->SetVertexShader(nullptr);
-
-				//dev->GetTexture(0, &ff_water::s_texture); 
-				//dev->SetTexture(0, tex_addons::portal_mask);
-				//ff_water::was_water = true;
-				//render_next_mesh::with_high_gamma = false;
 
 #if 0			// can be used to look into the vertex buffer to figure out the layout
 				{
@@ -1375,14 +1244,6 @@ namespace components
 			{
 				// flipbooks not visible at all so disable them
 				//do_not_render_next_mesh = true;
-
-				//IDirect3DBaseTexture9* tex = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, buffer_state.m_BoundTexture[1]);
-				//if (tex)
-				//{
-				//	// save og texture
-				//	dev->GetTexture(0, &ff_water::s_texture);
-				//	dev->SetTexture(0, tex);
-				//}
 
 				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_TEX7 | D3DFVF_TEXCOORDSIZE1(4)); // 84 - 4 as last tc is one float
 				//dev->GetVertexShader(&ff_vgui::s_shader03);
@@ -1704,35 +1565,11 @@ namespace components
 			ff_terrain::s_shader = nullptr;
 		}
 
-		/*if (ff_water::s_shader)
-		{
-			dev->SetVertexShader(ff_water::s_shader);
-			dev->SetFVF(NULL);
-			ff_water::s_shader = nullptr;
-		}
-
-		if (ff_water::was_water)
-		{
-			dev->SetTexture(0, ff_water::s_texture);
-			ff_water::s_texture = nullptr;
-			ff_water::was_water = false;
-		}*/
-
 		if (ff_worldmodel::s_shader)
 		{
 			dev->SetVertexShader(ff_worldmodel::s_shader);
 			dev->SetFVF(NULL);
 			ff_worldmodel::s_shader = nullptr;
-		}
-
-		if (ff_beamtransport::s_shader)
-		{
-			dev->SetVertexShader(ff_beamtransport::s_shader);
-			dev->SetFVF(NULL);
-			ff_beamtransport::s_shader = nullptr;
-
-			dev->SetTransform(D3DTS_TEXTURE0, &ff_beamtransport::s_tc_transform);
-			dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE); //beamtransport::s_tc_stage);
 		}
 
 		if (ff_laserplatform::s_shader)
@@ -1783,35 +1620,6 @@ namespace components
 			dev->SetFVF(NULL);
 			ff_portalfx_02::s_shader = nullptr;
 		}
-
-		//if (ff_portalfx_03::s_shader)
-		//{
-		//	if (ff_portalfx_03::s_texture1)
-		//	{
-		//		dev->SetTexture(0, ff_portalfx_03::s_texture1);
-		//		ff_portalfx_03::s_texture1 = nullptr;
-		//	}
-
-		//	if (ff_portalfx_03::s_texture2)
-		//	{
-		//		dev->SetTexture(0, ff_portalfx_03::s_texture2);
-		//		ff_portalfx_03::s_texture2 = nullptr;
-		//	}
-
-		//	//dev->SetTransform(D3DTS_TEXTURE0, &ff_portalfx_03::s_tc_transform);
-		//	//dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, ff_portalfx_03::s_tc_transform_flag);
-
-		//	dev->SetTransform(D3DTS_TEXTURE0, reinterpret_cast<const D3DMATRIX*>(&game::identity));
-		//	dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
-
-
-		//	dev->SetRenderState(D3DRS_TEXTUREFACTOR, ff_portalfx_03::s_texture_factor);
-		//	dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, ff_portalfx_03::s_alphaarg2);
-
-		//	dev->SetVertexShader(ff_portalfx_03::s_shader);
-		//	dev->SetFVF(NULL);
-		//	ff_portalfx_03::s_shader = nullptr;
-		//}
 
 		if (ff_portalfx_04::s_shader)
 		{
