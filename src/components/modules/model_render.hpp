@@ -135,6 +135,180 @@ namespace components
 		inline IVRenderView* _interface = nullptr;
 	}
 
+
+	class prim_fvf_context {
+	public:
+		//// Access the singleton instance
+		//static prim_fvf_context& inst() {
+		//	static prim_fvf_context instance;
+		//	return instance;
+		//}
+
+		//// Disable copying and assignment
+		//prim_fvf_context(const prim_fvf_context&) = delete;
+		//void operator=(const prim_fvf_context&) = delete;
+
+		// save vertex shader
+		void save_vs(IDirect3DDevice9* device)
+		{
+			device->GetVertexShader(&vertex_shader_);
+		}
+
+		// save texture at stage 0 or 1
+		void save_texture(IDirect3DDevice9* device, const bool stage)
+		{
+			if (!stage)
+			{
+				device->GetTexture(0, &tex0_);
+				tex0_set = true;
+			}
+			else
+			{
+				device->GetTexture(1, &tex1_);
+				tex1_set = true;
+			}
+		}
+
+		// save texture transform
+		/*void save_texcoord_matrix(IDirect3DDevice9* device)
+		{
+			device->GetTransform(D3DTS_WORLD, &texcoord_matrix_);
+		}*/
+
+		// save render state (e.g. D3DRS_TEXTUREFACTOR)
+		void save_rs(IDirect3DDevice9* device, const D3DRENDERSTATETYPE& state)
+		{
+			DWORD temp;
+			device->GetRenderState(state, &temp);
+			saved_render_state_[state] = temp;
+		}
+
+		// save texture stage 0 state (e.g. D3DTSS_ALPHAARG1)
+		void save_tss(IDirect3DDevice9* device, const D3DTEXTURESTAGESTATETYPE& type)
+		{
+			DWORD temp;
+			device->GetTextureStageState(0, type, &temp);
+			saved_texture_stage_state_[type] = temp;
+		}
+
+		// restore vertex shader
+		void restore_vs(IDirect3DDevice9* device)
+		{
+			device->SetVertexShader(vertex_shader_);
+		}
+
+		// restore texture at stage 0 or 1
+		void restore_texture(IDirect3DDevice9* device, const bool stage)
+		{
+			if (!stage)
+			{
+				if (tex0_set)
+				{
+					device->SetTexture(0, tex0_);
+					tex0_set = false;
+				}
+			}
+			else
+			{
+				if (tex1_set)
+				{
+					device->SetTexture(1, tex1_);
+					tex1_set = false;
+				}
+			}
+		}
+
+		// Restore world matrix
+		/*void RestoreWorldMatrix(IDirect3DDevice9* device) {
+			device->SetTransform(D3DTS_WORLD, &texcoord_matrix_);
+		}*/
+
+		// restore a specific render state (e.g. D3DRS_TEXTUREFACTOR)
+		void restore_render_state(IDirect3DDevice9* device, const D3DRENDERSTATETYPE& state)
+		{
+			if (saved_render_state_.contains(state))
+			{
+				device->SetRenderState(state, saved_render_state_[state]);
+			}
+		}
+
+		// restore a specific texture stage 0 state (e.g. D3DTSS_ALPHAARG1)
+		void restore_texture_stage_state(IDirect3DDevice9* device, const D3DTEXTURESTAGESTATETYPE& type)
+		{
+			if (saved_texture_stage_state_.contains(type))
+			{
+				device->SetTextureStageState(0, type, saved_texture_stage_state_[type]);
+			}
+		}
+
+		void restore_all(IDirect3DDevice9* device)
+		{
+			restore_vs(device);
+			restore_texture(device, 0);
+			restore_texture(device, 1);
+
+			for (auto& rs : saved_render_state_)
+			{
+				device->SetRenderState(rs.first, rs.second);
+			}
+
+			for (auto& tss : saved_texture_stage_state_)
+			{
+				device->SetTextureStageState(0, tss.first, tss.second);
+			}
+		}
+
+		// Reset the stored data
+		void reset_context()
+		{
+			vertex_shader_ = nullptr;
+			tex0_ = nullptr;
+			tex1_ = nullptr;
+			saved_render_state_.clear();
+			saved_texture_stage_state_.clear();
+			modifiers.reset();
+		}
+
+		struct modifiers_s
+		{
+			bool with_high_gamma = false;
+			bool as_sky = false;
+			bool as_transport_beam = false;
+			bool dual_render_with_specified_texture = false;
+			IDirect3DTexture9* dual_render_texture = nullptr;
+
+			void reset()
+			{
+				with_high_gamma = false;
+				as_sky = false;
+				as_transport_beam = false;
+				dual_render_with_specified_texture = false;
+				dual_render_texture = nullptr;
+			}
+		};
+
+		// special handlers for the next prim/s
+		modifiers_s modifiers;
+
+		// constructor for singleton
+		prim_fvf_context() : vertex_shader_(nullptr), tex0_(nullptr), tex0_set(false), tex1_(nullptr), tex1_set(false) {}
+
+	private:
+		// Render states to save
+		IDirect3DVertexShader9* vertex_shader_;
+		IDirect3DBaseTexture9* tex0_;
+		bool tex0_set;
+		IDirect3DBaseTexture9* tex1_;
+		bool tex1_set;
+		//D3DMATRIX texcoord_matrix_;
+
+		// store saved render states (with the type as the key)
+		std::unordered_map<D3DRENDERSTATETYPE, DWORD> saved_render_state_;
+
+		// store saved texture stage states (with type as the key)
+		std::unordered_map<D3DTEXTURESTAGESTATETYPE, DWORD> saved_texture_stage_state_;
+	};
+
 	class model_render : public component
 	{
 	public:
@@ -143,6 +317,8 @@ namespace components
 		const char* get_name() override { return "model_render"; }
 
 		static void init_texture_addons();
+
+		static inline prim_fvf_context primctx {};
 
 		static inline remixapi_MeshHandle portal0_mdl = nullptr;
 		static inline remixapi_MaterialHandle portal0_mtl = nullptr;

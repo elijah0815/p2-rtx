@@ -318,9 +318,54 @@ namespace components
 		IDirect3DBaseTexture9* s_texture;
 	}
 
+
+
+	//class next_prim_context
+	//{
+	//public:
+
+	//	next_prim_context() = default;
+
+	//	struct modifier_s
+	//	{
+	//		bool with_high_gamma = false;
+	//		bool as_sky = false;
+	//		bool as_transport_beam = false;
+	//		bool dual_render_with_specified_texture = false;
+	//		IDirect3DTexture9* dual_render_texture = nullptr;
+	//	};
+
+	//	struct original_states
+	//	{
+	//		IDirect3DVertexShader9* v_shader = nullptr;
+	//		IDirect3DBaseTexture9* tex0;
+	//		IDirect3DBaseTexture9* tex1;
+
+	//		D3DMATRIX tex_transform;
+	//		DWORD rs_tex_factor;
+	//		DWORD tss_alpha_arg1;
+	//		DWORD tss_alpha_arg2;
+	//	};
+
+
+	//	// special handler for the next prim/s
+	//	modifier_s modifier_;
+
+	//	// used to store renderstates / texturestage settings
+	//	original_states og_states_;
+
+	//	void save_tss()
+
+	//	void reset()
+	//	{
+	//		memset(&modifier_, 0, sizeof(modifier_s));
+	//	}
+	//};
+
+	
+
 	bool render_with_new_stride = false;
 	std::uint32_t new_stride = 0u;
-
 	std::uint64_t tick_on_first_no_render = 0;
 
 	// #TODO call from somewhere appropriate
