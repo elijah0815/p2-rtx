@@ -163,7 +163,8 @@ namespace components
 		// save vertex shader
 		void save_vs(IDirect3DDevice9* device)
 		{
-			device->GetVertexShader(&vertex_shader_);
+			device->GetVertexShader(&vs_);
+			vs_set = true;
 		}
 
 		// save texture at stage 0 or 1
@@ -206,7 +207,11 @@ namespace components
 		// restore vertex shader
 		void restore_vs(IDirect3DDevice9* device)
 		{
-			device->SetVertexShader(vertex_shader_);
+			if (vs_set)
+			{
+				device->SetVertexShader(vs_);
+				vs_set = false;
+			}
 		}
 
 		// restore texture at stage 0 or 1
@@ -273,9 +278,9 @@ namespace components
 		// Reset the stored data
 		void reset_context()
 		{
-			vertex_shader_ = nullptr;
-			tex0_ = nullptr;
-			tex1_ = nullptr;
+			vs_ = nullptr; vs_set = false;
+			tex0_ = nullptr; tex0_set = false;
+			tex1_ = nullptr; tex1_set = false;
 			saved_render_state_.clear();
 			saved_texture_stage_state_.clear();
 			modifiers.reset();
@@ -324,11 +329,12 @@ namespace components
 		info_s info;
 
 		// constructor for singleton
-		prim_fvf_context() : vertex_shader_(nullptr), tex0_(nullptr), tex0_set(false), tex1_(nullptr), tex1_set(false) {}
+		prim_fvf_context() : vs_(nullptr), vs_set(false), tex0_(nullptr), tex0_set(false), tex1_(nullptr), tex1_set(false) {}
 
 	private:
 		// Render states to save
-		IDirect3DVertexShader9* vertex_shader_;
+		IDirect3DVertexShader9* vs_;
+		bool vs_set;
 		IDirect3DBaseTexture9* tex0_;
 		bool tex0_set;
 		IDirect3DBaseTexture9* tex1_;

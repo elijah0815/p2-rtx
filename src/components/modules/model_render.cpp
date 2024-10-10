@@ -318,52 +318,6 @@ namespace components
 		IDirect3DBaseTexture9* s_texture;
 	}
 
-
-
-	//class next_prim_context
-	//{
-	//public:
-
-	//	next_prim_context() = default;
-
-	//	struct modifier_s
-	//	{
-	//		bool with_high_gamma = false;
-	//		bool as_sky = false;
-	//		bool as_transport_beam = false;
-	//		bool dual_render_with_specified_texture = false;
-	//		IDirect3DTexture9* dual_render_texture = nullptr;
-	//	};
-
-	//	struct original_states
-	//	{
-	//		IDirect3DVertexShader9* v_shader = nullptr;
-	//		IDirect3DBaseTexture9* tex0;
-	//		IDirect3DBaseTexture9* tex1;
-
-	//		D3DMATRIX tex_transform;
-	//		DWORD rs_tex_factor;
-	//		DWORD tss_alpha_arg1;
-	//		DWORD tss_alpha_arg2;
-	//	};
-
-
-	//	// special handler for the next prim/s
-	//	modifier_s modifier_;
-
-	//	// used to store renderstates / texturestage settings
-	//	original_states og_states_;
-
-	//	void save_tss()
-
-	//	void reset()
-	//	{
-	//		memset(&modifier_, 0, sizeof(modifier_s));
-	//	}
-	//};
-
-	
-
 	bool render_with_new_stride = false;
 	std::uint32_t new_stride = 0u;
 	std::uint64_t tick_on_first_no_render = 0;
@@ -422,39 +376,25 @@ namespace components
 		mtx.m[3][2] = model_to_world_mtx->m[2][3];
 		mtx.m[3][3] = game::identity[3][3];
 
-		IMaterialInternal* current_material = nullptr;
-		std::string_view current_material_name;
-		std::string_view current_shader_name;
+		auto& ctx = model_render::primctx;
 		const auto shaderapi = game::get_shaderapi();
 
-		BufferedState_t buffer_state = {};
-		shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &buffer_state);
-
-		if (current_material = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); current_material)
+		if (ctx.get_info_for_pass(shaderapi))
 		{
-			current_material_name = current_material->vftable->GetName(current_material);
-			current_shader_name = current_material->vftable->GetShaderName(current_material);
-
-#if 1
-			/*if (current_material_name.contains("slime"))
-			{
-				int x = 1;
-			}*/
-
 			// added format check
 			if (mesh->m_VertexFormat == 0x2480033 || mesh->m_VertexFormat == 0x80033)
 			{
-				if (current_shader_name.contains("Water"))
+				if (ctx.info.shader_name.contains("Water"))
 				{
 					IMaterialVar* var = nullptr;
-					if (has_materialvar(current_material, "$basetexture", &var))
+					if (has_materialvar(ctx.info.material, "$basetexture", &var))
 					{
 						// if material has NO defined basetexture
 						if (var && !var->vftable->IsDefined(var))
 						{
 							// check if it has a defined bottommaterial
 							var = nullptr;
-							const auto has_bottom_mat = has_materialvar(current_material, "$bottommaterial", &var);
+							const auto has_bottom_mat = has_materialvar(ctx.info.material, "$bottommaterial", &var);
 
 							if (!has_bottom_mat /*&& var && var->vftable->IsDefined(var)*/)
 							{
@@ -469,13 +409,16 @@ namespace components
 							else
 							{
 								//  BindTexture( SHADER_SAMPLER2, TEXTURE_BINDFLAGS_NONE, NORMALMAP, BUMPFRAME );
-								IDirect3DBaseTexture9* tex = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, buffer_state.m_BoundTexture[2]);
+								IDirect3DBaseTexture9* tex = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[2]);
 								if (tex)
 								{
 									// save og texture
-									dev->GetTexture(0, &ff_water::s_texture);
+									//dev->GetTexture(0, &ff_water::s_texture);
+									//ff_water::was_water = true;
+
+									ctx.modifiers.as_water = true;
+									ctx.save_texture(dev, 0);
 									dev->SetTexture(0, tex);
-									ff_water::was_water = true;
 								}
 							}
 
@@ -505,19 +448,21 @@ namespace components
 						else
 						{
 							//  sampler 10
-							IDirect3DBaseTexture9* tex = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, buffer_state.m_BoundTexture[10]); 
+							IDirect3DBaseTexture9* tex = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[10]);
 							if (tex)
 							{
 								// save og texture
-								dev->GetTexture(0, &ff_water::s_texture);
+								//dev->GetTexture(0, &ff_water::s_texture);
+								//ff_water::was_water = true;
+
+								ctx.modifiers.as_water = true;
+								ctx.save_texture(dev, 0);
 								dev->SetTexture(0, tex);
-								ff_water::was_water = true;
 							}
 						}
 					}
 				}
 			}
-#endif
 
 			//if (current_material_name.contains("water"))
 			//{
@@ -552,7 +497,7 @@ namespace components
 		{
 			//do_not_render_next_mesh = true;
 		
-			if (current_material_name.contains("props_destruction/glass_"))
+			if (ctx.info.material_name.contains("props_destruction/glass_"))
 			{
 				//do_not_render_next_mesh = true;
 				if (tex_addons::glass_shards)
@@ -587,14 +532,14 @@ namespace components
 			// do_not_render_next_mesh = true;
 
 			// replace all refract shaders with wireframe
-			if (current_shader_name.contains("Refract_DX90"))
+			if (ctx.info.shader_name.contains("Refract_DX90"))
 			{
 				// I think we are simply missing basetex0 here
-				current_material->vftable->SetShader(current_material, "Wireframe");
+				ctx.info.material->vftable->SetShader(ctx.info.material, "Wireframe");
 			}
 
 			// change observer window texture
-			else if (current_material_name.contains("lab/glassw"))
+			else if (ctx.info.material_name.contains("lab/glassw"))
 			{
 				if (tex_addons::glass_window_observ)
 				{
@@ -603,7 +548,7 @@ namespace components
 					add_light_to_texture_color_edit(0.9f, 1.3f, 1.5f, 0.05f);
 				}
 			}
-			else if (current_material_name.contains("glass/glassw"))
+			else if (ctx.info.material_name.contains("glass/glassw"))
 			{
 				if (tex_addons::glass_window_lamps)
 				{
@@ -611,7 +556,7 @@ namespace components
 					dev->SetTexture(0, tex_addons::glass_window_lamps);
 				}
 			}
-			else if (current_shader_name.contains("Black"))
+			else if (ctx.info.shader_name.contains("Black"))
 			{
 				dev->SetTexture(0, tex_addons::black_shader);
 			}
@@ -634,12 +579,12 @@ namespace components
 			// C_Prop_Portal -> m_fOpenAmount ?
 
 			// r_portal_stencil_depth 0 heavy influence
-			if (current_material_name.contains("portal_stencil"))
+			if (ctx.info.material_name.contains("portal_stencil"))
 			{
 				was_portal_related = true; // prevent all other else's
 				do_not_render_next_mesh = true;
 			}
-			else if (current_material_name.contains("portalstaticoverlay_1"))
+			else if (ctx.info.material_name.contains("portalstaticoverlay_1"))
 			{
 				if (tex_addons::portal_mask)
 				{
@@ -654,9 +599,9 @@ namespace components
 				}
 
 				// replace with wireframe (makes life much easier)
-				if (current_shader_name != "Wireframe_DX9")
+				if (ctx.info.shader_name != "Wireframe_DX9")
 				{
-					current_material->vftable->SetShader(current_material, "Wireframe");
+					ctx.info.material->vftable->SetShader(ctx.info.material, "Wireframe");
 				}
 
 				// #
@@ -718,7 +663,7 @@ namespace components
 				was_portal_related = true;
 				model_render::portal1_render_count++;
 			}
-			else if (current_material_name.contains("portalstaticoverlay_2"))
+			else if (ctx.info.material_name.contains("portalstaticoverlay_2"))
 			{
 				{
 					if (tex_addons::portal_mask)
@@ -735,9 +680,9 @@ namespace components
 				}
 				
 				// replace with wireframe (makes life much easier)
-				if (current_shader_name != "Wireframe_DX9")
+				if (ctx.info.shader_name != "Wireframe_DX9")
 				{
-					current_material->vftable->SetShader(current_material, "Wireframe");
+					ctx.info.material->vftable->SetShader(ctx.info.material, "Wireframe");
 				}
 
 
@@ -856,14 +801,16 @@ namespace components
 				// tc @ 24
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3);
 				
-				if (ff_water::was_water)
-				{
-					dev->GetVertexShader(&ff_water::s_shader);
-				}
-				else
+				//if (ff_water::was_water)
+				//if (ctx.modifiers.as_water)
+				//{
+					//dev->GetVertexShader(&ff_water::s_shader);
+					ctx.save_vs(dev);
+				//}
+				/*else
 				{
 					dev->GetVertexShader(&ff_worldmodel::s_shader);
-				}
+				}*/
 
 				dev->SetVertexShader(nullptr);
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
@@ -917,7 +864,7 @@ namespace components
 				//do_not_render_next_mesh = true;
 
 				// SolidEnergy_dx9
-				if (current_shader_name.starts_with("SolidEn"))
+				if (ctx.info.shader_name.starts_with("SolidEn"))
 				{
 					// tc @ 12
 					dev->SetFVF(D3DFVF_XYZ | D3DFVF_TEX2 | D3DFVF_TEXCOORDSIZE3(1)); // missing 4 bytes at the end here - fixed with tc2 size 3?
@@ -953,13 +900,13 @@ namespace components
 			{
 				//do_not_render_next_mesh = true;
 
-				if (current_material_name.contains("light_panel_")) 
+				if (ctx.info.material_name.contains("light_panel_"))
 				{
-					add_nocull_materialvar(current_material);
+					add_nocull_materialvar(ctx.info.material);
 					//do_not_render_next_mesh = true;
 				}
 				// side beams of light bridges - effects/projected_wall_rail
-				else if (current_material_name.contains("ed_wall_ra"))
+				else if (ctx.info.material_name.contains("ed_wall_ra"))
 				{
 					//do_not_render_next_mesh = true;
 					if (tex_addons::blue_laser_dualrender)
@@ -970,7 +917,7 @@ namespace components
 				}
 				// TODO - create actual portals for this?
 				// requires portal stencil depth of at least 1
-				else if (current_material_name.contains("decals/portalstencildecal"))
+				else if (ctx.info.material_name.contains("decals/portalstencildecal"))
 				{
 					//do_not_render_next_mesh = true;
 
@@ -978,31 +925,31 @@ namespace components
 					dev->SetTexture(0, tex_addons::portal_mask);
 				}
 				// unique textures for the white sky so they can be marked
-				else if (current_material_name.contains("sky"))
+				else if (ctx.info.material_name.contains("sky"))
 				{
-					if (current_material_name.contains("_white"))
+					if (ctx.info.material_name.contains("_white"))
 					{
-						if (current_material_name.contains("eft")) // sky_whiteft
+						if (ctx.info.material_name.contains("eft")) // sky_whiteft
 						{
 							dev->SetTexture(0, tex_addons::sky_gray_ft);
 						}
-						else if (current_material_name.contains("ebk"))
+						else if (ctx.info.material_name.contains("ebk"))
 						{
 							dev->SetTexture(0, tex_addons::sky_gray_bk);
 						}
-						else if (current_material_name.contains("elf"))
+						else if (ctx.info.material_name.contains("elf"))
 						{
 							dev->SetTexture(0, tex_addons::sky_gray_lf);
 						}
-						else if (current_material_name.contains("ert"))
+						else if (ctx.info.material_name.contains("ert"))
 						{
 							dev->SetTexture(0, tex_addons::sky_gray_rt);
 						}
-						else if (current_material_name.contains("eup"))
+						else if (ctx.info.material_name.contains("eup"))
 						{
 							dev->SetTexture(0, tex_addons::sky_gray_up);
 						}
-						else if (current_material_name.contains("edn"))
+						else if (ctx.info.material_name.contains("edn"))
 						{
 							dev->SetTexture(0, tex_addons::sky_gray_dn);
 						}
@@ -1017,14 +964,14 @@ namespace components
 				dev->SetFVF(D3DFVF_XYZB3 /*| D3DFVF_NORMAL*/ | D3DFVF_TEX1 | D3DFVF_TEXCOORDSIZE2(0));
 				dev->SetVertexShader(nullptr);
 
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[0]));
+				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 				//dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[1]));
 				//dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[2]));
 			}
 
 			// portal_draw_ghosting 0 disables this
 			// this normally shows portals through walls
-			else if (mesh->m_VertexFormat == 0xa0007) // portal fx
+			else if (mesh->m_VertexFormat == 0xa0007) // portal fx 
 			{
 				//do_not_render_next_mesh = true;
 
@@ -1096,10 +1043,10 @@ namespace components
 				// always render UI and world ui with high gamma?
 				render_next_mesh::with_high_gamma = true;
 
-				if (current_material_name.contains("vgui__fontpage"))
+				if (ctx.info.material_name.contains("vgui__fontpage"))
 				{
 					// get rid of all world-rendered text as its using the same glyph as HUD elements?!
-					if (buffer_state.m_Transform[0].m[3][0] != 0.0f)
+					if (ctx.info.buffer_state.m_Transform[0].m[3][0] != 0.0f)
 					{
 						do_not_render_next_mesh = true;
 					}
@@ -1108,12 +1055,12 @@ namespace components
 				{
 					int x = 1;
 				}*/
-				else if (current_material_name.contains("vgui_coop_progress_board")
-					  || current_material_name.contains("p2_lightboard_vgui")
-					  || current_material_name.contains("elevator_video_overlay"))
+				else if (ctx.info.material_name.contains("vgui_coop_progress_board")
+					  || ctx.info.material_name.contains("p2_lightboard_vgui")
+					  || ctx.info.material_name.contains("elevator_video_overlay"))
 				{
 					//do_not_render_next_mesh = true;
-					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[0]));
+					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 
 					// no need to set fvf here?
 					//dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_TEX4);
@@ -1123,9 +1070,9 @@ namespace components
 				}
 
 				// video on intro3
-				else if (current_material_name.contains("elevator_video_lines"))
+				else if (ctx.info.material_name.contains("elevator_video_lines"))
 				{
-					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[0]));
+					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 
 					//IDirect3DBaseTexture9* vid = nullptr;
 					//dev->GetTexture(1, &vid);
@@ -1159,9 +1106,9 @@ namespace components
 				float constant2[4] = {};
 				dev->GetPixelShaderConstantF(6, constant2, 1);*/
 
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[0]));
-				dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[1]));
-				dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[2]));
+				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
+				dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);
+				dev->SetTransform(D3DTS_PROJECTION, &ctx.info.buffer_state.m_Transform[2]);
 
 				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3); // 80
 				//dev->GetVertexShader(&ff_vgui::s_shader04);
@@ -1205,7 +1152,7 @@ namespace components
 			{
 				//do_not_render_next_mesh = true;
 
-				if (current_shader_name.contains("WorldVertexTransition_DX9"))
+				if (ctx.info.shader_name.contains("WorldVertexTransition_DX9"))
 				{
 					render_second_pass_with_basetexture2 = true;
 				}
@@ -1238,7 +1185,7 @@ namespace components
 				}
 #endif
 				// not doing this and picking up a skinned model (eg. cube) will break displacement rendering???
-				dev->SetTransform(D3DTS_WORLD, &buffer_state.m_Transform[0]);
+				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 
 				// tc @ 28
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_DIFFUSE | D3DFVF_TEX3 | D3DFVF_TEXCOORDSIZE1(2));
@@ -1354,7 +1301,7 @@ namespace components
 			{
 				//do_not_render_next_mesh = true;
 
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[0]));
+				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 
 				// tc @ 24
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
@@ -1371,7 +1318,7 @@ namespace components
 				dev->SetFVF(D3DFVF_XYZB4 | D3DFVF_TEX7 | D3DFVF_TEXCOORDSIZE1(4)); // 84 - 4 as last tc is one float
 				dev->GetVertexShader(&ff_vgui::s_shader03);
 				dev->SetVertexShader(nullptr);
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[0]));
+				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 			}
 
 			// Sprite shader
@@ -1742,7 +1689,7 @@ namespace components
 			ff_terrain::s_shader = nullptr;
 		}
 
-		if (ff_water::s_shader)
+		/*if (ff_water::s_shader)
 		{
 			dev->SetVertexShader(ff_water::s_shader);
 			dev->SetFVF(NULL);
@@ -1754,7 +1701,7 @@ namespace components
 			dev->SetTexture(0, ff_water::s_texture);
 			ff_water::s_texture = nullptr;
 			ff_water::was_water = false;
-		}
+		}*/
 
 		if (ff_worldmodel::s_shader)
 		{
@@ -1890,6 +1837,9 @@ namespace components
 
 		// reset all mesh tweakables
 		render_next_mesh::reset();
+
+		model_render::primctx.restore_all(dev); 
+		model_render::primctx.reset_context();
 	}
 
 	HOOK_RETN_PLACE_DEF(cmeshdx8_renderpass_post_draw_retn_addr);
