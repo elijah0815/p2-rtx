@@ -385,9 +385,6 @@ namespace components
 		static inline remixapi_MeshHandle portal1_mdl = nullptr;
 		static inline remixapi_MaterialHandle portal1_mtl = nullptr;
 
-		static inline uint32_t portal1_render_count = 0;
-		static inline uint32_t portal2_render_count = 0;
-
 		static inline float portal1_open_amount = 0.0f;
 		static inline bool  portal1_is_linked = false;
 		static inline float portal2_open_amount = 0.0f;

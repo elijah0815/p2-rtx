@@ -200,8 +200,6 @@ namespace components
 
 	void endscene_cb()
 	{
-		model_render::portal1_render_count = 0;
-		model_render::portal2_render_count = 0;
 #if 0
 		{
 			main_module::bridge.DestroyMesh(model_render::portal0_mdl);
