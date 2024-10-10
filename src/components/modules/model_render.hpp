@@ -138,15 +138,27 @@ namespace components
 
 	class prim_fvf_context {
 	public:
-		//// Access the singleton instance
-		//static prim_fvf_context& inst() {
-		//	static prim_fvf_context instance;
-		//	return instance;
-		//}
 
-		//// Disable copying and assignment
-		//prim_fvf_context(const prim_fvf_context&) = delete;
-		//void operator=(const prim_fvf_context&) = delete;
+		// retrieve information about the current pass
+		// returns true if successful
+		bool get_info_for_pass(IShaderAPIDX8* shaderapi)
+		{
+			if (shaderapi)
+			{
+				shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &info.buffer_state);
+
+				if (info.material = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr); 
+					info.material)
+				{
+					info.material_name = info.material->vftable->GetName(info.material);
+					info.shader_name = info.material->vftable->GetShaderName(info.material);
+
+					return true;
+				}
+			}
+
+			return false;
+		}
 
 		// save vertex shader
 		void save_vs(IDirect3DDevice9* device)
@@ -267,12 +279,14 @@ namespace components
 			saved_render_state_.clear();
 			saved_texture_stage_state_.clear();
 			modifiers.reset();
+			info.reset();
 		}
 
 		struct modifiers_s
 		{
 			bool with_high_gamma = false;
 			bool as_sky = false;
+			bool as_water = false;
 			bool as_transport_beam = false;
 			bool dual_render_with_specified_texture = false;
 			IDirect3DTexture9* dual_render_texture = nullptr;
@@ -281,6 +295,7 @@ namespace components
 			{
 				with_high_gamma = false;
 				as_sky = false;
+				as_water = true;
 				as_transport_beam = false;
 				dual_render_with_specified_texture = false;
 				dual_render_texture = nullptr;
@@ -289,6 +304,24 @@ namespace components
 
 		// special handlers for the next prim/s
 		modifiers_s modifiers;
+
+		struct info_s
+		{
+			IMaterialInternal* material;
+			std::string_view material_name;
+			std::string_view shader_name;
+			BufferedState_t buffer_state {};
+
+			void reset()
+			{
+				material = nullptr;
+				material_name = "";
+				shader_name = "";
+				memset(&buffer_state, 0, sizeof(BufferedState_t));
+			}
+		};
+
+		info_s info;
 
 		// constructor for singleton
 		prim_fvf_context() : vertex_shader_(nullptr), tex0_(nullptr), tex0_set(false), tex1_(nullptr), tex1_set(false) {}
