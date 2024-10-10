@@ -17,7 +17,7 @@ namespace game
 	extern DWORD engine_module;
 	extern DWORD client_module;
 
-	extern const float identity[4][4];
+	extern const D3DMATRIX identity;
 
 	// CRender gRender
 	inline components::CRender* get_engine_renderer() { return reinterpret_cast<components::CRender*>(ENGINE_BASE + 0x60F880); }

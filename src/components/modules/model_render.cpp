@@ -122,7 +122,7 @@ namespace components
 			mat.m[3][0] = pInfo.pModelToWorld->m_flMatVal[0][3];
 			mat.m[3][1] = pInfo.pModelToWorld->m_flMatVal[1][3];
 			mat.m[3][2] = pInfo.pModelToWorld->m_flMatVal[2][3];
-			mat.m[3][3] = game::identity[3][3];
+			mat.m[3][3] = game::identity.m[3][3];
 
 			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m)); 
 		}
@@ -374,7 +374,7 @@ namespace components
 		mtx.m[3][0] = model_to_world_mtx->m[0][3];
 		mtx.m[3][1] = model_to_world_mtx->m[1][3];
 		mtx.m[3][2] = model_to_world_mtx->m[2][3];
-		mtx.m[3][3] = game::identity[3][3];
+		mtx.m[3][3] = game::identity.m[3][3];
 
 		auto& ctx = model_render::primctx;
 		const auto shaderapi = game::get_shaderapi();
@@ -485,9 +485,7 @@ namespace components
 		if (og_bmodel_shader && mesh->m_VertexFormat == 0x2480033)
 		{
 			//do_not_render_next_mesh = true;
-
 			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
-
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
 			dev->SetVertexShader(nullptr);
 		}
@@ -504,7 +502,8 @@ namespace components
 				{
 					// this can cause some issues with other glass textures?!
 					// a prob. because: models/props_destruction/glass_fracture_a_inner
-					dev->GetTexture(0, &ff_model::s_texture); // save and restore tex after render
+					//dev->GetTexture(0, &ff_model::s_texture); // save and restore tex after render
+					ctx.save_texture(dev, 0);
 					dev->SetTexture(0, tex_addons::glass_shards);
 				}
 			}
@@ -543,7 +542,8 @@ namespace components
 			{
 				if (tex_addons::glass_window_observ)
 				{
-					dev->GetTexture(0, &ff_model::s_texture);
+					//dev->GetTexture(0, &ff_model::s_texture);
+					ctx.save_texture(dev, 0);
 					dev->SetTexture(0, tex_addons::glass_window_observ);
 					add_light_to_texture_color_edit(0.9f, 1.3f, 1.5f, 0.05f);
 				}
@@ -552,7 +552,8 @@ namespace components
 			{
 				if (tex_addons::glass_window_lamps)
 				{
-					dev->GetTexture(0, &ff_model::s_texture);
+					//dev->GetTexture(0, &ff_model::s_texture);
+					ctx.save_texture(dev, 0);
 					dev->SetTexture(0, tex_addons::glass_window_lamps);
 				}
 			}
@@ -588,13 +589,15 @@ namespace components
 			{
 				if (tex_addons::portal_mask)
 				{
-					dev->GetTexture(1, &ff_portalfx_03::s_texture2);
+					//dev->GetTexture(1, &ff_portalfx_03::s_texture2);
+					ctx.save_texture(dev, 1);
 					dev->SetTexture(1, tex_addons::portal_mask);
 				}
 
 				if (tex_addons::portal_blue)
 				{
-					dev->GetTexture(0, &ff_portalfx_03::s_texture1);
+					//dev->GetTexture(0, &ff_portalfx_03::s_texture1);
+					ctx.save_texture(dev, 0);
 					dev->SetTexture(0, tex_addons::portal_blue);
 				}
 
@@ -630,8 +633,10 @@ namespace components
 				// translate uv's to the center, scale from the center and translate back 
 				scaleMatrix = TC_TRANSLATE_TO_CENTER * scaleMatrix * TC_TRANSLATE_FROM_CENTER_TO_TOP_LEFT;
 
-				dev->SetTransform(D3DTS_TEXTURE0, &scaleMatrix);
-				//dev->SetTransform(D3DTS_TEXTURE1, &scaleMatrix);
+				//dev->SetTransform(D3DTS_TEXTURE0, &scaleMatrix);
+				ctx.set_texture_transform(dev, &scaleMatrix);
+
+				ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
 				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
 
 
@@ -639,8 +644,10 @@ namespace components
 				// #
 				// inactive / active portal state
 
-				dev->GetRenderState(D3DRS_TEXTUREFACTOR, &ff_portalfx_03::s_texture_factor);
-				dev->GetTextureStageState(0, D3DTSS_ALPHAARG2, &ff_portalfx_03::s_alphaarg2);
+				//dev->GetRenderState(D3DRS_TEXTUREFACTOR, &ff_portalfx_03::s_texture_factor);
+				ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+				//dev->GetTextureStageState(0, D3DTSS_ALPHAARG2, &ff_portalfx_03::s_alphaarg2);
+				ctx.save_tss(dev, D3DTSS_ALPHAARG2);
 
 				if (!model_render::portal1_is_linked)
 				{
@@ -668,13 +675,15 @@ namespace components
 				{
 					if (tex_addons::portal_mask)
 					{
-						dev->GetTexture(1, &ff_portalfx_03::s_texture2);
+						//dev->GetTexture(1, &ff_portalfx_03::s_texture2);
+						ctx.save_texture(dev, 1);
 						dev->SetTexture(1, tex_addons::portal_mask);
 					}
 
 					if (tex_addons::portal_orange)
 					{
-						dev->GetTexture(0, &ff_portalfx_03::s_texture1);
+						//dev->GetTexture(0, &ff_portalfx_03::s_texture1);
+						ctx.save_texture(dev, 0);
 						dev->SetTexture(0, tex_addons::portal_orange);
 					}
 				}
@@ -712,15 +721,20 @@ namespace components
 				// translate uv's to the center, scale from the center and translate back 
 				scaleMatrix = TC_TRANSLATE_TO_CENTER * scaleMatrix * TC_TRANSLATE_FROM_CENTER_TO_TOP_LEFT;
 
-				dev->SetTransform(D3DTS_TEXTURE0, &scaleMatrix);
+				//dev->SetTransform(D3DTS_TEXTURE0, &scaleMatrix);
+				ctx.set_texture_transform(dev, &scaleMatrix);
+
+				ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
 				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
 
 
 				// #
 				// inactive / active portal state
 
-				dev->GetRenderState(D3DRS_TEXTUREFACTOR, &ff_portalfx_03::s_texture_factor);
-				dev->GetTextureStageState(0, D3DTSS_ALPHAARG2, &ff_portalfx_03::s_alphaarg2);
+				//dev->GetRenderState(D3DRS_TEXTUREFACTOR, &ff_portalfx_03::s_texture_factor);
+				ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+				//dev->GetTextureStageState(0, D3DTSS_ALPHAARG2, &ff_portalfx_03::s_alphaarg2);
+				ctx.save_tss(dev, D3DTSS_ALPHAARG2);
 
 				if (!model_render::portal2_is_linked)
 				{
@@ -760,8 +774,8 @@ namespace components
 				if (mesh->m_VertexFormat == 0x4a0003)
 				{
 					//do_not_render_next_mesh = true;
-
-					dev->GetVertexShader(&ff_portalfx_03::s_shader);
+					//dev->GetVertexShader(&ff_portalfx_03::s_shader);
+					ctx.save_vs(dev);
 					dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
 					dev->SetVertexShader(nullptr);
 					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
@@ -771,7 +785,8 @@ namespace components
 				if (mesh->m_VertexFormat == 0x80003)
 				{
 					//do_not_render_next_mesh = true;
-					dev->GetVertexShader(&ff_portalfx_03::s_shader);
+					//dev->GetVertexShader(&ff_portalfx_03::s_shader);
+					ctx.save_vs(dev);
 					dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1 | D3DFVF_TEXCOORDSIZE2(0));
 					dev->SetVertexShader(nullptr);
 					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
@@ -1769,34 +1784,34 @@ namespace components
 			ff_portalfx_02::s_shader = nullptr;
 		}
 
-		if (ff_portalfx_03::s_shader)
-		{
-			if (ff_portalfx_03::s_texture1)
-			{
-				dev->SetTexture(0, ff_portalfx_03::s_texture1);
-				ff_portalfx_03::s_texture1 = nullptr;
-			}
+		//if (ff_portalfx_03::s_shader)
+		//{
+		//	if (ff_portalfx_03::s_texture1)
+		//	{
+		//		dev->SetTexture(0, ff_portalfx_03::s_texture1);
+		//		ff_portalfx_03::s_texture1 = nullptr;
+		//	}
 
-			if (ff_portalfx_03::s_texture2)
-			{
-				dev->SetTexture(0, ff_portalfx_03::s_texture2);
-				ff_portalfx_03::s_texture2 = nullptr;
-			}
+		//	if (ff_portalfx_03::s_texture2)
+		//	{
+		//		dev->SetTexture(0, ff_portalfx_03::s_texture2);
+		//		ff_portalfx_03::s_texture2 = nullptr;
+		//	}
 
-			//dev->SetTransform(D3DTS_TEXTURE0, &ff_portalfx_03::s_tc_transform);
-			//dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, ff_portalfx_03::s_tc_transform_flag);
+		//	//dev->SetTransform(D3DTS_TEXTURE0, &ff_portalfx_03::s_tc_transform);
+		//	//dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, ff_portalfx_03::s_tc_transform_flag);
 
-			dev->SetTransform(D3DTS_TEXTURE0, reinterpret_cast<const D3DMATRIX*>(&game::identity));
-			dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
+		//	dev->SetTransform(D3DTS_TEXTURE0, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+		//	dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
 
 
-			dev->SetRenderState(D3DRS_TEXTUREFACTOR, ff_portalfx_03::s_texture_factor);
-			dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, ff_portalfx_03::s_alphaarg2);
+		//	dev->SetRenderState(D3DRS_TEXTUREFACTOR, ff_portalfx_03::s_texture_factor);
+		//	dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, ff_portalfx_03::s_alphaarg2);
 
-			dev->SetVertexShader(ff_portalfx_03::s_shader);
-			dev->SetFVF(NULL);
-			ff_portalfx_03::s_shader = nullptr;
-		}
+		//	dev->SetVertexShader(ff_portalfx_03::s_shader);
+		//	dev->SetFVF(NULL);
+		//	ff_portalfx_03::s_shader = nullptr;
+		//}
 
 		if (ff_portalfx_04::s_shader)
 		{
@@ -1840,6 +1855,7 @@ namespace components
 
 		model_render::primctx.restore_all(dev); 
 		model_render::primctx.reset_context();
+		dev->SetFVF(NULL);
 	}
 
 	HOOK_RETN_PLACE_DEF(cmeshdx8_renderpass_post_draw_retn_addr);
@@ -1943,7 +1959,7 @@ namespace components
 		mat.m[3][0] = pInstanceData.m_pBrushToWorld->m_flMatVal[0][3];
 		mat.m[3][1] = pInstanceData.m_pBrushToWorld->m_flMatVal[1][3];
 		mat.m[3][2] = pInstanceData.m_pBrushToWorld->m_flMatVal[2][3];
-		mat.m[3][3] = game::identity[3][3];
+		mat.m[3][3] = game::identity.m[3][3];
 
 		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m)); 
  
@@ -1997,7 +2013,7 @@ namespace components
 		mat.m[3][0] = instance_info->m_pPoseToWorld->m_flMatVal[0][3];
 		mat.m[3][1] = instance_info->m_pPoseToWorld->m_flMatVal[1][3];
 		mat.m[3][2] = instance_info->m_pPoseToWorld->m_flMatVal[2][3];
-		mat.m[3][3] = game::identity[3][3];
+		mat.m[3][3] = game::identity.m[3][3];
 
 		if (og_bmodel_shader && mesh->m_VertexFormat == 0x2480033) // THIS
 		{

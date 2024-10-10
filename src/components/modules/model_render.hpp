@@ -160,6 +160,16 @@ namespace components
 			return false;
 		}
 
+		// set texture 0 transform
+		void set_texture_transform(IDirect3DDevice9* device, const D3DXMATRIX* matrix)
+		{
+			if (matrix)
+			{
+				device->SetTransform(D3DTS_TEXTURE0, matrix);
+				tex0_transform_set = true;
+			}
+		}
+
 		// save vertex shader
 		void save_vs(IDirect3DDevice9* device)
 		{
@@ -258,11 +268,19 @@ namespace components
 			}
 		}
 
+		// restore texture 0 transform to identity
+		void restore_texture_transform(IDirect3DDevice9* device)
+		{
+			device->SetTransform(D3DTS_TEXTURE0, &game::identity);
+			tex0_transform_set = false;
+		}
+
 		void restore_all(IDirect3DDevice9* device)
 		{
 			restore_vs(device);
 			restore_texture(device, 0);
 			restore_texture(device, 1);
+			restore_texture_transform(device);
 
 			for (auto& rs : saved_render_state_)
 			{
@@ -281,6 +299,7 @@ namespace components
 			vs_ = nullptr; vs_set = false;
 			tex0_ = nullptr; tex0_set = false;
 			tex1_ = nullptr; tex1_set = false;
+			tex0_transform_set = false;
 			saved_render_state_.clear();
 			saved_texture_stage_state_.clear();
 			modifiers.reset();
@@ -329,7 +348,7 @@ namespace components
 		info_s info;
 
 		// constructor for singleton
-		prim_fvf_context() : vs_(nullptr), vs_set(false), tex0_(nullptr), tex0_set(false), tex1_(nullptr), tex1_set(false) {}
+		prim_fvf_context() : vs_(nullptr), vs_set(false), tex0_(nullptr), tex0_set(false), tex1_(nullptr), tex1_set(false), tex0_transform_set(false) {}
 
 	private:
 		// Render states to save
@@ -340,6 +359,7 @@ namespace components
 		IDirect3DBaseTexture9* tex1_;
 		bool tex1_set;
 		//D3DMATRIX texcoord_matrix_;
+		bool tex0_transform_set;
 
 		// store saved render states (with the type as the key)
 		std::unordered_map<D3DRENDERSTATETYPE, DWORD> saved_render_state_;
