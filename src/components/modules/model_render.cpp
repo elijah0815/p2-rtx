@@ -180,14 +180,6 @@ namespace components
 		D3DMATRIX s_world_mtx = {};
 	}
 
-	namespace ff_laserplatform
-	{
-		IDirect3DVertexShader9* s_shader = nullptr;
-		D3DMATRIX s_world_mtx = {};
-		D3DMATRIX s_tc_transform = {};
-		DWORD s_tc_stage = NULL;
-	}
-
 	namespace ff_laser
 	{
 		IDirect3DVertexShader9* s_shader = nullptr;
@@ -278,7 +270,7 @@ namespace components
 	{
 		bool with_high_gamma = false;
 		bool as_sky = false;
-		bool as_transport_beam = false;
+		//bool as_transport_beam = false;
 		bool dual_render_with_specified_texture = false;
 		IDirect3DTexture9* dual_render_texture = nullptr;
 
@@ -286,7 +278,7 @@ namespace components
 		{
 			with_high_gamma = false;
 			as_sky = false;
-			as_transport_beam = false;
+			//as_transport_beam = false;
 			dual_render_with_specified_texture = false;
 			dual_render_texture = nullptr;
 		}
@@ -762,27 +754,26 @@ namespace components
 			{
 				//do_not_render_next_mesh = true;
 
-				// SolidEnergy_dx9
-				if (ctx.info.shader_name.starts_with("SolidEn"))
+				if (ctx.info.shader_name.starts_with("SolidEn")) // SolidEnergy_dx9
 				{
-					// tc @ 12
-					dev->SetFVF(D3DFVF_XYZ | D3DFVF_TEX2 | D3DFVF_TEXCOORDSIZE3(1)); // missing 4 bytes at the end here - fixed with tc2 size 3?
-					dev->GetVertexShader(&ff_laserplatform::s_shader);
+					ctx.save_vs(dev);
 					dev->SetVertexShader(nullptr);
 
+					dev->SetFVF(D3DFVF_XYZ | D3DFVF_TEX2 | D3DFVF_TEXCOORDSIZE3(1)); // tc @ 12 - missing 4 bytes at the end here - fixed with tc2 size 3?
 					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
-					dev->GetTransform(D3DTS_TEXTURE0, &ff_laserplatform::s_tc_transform); 
-					//dev->GetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, &laserplatform::s_tc_stage);
+
+					D3DXMATRIX ret = {};
+					dev->GetTransform(D3DTS_TEXTURE0, &ret);
 
 					// tc scroll
-					D3DXMATRIX ret = ff_laserplatform::s_tc_transform;
 					ret(3, 1) = (float)main_module::framecount * 0.01f;
 
-					dev->SetTransform(D3DTS_TEXTURE0, &ret);
+					ctx.set_texture_transform(dev, &ret);
+					ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
 					dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
 
 					// slightly increase the alpha so that the 'fog' becomes visible
-					render_next_mesh::as_transport_beam = true;
+					ctx.modifiers.as_transport_beam = true;
 				}
 				else
 				{
@@ -1287,6 +1278,7 @@ namespace components
 	void cmeshdx8_renderpass_post_draw([[maybe_unused]] void* device_ptr, D3DPRIMITIVETYPE type, std::int32_t base_vert_index, std::uint32_t min_vert_index, std::uint32_t num_verts, std::uint32_t start_index, std::uint32_t prim_count)
 	{
 		const auto dev = game::get_d3d_device();
+		auto& ctx = model_render::primctx;
 
 		// 0 = Gamma 1.0 (fixes dark albedo) :: 1 = Gamma 2.2
 		dev->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, render_next_mesh::with_high_gamma ? 1u : 0u);
@@ -1332,7 +1324,7 @@ namespace components
 					skip_other_sky_surfs = true;
 				}*/
 			}
-			else if (render_next_mesh::as_transport_beam)
+			else if (ctx.modifiers.as_transport_beam)
 			{
 				dev->GetRenderState(D3DRS_TEXTUREFACTOR, &og_texfactor);
 				dev->GetTextureStageState(0, D3DTSS_ALPHAARG2, &og_colorarg2);
@@ -1382,7 +1374,7 @@ namespace components
 				dev->SetTextureStageState(0, D3DTSS_COLORARG2, og_colorarg2);
 				dev->SetTextureStageState(0, D3DTSS_COLOROP, og_colorop);
 			}
-			else if (render_next_mesh::as_transport_beam)
+			else if (ctx.modifiers.as_transport_beam)
 			{
 				dev->SetRenderState(D3DRS_TEXTUREFACTOR, og_texfactor);
 				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, og_colorarg2);
@@ -1570,16 +1562,6 @@ namespace components
 			dev->SetVertexShader(ff_worldmodel::s_shader);
 			dev->SetFVF(NULL);
 			ff_worldmodel::s_shader = nullptr;
-		}
-
-		if (ff_laserplatform::s_shader)
-		{
-			dev->SetVertexShader(ff_laserplatform::s_shader);
-			dev->SetFVF(NULL);
-			ff_laserplatform::s_shader = nullptr;
-
-			dev->SetTransform(D3DTS_TEXTURE0, &ff_laserplatform::s_tc_transform);
-			dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
 		}
 
 		if (ff_laser::s_shader)
