@@ -221,12 +221,6 @@ namespace components
 		LPDIRECT3DTEXTURE9 sky_gray_dn;
 	}
 
-	
-
-	int do_not_render_next_mesh = false;
-	//bool render_second_pass_with_basetexture2 = false;
-	bool render_portal_as_closed = false;
-
 	bool render_with_new_stride = false;
 	std::uint32_t new_stride = 0u;
 	std::uint64_t tick_on_first_no_render = 0;
@@ -264,8 +258,6 @@ namespace components
 
 		//Vector* model_org = reinterpret_cast<Vector*>(ENGINE_BASE + 0x50DA90);
 		const auto model_to_world_mtx = reinterpret_cast<VMatrix*>(ENGINE_BASE + 0x637158);
-
-		//do_not_render_next_mesh = true;
 
 		VMatrix mtx = {};
 		mtx.m[0][0] = model_to_world_mtx->m[0][0];
@@ -311,7 +303,7 @@ namespace components
 								// could just check $abovewater I guess? lmao
 
 								// we only need one surface
-								do_not_render_next_mesh = true;
+								ctx.modifiers.do_not_render = true;
 							}
 
 							// put the normalmap into texture slot 0
@@ -348,12 +340,12 @@ namespace components
 
 			//if (ctx.info.material_name.contains("water"))
 			//{
-			//	//do_not_render_next_mesh = true;
+			//	//ctx.modifiers.do_not_render = true;
 			//}
 
 			//if (ctx.info.material_name.contains("toxicslime002a_beneath"))
 			//{
-			//	//do_not_render_next_mesh = true;
+			//	//ctx.modifiers.do_not_render = true;
 			//}
 		}
 
@@ -364,7 +356,7 @@ namespace components
 
 		if (og_bmodel_shader && mesh->m_VertexFormat == 0x2480033)
 		{
-			//do_not_render_next_mesh = true;
+			//ctx.modifiers.do_not_render = true;
 			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
 			dev->SetVertexShader(nullptr);
@@ -373,11 +365,11 @@ namespace components
 		// player model - gun - grabable stuff - portal button - portal door - stairs
 		else if (ff_model::s_shader && mesh->m_VertexFormat == 0xa0003)
 		{
-			//do_not_render_next_mesh = true;
+			//ctx.modifiers.do_not_render = true;
 		
 			if (ctx.info.material_name.contains("props_destruction/glass_"))
 			{
-				//do_not_render_next_mesh = true;
+				//ctx.modifiers.do_not_render = true;
 				if (tex_addons::glass_shards)
 				{
 					// this can cause some issues with other glass textures?!
@@ -388,7 +380,7 @@ namespace components
 			}
 			/*else if (cname.contains("chell"))
 			{
-				do_not_render_next_mesh = true;
+				ctx.modifiers.do_not_render = true;
 			}*/
 
 			//if (!is_portalgun_viewmodel)
@@ -402,10 +394,10 @@ namespace components
 
 		// this also renders the glass? infront of white panel lamps
 		// also renders some foliage (2nd level - emissive)
-		else if (ff_model::s_shader) // should be stride 30
+		else if (ff_model::s_shader) // 0xa0103
 		{
-			// 0xa0103 
-			// do_not_render_next_mesh = true;
+			
+			// ctx.modifiers.do_not_render = true;
 
 			// replace all refract shaders with wireframe
 			if (ctx.info.shader_name.contains("Refract_DX90"))
@@ -454,7 +446,7 @@ namespace components
 			if (ctx.info.material_name.contains("portal_stencil"))
 			{
 				was_portal_related = true; // prevent all other else's
-				do_not_render_next_mesh = true;
+				ctx.modifiers.do_not_render = true;
 			}
 			else if (ctx.info.material_name.contains("portalstaticoverlay_1"))
 			{
@@ -528,7 +520,7 @@ namespace components
 				}
 
 
-				//do_not_render_next_mesh = true;
+				//ctx.modifiers.do_not_render = true;
 				was_portal_related = true;
 			}
 			else if (ctx.info.material_name.contains("portalstaticoverlay_2"))
@@ -605,7 +597,7 @@ namespace components
 					dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
 				}
 
-				//do_not_render_next_mesh = true;
+				//ctx.modifiers.do_not_render = true;
 				was_portal_related = true;
 			}
 
@@ -620,7 +612,7 @@ namespace components
 				// draws portal stencil hole
 				if (mesh->m_VertexFormat == 0x4a0003)
 				{
-					//do_not_render_next_mesh = true;
+					//ctx.modifiers.do_not_render = true;
 					ctx.save_vs(dev);
 					dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
 					dev->SetVertexShader(nullptr);
@@ -630,7 +622,7 @@ namespace components
 				// if set to wireframe mode 
 				else if (mesh->m_VertexFormat == 0x80003)
 				{
-					//do_not_render_next_mesh = true;
+					//ctx.modifiers.do_not_render = true;
 					ctx.save_vs(dev);
 					dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1 | D3DFVF_TEXCOORDSIZE2(0));
 					dev->SetVertexShader(nullptr);
@@ -642,7 +634,7 @@ namespace components
 			// this renders water but not the $bottommaterial
 			else if (mesh->m_VertexFormat == 0x2480033)
 			{
-				//do_not_render_next_mesh = true;
+				//ctx.modifiers.do_not_render = true;
 				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr);
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3); // tc @ 24
@@ -670,7 +662,7 @@ namespace components
 			// transporting beams
 			else if (mesh->m_VertexFormat == 0x80005) // stride 0x20
 			{
-				//do_not_render_next_mesh = true;
+				//ctx.modifiers.do_not_render = true;
 
 				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr);
@@ -693,7 +685,7 @@ namespace components
 			// also rendering transporting beams now?
 			else if (mesh->m_VertexFormat == 0x80001)
 			{
-				//do_not_render_next_mesh = true;
+				//ctx.modifiers.do_not_render = true;
 
 				if (ctx.info.shader_name.starts_with("SolidEn")) // SolidEnergy_dx9
 				{
@@ -718,7 +710,7 @@ namespace components
 				}
 				else
 				{
-					do_not_render_next_mesh = true;
+					ctx.modifiers.do_not_render = true;
 				}
 			}
 
@@ -729,17 +721,17 @@ namespace components
 			// + skybox
 			else if (mesh->m_VertexFormat == 0x80003)
 			{
-				//do_not_render_next_mesh = true;
+				//ctx.modifiers.do_not_render = true;
 
 				/*if (ctx.info.material_name.contains("light_panel_"))
 				{
-					add_nocull_materialvar(ctx.info.material); // longer needed
-					//do_not_render_next_mesh = true;
+					add_nocull_materialvar(ctx.info.material); // no longer needed
+					//ctx.modifiers.do_not_render = true;
 				}
 				// side beams of light bridges - effects/projected_wall_rail
 				else*/ if (ctx.info.material_name.contains("ed_wall_ra"))
 				{
-					//do_not_render_next_mesh = true;
+					//ctx.modifiers.do_not_render = true;
 					if (tex_addons::blue_laser_dualrender)
 					{
 						ctx.modifiers.dual_render_with_specified_texture = true;
@@ -750,7 +742,7 @@ namespace components
 				// requires portal stencil depth of at least 1
 				else if (ctx.info.material_name.contains("decals/portalstencildecal"))
 				{
-					//do_not_render_next_mesh = true;
+					//ctx.modifiers.do_not_render = true;
 
 					// #TODO set unique texture
 					dev->SetTexture(0, tex_addons::portal_mask);
@@ -801,7 +793,7 @@ namespace components
 			// this normally shows portals through walls
 			else if (mesh->m_VertexFormat == 0xa0007) // portal fx 
 			{
-				//do_not_render_next_mesh = true;
+				//ctx.modifiers.do_not_render = true;
 				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr);
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_NORMAL | D3DFVF_TEX5 | D3DFVF_TEXCOORDSIZE1(4)); // tc at 16 + 12 :: 68 - 4 as last tc is one float
@@ -813,7 +805,7 @@ namespace components
 			// renders decals/simpleshadow
 			else if (mesh->m_VertexFormat == 0x6c0005)
 			{
-				do_not_render_next_mesh = true;
+				ctx.modifiers.do_not_render = true;
 				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr);
 				dev->SetFVF(D3DFVF_XYZB1 | D3DFVF_TEX5); // stride 48
@@ -824,7 +816,7 @@ namespace components
 			// portal refract texture
 			else if (mesh->m_VertexFormat == 0x4a0003)
 			{
-				do_not_render_next_mesh = true;
+				ctx.modifiers.do_not_render = true;
 				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr);
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
@@ -833,7 +825,7 @@ namespace components
 			// engine/shadowbuild
 			else if (mesh->m_VertexFormat == 0xa0003)
 			{
-				do_not_render_next_mesh = true;
+				ctx.modifiers.do_not_render = true;
 				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr); // def. render using FF as the shader is causing heavy frametime drops
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_TEX5 | D3DFVF_TEXCOORDSIZE1(4)); // stride 0x30
@@ -842,7 +834,7 @@ namespace components
 			// HUD
 			else if (mesh->m_VertexFormat == 0x80007) 
 			{
-				//do_not_render_next_mesh = true;
+				//ctx.modifiers.do_not_render = true;
 				
 				// always render UI and world ui with high gamma
 				ctx.modifiers.with_high_gamma = true;
@@ -852,18 +844,14 @@ namespace components
 					// get rid of all world-rendered text as its using the same glyph as HUD elements?!
 					if (ctx.info.buffer_state.m_Transform[0].m[3][0] != 0.0f)
 					{
-						do_not_render_next_mesh = true;
+						ctx.modifiers.do_not_render = true;
 					}
 				}
-				/*else if (current_material_name.contains("vgui_white"))
-				{
-					int x = 1;
-				}*/
 				else if (ctx.info.material_name.contains("vgui_coop_progress_board")
 					  || ctx.info.material_name.contains("p2_lightboard_vgui")
 					  || ctx.info.material_name.contains("elevator_video_overlay"))
 				{
-					//do_not_render_next_mesh = true;
+					//ctx.modifiers.do_not_render = true;
 					ctx.save_vs(dev);
 					dev->SetVertexShader(nullptr);
 					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
@@ -885,7 +873,7 @@ namespace components
 			// can be rendered but also requires vertexshader + position
 			else if (mesh->m_VertexFormat == 0x924900005) // stride 0x70 - 112
 			{
-				//do_not_render_next_mesh = true;
+				//ctx.modifiers.do_not_render = true;
 
 				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 				dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);
@@ -912,7 +900,7 @@ namespace components
 			// general models (eg. furniture in first lvl - container)
 			else if (mesh->m_VertexFormat == 0xa0103)  
 			{
-				//do_not_render_next_mesh = true;
+				//ctx.modifiers.do_not_render = true;
 				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr);
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64 :: tc @ 24
@@ -921,7 +909,7 @@ namespace components
 			// terrain - "WorldVertexTransition"
 			else if (mesh->m_VertexFormat == 0x480007)
 			{
-				//do_not_render_next_mesh = true;
+				//ctx.modifiers.do_not_render = true;
 
 				if (ctx.info.shader_name.contains("WorldVertexTransition_DX9"))
 				{
@@ -966,7 +954,7 @@ namespace components
 			// hanging cables - requires vertex shader - verts not modified on the cpu
 			else if (mesh->m_VertexFormat == 0x24900005)
 			{
-				do_not_render_next_mesh = true; // they can freak out sometimes so just ignore them for now
+				ctx.modifiers.do_not_render = true; // they can freak out sometimes so just ignore them for now
 				
 #if 0
 				// do not set fvf
@@ -983,8 +971,9 @@ namespace components
 			// other particles like smoke - wakeup scene ring - water splash
 			else if (mesh->m_VertexFormat == 0x114900005) // stride 96 
 			{
-				//do_not_render_next_mesh = true;
-
+#ifdef DEBUG
+				//ctx.modifiers.do_not_render = true;
+				int break_me = 0;
 #if 0			// can be used to look into the vertex buffer to figure out the layout
 				{
 					IDirect3DVertexBuffer9* buff = nullptr;
@@ -1004,72 +993,45 @@ namespace components
 					//render_with_new_stride = true;
 				}
 #endif
-
-				//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[0]));  
-				//dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[1]));
-				//dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[2]));
-
-				//dev->GetVertexShader(&ff_portalfx_04::s_shader); 
-				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3); // vertex fmt looks like: pos - normal - 3x texcoord (float2) = 48 byte
-				//dev->SetVertexShader(nullptr);
-
 				//dev->SetTexture(0, tex_addons::portal_mask);
+
+				//ctx.save_vs(dev);
+				//dev->SetVertexShader(nullptr);
+				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3); // vertex fmt looks like: pos - normal - 3x texcoord (float2) = 48 byte
+
+				//dev->SetTransform(D3DTS_WORLD, &buffer_state.m_Transform[0]);  
+				//dev->SetTransform(D3DTS_VIEW, &buffer_state.m_Transform[1]);
+				//dev->SetTransform(D3DTS_PROJECTION, &buffer_state.m_Transform[2]);
+#endif
 			}
 
 			// on portal open - blob in the middle (impact)
 			else if (mesh->m_VertexFormat == 0x80037) // TODO - test with buffer_state transforms 
 			{
-				//do_not_render_next_mesh = true;
-				// this needs a position as it spawns on 0 0 0
-				// stride 0x40
-
+#ifdef DEBUG
+				//ctx.modifiers.do_not_render = true; // this needs a position as it spawns on 0 0 0 // stride 0x40
 				int break_me = 0;
 
-				//dev->GetVertexShader(&ff_portalfx_04::s_shader);
-				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_NORMAL | D3DFVF_TEX5);
+				//ctx.save_vs(dev);
 				//dev->SetVertexShader(nullptr);
-
-				// nope
-				/*if (current_render_ent)
-				{
-					float mtx[4][4] = {};
-					mtx[0][0] = game::identity[0][0];
-					mtx[0][1] = game::identity[0][1];
-					mtx[0][2] = game::identity[0][2];
-					mtx[0][3] = game::identity[0][3];
-
-					mtx[1][0] = game::identity[1][0];
-					mtx[1][1] = game::identity[1][1];
-					mtx[1][2] = game::identity[1][2];
-					mtx[1][3] = game::identity[1][3];
-
-					mtx[2][0] = game::identity[2][0];
-					mtx[2][1] = game::identity[2][1];
-					mtx[2][2] = game::identity[2][2];
-					mtx[2][3] = game::identity[2][3];
-
-					mtx[3][0] = current_render_ent->m_vecAbsOrigin.x;
-					mtx[3][1] = current_render_ent->m_vecAbsOrigin.y;
-					mtx[3][2] = current_render_ent->m_vecAbsOrigin.z;
-					mtx[3][3] = game::identity[3][3];
-					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
-				}*/
-
-				//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
-				
+				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_NORMAL | D3DFVF_TEX5);
+#endif
 			}
 
-			// on portal open - outer ring
+			// on portal open - outer ring effect
 			else if (mesh->m_VertexFormat == 0x1b924900005) // stride 0x90 - 144
 			{
-				//do_not_render_next_mesh = true;
+#ifdef DEBUG
+				//ctx.modifiers.do_not_render = true;
+				int break_me = 0;
+#endif
 			}
 
 			// portal clearing gate
 			// renders water $bottommaterial
 			else if (mesh->m_VertexFormat == 0x80033) //stride = 0x40 
 			{
-				//do_not_render_next_mesh = true;
+				//ctx.modifiers.do_not_render = true;
 				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr);
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64 :: tc @ 24
@@ -1079,7 +1041,7 @@ namespace components
 			// decals
 			else if (mesh->m_VertexFormat == 0x2480037)  // stride 0x50 - 80 
 			{
-				//do_not_render_next_mesh = true;
+				//ctx.modifiers.do_not_render = true;
 				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr);
 				dev->SetFVF(D3DFVF_XYZB4 | D3DFVF_TEX7 | D3DFVF_TEXCOORDSIZE1(4)); // 84 - 4 as last tc is one float :: tc at 28
@@ -1089,7 +1051,7 @@ namespace components
 			// Sprite shader
 			else if (mesh->m_VertexFormat == 0x914900005)
 			{
-				//do_not_render_next_mesh = true; 
+				//ctx.modifiers.do_not_render = true; 
 
 #if 0			// can be used to look into the vertex buffer to figure out the layout
 				{
@@ -1110,28 +1072,31 @@ namespace components
 					//render_with_new_stride = true;
 				}
 #endif
-				//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[0]));
-				//dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[1]));
-				//dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[2]));
-				//dev->GetVertexShader(&ff_portalfx_04::s_shader);
-				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3); // vertex fmt looks like pos normal 3xtc (float2)
-				//dev->SetVertexShader(nullptr);
-
 				//dev->SetTexture(0, tex_addons::portal_mask);
+
+				//ctx.save_vs(dev);
+				//dev->SetVertexShader(nullptr);
+				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3); // vertex fmt looks like pos normal 3xtc (float2)
+
+				//dev->SetTransform(D3DTS_WORLD, &buffer_state.m_Transform[0]);
+				//dev->SetTransform(D3DTS_VIEW, &buffer_state.m_Transform[1]);
+				//dev->SetTransform(D3DTS_PROJECTION, &buffer_state.m_Transform[2]);
 			}
 
 			// SpriteCard vista smoke 
 			else if (mesh->m_VertexFormat == 0x24914900005) // stride 144 ....
 			{
-				//do_not_render_next_mesh = true;
+				//ctx.modifiers.do_not_render = true;
 			}
+#ifdef DEBUG
 			else
 			{
-				//do_not_render_next_mesh = true;
+				//ctx.modifiers.do_not_render = true;
 				int break_me = 1;  
 			}
 
 			int break_me = 1;
+#endif
 		}
 	}
 
@@ -1139,18 +1104,18 @@ namespace components
 	void __declspec(naked) cmeshdx8_renderpass_pre_draw_stub()
 	{
 		__asm
-			{
+		{
 			pushad;
-			push esi; // CMeshDX8
-			call cmeshdx8_renderpass_pre_draw;
-			add esp, 4;
+			push	esi; // CMeshDX8
+			call	cmeshdx8_renderpass_pre_draw;
+			add		esp, 4;
 			popad;
 
 			// og code
-			mov ecx, [esi + 0x4C];
-			test ecx, ecx;
-			jmp cmeshdx8_renderpass_pre_draw_retn_addr;
-			}
+			mov		ecx, [esi + 0x4C];
+			test	ecx, ecx;
+			jmp		cmeshdx8_renderpass_pre_draw_retn_addr;
+		}
 	}
 
 
@@ -1168,7 +1133,7 @@ namespace components
 		
 
 		// do not render next surface if set
-		if (!do_not_render_next_mesh)
+		if (!ctx.modifiers.do_not_render)
 		{
 			if (render_with_new_stride)
 			{
@@ -1217,34 +1182,6 @@ namespace components
 				dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 40));
 				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
 				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_ADD);
-			}
-
-
-			if (render_portal_as_closed)
-			{
-				// enable blending
-				dev->SetRenderState(D3DRS_ALPHABLENDENABLE,1);
-				//dev->SetRenderState(D3DRS_ZFUNC, D3DCMP_NEVER);
-
-				// picking up / moving a cube affects this and causes flickering on the blended surface
-				dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
-				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
-				
-
-				
-				//dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 0));
-				//dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-				//dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TFACTOR);
-				//dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-
-				dev->SetTexture(0, tex_addons::portal_blue_closed);
-				// hopefully renders the opaque portal
-				dev->DrawIndexedPrimitive(type, base_vert_index, min_vert_index, num_verts, start_index, prim_count);
-
-				dev->SetRenderState(D3DRS_ZFUNC, D3DCMP_ALWAYS);
-				dev->SetTexture(0, tex_addons::portal_blue);
-				// set the mask for the actual portal
-				dev->SetTexture(1, tex_addons::portal_mask);
 			}
 
 			//if (!skip_other_sky_surfs)
@@ -1436,9 +1373,7 @@ namespace components
 			ff_portalfx_04::s_shader = nullptr;
 		}
 
-		do_not_render_next_mesh = false;
 		render_with_new_stride = false;
-		render_portal_as_closed = false;
 
 		// reset prim/pass modifications
 		model_render::primctx.restore_all(dev); 

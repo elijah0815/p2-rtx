@@ -308,6 +308,7 @@ namespace components
 
 		struct modifiers_s
 		{
+			bool do_not_render = false;
 			bool with_high_gamma = false;
 			bool as_sky = false;
 			bool as_water = false;
@@ -318,6 +319,7 @@ namespace components
 
 			void reset()
 			{
+				do_not_render = false;
 				with_high_gamma = false;
 				as_sky = false;
 				as_water = true;
