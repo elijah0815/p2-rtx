@@ -312,7 +312,8 @@ namespace components
 			bool as_sky = false;
 			bool as_water = false;
 			bool as_transport_beam = false;
-			bool dual_render_with_specified_texture = false;
+			bool dual_render_with_basetexture2 = false; // renders next prim a second time with tex2 set as tex1
+			bool dual_render_with_specified_texture = false; // render next primt a second time with tex defined in 'dual_render_texture'
 			IDirect3DTexture9* dual_render_texture = nullptr;
 
 			void reset()
@@ -321,6 +322,7 @@ namespace components
 				as_sky = false;
 				as_water = true;
 				as_transport_beam = false;
+				dual_render_with_basetexture2 = false;
 				dual_render_with_specified_texture = false;
 				dual_render_texture = nullptr;
 			}

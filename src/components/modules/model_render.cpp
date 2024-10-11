@@ -186,12 +186,6 @@ namespace components
 		IDirect3DBaseTexture9* s_texture;
 	}
 
-	namespace ff_terrain
-	{
-		IDirect3DVertexShader9* s_shader = nullptr;
-		IDirect3DBaseTexture9* s_texture;
-	}
-
 	namespace ff_glass_shards
 	{
 		IDirect3DVertexShader9* s_shader = nullptr;
@@ -230,7 +224,7 @@ namespace components
 	
 
 	int do_not_render_next_mesh = false;
-	bool render_second_pass_with_basetexture2 = false;
+	//bool render_second_pass_with_basetexture2 = false;
 	bool render_portal_as_closed = false;
 
 	bool render_with_new_stride = false;
@@ -931,7 +925,7 @@ namespace components
 
 				if (ctx.info.shader_name.contains("WorldVertexTransition_DX9"))
 				{
-					render_second_pass_with_basetexture2 = true;
+					ctx.modifiers.dual_render_with_basetexture2 = true;
 				}
 
 				// m_BoundTexture[7]  = first blend colormap
@@ -961,13 +955,12 @@ namespace components
 					}
 				}
 #endif
+				ctx.save_vs(dev);
+				dev->SetVertexShader(nullptr);
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_DIFFUSE | D3DFVF_TEX3 | D3DFVF_TEXCOORDSIZE1(2)); // tc @ 28
+
 				// not doing this and picking up a skinned model (eg. cube) will break displacement rendering???
 				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
-
-				// tc @ 28
-				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_DIFFUSE | D3DFVF_TEX3 | D3DFVF_TEXCOORDSIZE1(2));
-				dev->GetVertexShader(&ff_terrain::s_shader);
-				dev->SetVertexShader(nullptr); 
 			}
 
 			// hanging cables - requires vertex shader - verts not modified on the cpu
@@ -978,7 +971,7 @@ namespace components
 #if 0
 				// do not set fvf
 				//dev->SetFVF(D3DFVF_XYZB5 | D3DFVF_NORMAL | D3DFVF_TEX2); // tc @ 28
-				dev->GetVertexShader(&ff_terrain::s_shader);
+				ctx.save_vs(dev);
 				dev->SetPixelShader(nullptr);
 				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[0]));
 #endif
@@ -1167,6 +1160,7 @@ namespace components
 	void cmeshdx8_renderpass_post_draw([[maybe_unused]] void* device_ptr, D3DPRIMITIVETYPE type, std::int32_t base_vert_index, std::uint32_t min_vert_index, std::uint32_t num_verts, std::uint32_t start_index, std::uint32_t prim_count)
 	{
 		const auto dev = game::get_d3d_device();
+		const auto shaderapi = game::get_shaderapi();
 		auto& ctx = model_render::primctx;
 
 		// 0 = Gamma 1.0 (fixes dark albedo) :: 1 = Gamma 2.2
@@ -1346,14 +1340,10 @@ namespace components
 
 		// render the current surface a second time (alpha blended) if set
 		// only works with shaders using basemap2 in sampler7
-		if (render_second_pass_with_basetexture2)
+		if (ctx.modifiers.dual_render_with_basetexture2)
 		{
-			BufferedState_t state = {};
-			const auto shaderapi = game::get_shaderapi();
-			shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &state);
-
 			// check if basemap2 is assigned
-			if (state.m_BoundTexture[7])
+			if (ctx.info.buffer_state.m_BoundTexture[7])
 			{
 				// save texture, renderstates and texturestates
 
@@ -1381,7 +1371,7 @@ namespace components
 				
 
 				// assign basemap2 to textureslot 0
-				if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, state.m_BoundTexture[7]);
+				if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[7]);
 					basemap2)
 				{
 					dev->SetTexture(0, basemap2);
@@ -1407,7 +1397,7 @@ namespace components
 				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_ADD);
 
 				//state.m_Transform[0].m[3][2] += 40.0f;
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&state.m_Transform[0]));
+				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 
 				// draw second surface 
 				dev->DrawIndexedPrimitive(type, base_vert_index, min_vert_index, num_verts, start_index, prim_count);
@@ -1424,13 +1414,6 @@ namespace components
 				dev->SetTextureStageState(0, D3DTSS_COLORARG2, og_colorarg2);
 				dev->SetTextureStageState(0, D3DTSS_COLOROP, og_colorop);
 			}
-		}
-
-		if (ff_terrain::s_shader)
-		{
-			dev->SetVertexShader(ff_terrain::s_shader);
-			dev->SetFVF(NULL);
-			ff_terrain::s_shader = nullptr;
 		}
 
 		if (ff_worldmodel::s_shader)
@@ -1454,7 +1437,6 @@ namespace components
 		}
 
 		do_not_render_next_mesh = false;
-		render_second_pass_with_basetexture2 = false;
 		render_with_new_stride = false;
 		render_portal_as_closed = false;
 
