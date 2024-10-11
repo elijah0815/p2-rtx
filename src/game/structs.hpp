@@ -2312,11 +2312,20 @@ namespace components
 		char pad_0x1045[0x3]; //0x1045
 		float m_fHalfWidth; //0x1048 
 		float m_fHalfHeight; //0x104C 
-		char pad2[9396]; //0x11A5888 
+		char pad2[9332]; //0xFC5888 
+		char pad3[0x20]; //0x34C4
+		unsigned char m_bActivated; //0x34E4 
+		unsigned char m_bOldActivatedState; //0x34E5 
+		char pad_0x34E6[0x2]; //0x34E6
+		float m_fNetworkHalfWidth; //0x34E8 
+		float m_fNetworkHalfHeight; //0x34EC 
+		unsigned char m_bIsMobile; //0x34F0 -- uh?
+		char pad_0x34F1[0x13]; //0x34F1
 		float m_fStaticAmount; //0x3504 
 		float m_fSecondaryStaticAmount; //0x3508 
 		float m_fOpenAmount; //0x350C 
 	}; //Size=0x3510
+	STATIC_ASSERT_OFFSET(C_Prop_Portal, m_fOpenAmount, 0x350C);
 }
 
 

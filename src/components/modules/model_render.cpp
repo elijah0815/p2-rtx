@@ -477,13 +477,12 @@ namespace components
 				ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
 				ctx.save_tss(dev, D3DTSS_ALPHAARG2);
 
-				/*if (!model_render::portal1_is_linked)
+				if (!model_render::portal1_is_linked)
 				{
 					dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 255));
 					dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
-					
 				}
-				else*/
+				else
 				{
 					// transition n
 					int t = static_cast<int>(std::roundf(((1.0f - std::sqrtf(model_render::portal2_open_amount)) - 0.1f) * (255.0f / 0.9f)));
@@ -555,13 +554,12 @@ namespace components
 				ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
 				ctx.save_tss(dev, D3DTSS_ALPHAARG2); 
 
-				/*if (!model_render::portal2_is_linked)
+				if (!model_render::portal2_is_linked)
 				{
 					dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 255));
 					dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
-
 				}
-				else*/
+				else
 				{
 					// transition n
 					int t = static_cast<int>(std::roundf(((1.0f - std::sqrtf(model_render::portal1_open_amount)) - 0.1f) * (255.0f / 0.9f)));
@@ -1600,37 +1598,42 @@ namespace components
 
 	// TODO - this fails when there are multiple portals on a level (static portal = separate prop, so there can be more then 2)
 	// need to find a way to match up the portals
-	void prop_portal_client_think_hk(C_Prop_Portal* portal)
+	void prop_portal_client_think_hk(const C_Prop_Portal* portal)
 	{
-		if (portal)
+		if (portal && portal->m_bActivated)
 		{
 			if (!portal->m_bIsPortal2)
 			{
-				model_render::portal1_open_amount = portal->m_fOpenAmount;
-
 #ifdef DEBUG
 				if (portal->m_pLinkedPortal)
+				{
+					int break_me = 1;
+				}
+
+				if (portal->m_bIsMobile)
 				{
 					int break_me = 1;
 				}
 #endif
 				
 				model_render::portal1_is_linked = portal->m_pLinkedPortal ? true : false;
-				
+				model_render::portal1_open_amount = portal->m_fOpenAmount;
 			}
 			else
 			{
-				model_render::portal2_open_amount = portal->m_fOpenAmount;
-
 #ifdef DEBUG
 				if (portal->m_pLinkedPortal)
 				{
 					int break_me = 1;
 				}
+
+				if (portal->m_bIsMobile)
+				{
+					int break_me = 1;
+				}
 #endif
-				
 				model_render::portal2_is_linked = portal->m_pLinkedPortal ? true : false;
-				
+				model_render::portal2_open_amount = portal->m_fOpenAmount;
 			}
 		}
 	}

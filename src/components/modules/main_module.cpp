@@ -179,7 +179,7 @@ namespace components
 			};
 			main_module::bridge.DrawInstance(&info);
 		}
-#endif
+
 
 		if (!light_handle)
 		{
@@ -206,6 +206,7 @@ namespace components
 		{
 			main_module::bridge.DrawLightInstance(light_handle);
 		}
+#endif
 	}
 
 	// CViewRender::RenderView
