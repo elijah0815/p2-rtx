@@ -5,21 +5,10 @@
 
 namespace components
 {
-	const D3DXMATRIX TC_TRANSLATE_TO_CENTER =
-	{
-		 1.0f,  0.0f, 0.0f, 0.0f,	// identity
-		 0.0f,  1.0f, 0.0f, 0.0f,	// identity
-		 0.0f,  0.0f, 1.0f, 0.0f,	// identity
-		-0.5f, -0.5f, 0.0f, 1.0f,	// translate to center
-	};
+	bool is_portalgun_viewmodel = false;
 
-	const D3DXMATRIX TC_TRANSLATE_FROM_CENTER_TO_TOP_LEFT =
-	{
-		1.0f, 0.0f, 0.0f, 0.0f,	// identity
-		0.0f, 1.0f, 0.0f, 0.0f,	// identity
-		0.0f, 0.0f, 1.0f, 0.0f,	// identity
-		0.5f, 0.5f, 0.0f, 1.0f,	// translate back to the top left corner
-	};
+	bool render_with_new_stride = false;
+	std::uint32_t new_stride = 0u;
 
 	namespace ff_model
 	{
@@ -27,8 +16,42 @@ namespace components
 		IDirect3DBaseTexture9* s_texture;
 	}
 
-	//IDirect3DVertexShader9* og_model_shader = nullptr;
-	bool is_portalgun_viewmodel = false;
+	namespace ff_worldmodel
+	{
+		IDirect3DVertexShader9* s_shader = nullptr;
+		D3DMATRIX s_world_mtx = {};
+	}
+
+	namespace ff_glass_shards
+	{
+		IDirect3DVertexShader9* s_shader = nullptr;
+		IDirect3DBaseTexture9* s_texture;
+	}
+
+	namespace ff_bmodel
+	{
+		IDirect3DVertexShader9* s_shader = nullptr;
+	}
+
+	namespace tex_addons
+	{
+		LPDIRECT3DTEXTURE9 portal_mask;
+		LPDIRECT3DTEXTURE9 portal_blue;
+		LPDIRECT3DTEXTURE9 portal_blue_closed;
+		LPDIRECT3DTEXTURE9 portal_orange;
+		LPDIRECT3DTEXTURE9 portal_orange_closed;
+		LPDIRECT3DTEXTURE9 glass_shards;
+		LPDIRECT3DTEXTURE9 glass_window_lamps;
+		LPDIRECT3DTEXTURE9 glass_window_observ;
+		LPDIRECT3DTEXTURE9 black_shader;
+		LPDIRECT3DTEXTURE9 blue_laser_dualrender;
+		LPDIRECT3DTEXTURE9 sky_gray_ft;
+		LPDIRECT3DTEXTURE9 sky_gray_bk;
+		LPDIRECT3DTEXTURE9 sky_gray_lf;
+		LPDIRECT3DTEXTURE9 sky_gray_rt;
+		LPDIRECT3DTEXTURE9 sky_gray_up;
+		LPDIRECT3DTEXTURE9 sky_gray_dn;
+	}
 
 	bool has_materialvar(IMaterialInternal* cmat, const char* var_name, IMaterialVar** out_var = nullptr)
 	{
@@ -97,7 +120,7 @@ namespace components
 	{
 		const auto dev = game::get_d3d_device();
 		dev->GetVertexShader(&ff_model::s_shader);
-		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+		dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
 
 		D3DMATRIX saved_view = {};
 		D3DMATRIX saved_proj = {};
@@ -122,13 +145,13 @@ namespace components
 			mat.m[3][0] = pInfo.pModelToWorld->m_flMatVal[0][3];
 			mat.m[3][1] = pInfo.pModelToWorld->m_flMatVal[1][3];
 			mat.m[3][2] = pInfo.pModelToWorld->m_flMatVal[2][3];
-			mat.m[3][3] = game::identity.m[3][3];
+			mat.m[3][3] = game::IDENTITY.m[3][3];
 
 			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m)); 
 		}
 		else if (pInfo.pModel->radius == 37.3153992f) // models/weapons/v_portalgun.mdl
 		{
-			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+			dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
 
 			is_portalgun_viewmodel = true;
 			if (auto shaderapi = game::get_shaderapi(); shaderapi)
@@ -139,8 +162,8 @@ namespace components
 				dev->GetTransform(D3DTS_VIEW, &saved_view);
 				dev->GetTransform(D3DTS_PROJECTION, &saved_proj);
 
-				dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[1]));
-				dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[2]));
+				dev->SetTransform(D3DTS_VIEW, &buffer_state.m_Transform[1]);
+				dev->SetTransform(D3DTS_PROJECTION, &buffer_state.m_Transform[2]);
 			}
 		}
 
@@ -148,12 +171,12 @@ namespace components
 
 		if (is_portalgun_viewmodel)
 		{
-			dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(&saved_view));
-			dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(&saved_proj));
+			dev->SetTransform(D3DTS_VIEW, &saved_view);
+			dev->SetTransform(D3DTS_PROJECTION, &saved_proj);
 		}
 
 		is_portalgun_viewmodel = false;
-		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+		dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
 		dev->SetFVF(NULL);
 
 		if (ff_model::s_shader)
@@ -174,56 +197,7 @@ namespace components
 	// #
 	// #
 
-	namespace ff_worldmodel
-	{
-		IDirect3DVertexShader9* s_shader = nullptr;
-		D3DMATRIX s_world_mtx = {};
-	}
-
-	namespace ff_portalfx_04
-	{
-		IDirect3DVertexShader9* s_shader = nullptr;
-		IDirect3DBaseTexture9* s_texture;
-	}
-
-	namespace ff_glass_shards
-	{
-		IDirect3DVertexShader9* s_shader = nullptr;
-		IDirect3DBaseTexture9* s_texture;
-	}
-
-	D3DMATRIX saved_world_mtx_unk = {};
-
-	IDirect3DVertexShader9* og_bmodel_shader = nullptr;
-	Vector model_org_offset = {};
-
 	
-
-	C_BaseEntity* current_render_ent = nullptr;
-
-	namespace tex_addons
-	{
-		LPDIRECT3DTEXTURE9 portal_mask;
-		LPDIRECT3DTEXTURE9 portal_blue;
-		LPDIRECT3DTEXTURE9 portal_blue_closed;
-		LPDIRECT3DTEXTURE9 portal_orange;
-		LPDIRECT3DTEXTURE9 portal_orange_closed;
-		LPDIRECT3DTEXTURE9 glass_shards;
-		LPDIRECT3DTEXTURE9 glass_window_lamps;
-		LPDIRECT3DTEXTURE9 glass_window_observ;
-		LPDIRECT3DTEXTURE9 black_shader;
-		LPDIRECT3DTEXTURE9 blue_laser_dualrender;
-		LPDIRECT3DTEXTURE9 sky_gray_ft;
-		LPDIRECT3DTEXTURE9 sky_gray_bk;
-		LPDIRECT3DTEXTURE9 sky_gray_lf;
-		LPDIRECT3DTEXTURE9 sky_gray_rt;
-		LPDIRECT3DTEXTURE9 sky_gray_up;
-		LPDIRECT3DTEXTURE9 sky_gray_dn;
-	}
-
-	bool render_with_new_stride = false;
-	std::uint32_t new_stride = 0u;
-	std::uint64_t tick_on_first_no_render = 0;
 
 	// #TODO call from somewhere appropriate
 	void model_render::init_texture_addons()
@@ -275,7 +249,7 @@ namespace components
 		mtx.m[3][0] = model_to_world_mtx->m[0][3];
 		mtx.m[3][1] = model_to_world_mtx->m[1][3];
 		mtx.m[3][2] = model_to_world_mtx->m[2][3];
-		mtx.m[3][3] = game::identity.m[3][3];
+		mtx.m[3][3] = game::IDENTITY.m[3][3];
 
 		auto& ctx = model_render::primctx;
 		const auto shaderapi = game::get_shaderapi();
@@ -354,7 +328,7 @@ namespace components
 		//	int break_me = 1;
 		//}
 
-		if (og_bmodel_shader && mesh->m_VertexFormat == 0x2480033)
+		if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x2480033)
 		{
 			//ctx.modifiers.do_not_render = true;
 			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
@@ -488,7 +462,7 @@ namespace components
 				D3DXMatrixScaling(&scaleMatrix, s, s, 1.0f);
 
 				// translate uv's to the center, scale from the center and translate back 
-				scaleMatrix = TC_TRANSLATE_TO_CENTER * scaleMatrix * TC_TRANSLATE_FROM_CENTER_TO_TOP_LEFT;
+				scaleMatrix = game::TC_TRANSLATE_TO_CENTER * scaleMatrix * game::TC_TRANSLATE_FROM_CENTER_TO_TOP_LEFT;
 
 				//dev->SetTransform(D3DTS_TEXTURE0, &scaleMatrix);
 				ctx.set_texture_transform(dev, &scaleMatrix);
@@ -566,7 +540,7 @@ namespace components
 				D3DXMatrixScaling(&scaleMatrix, s, s, 1.0f);
 
 				// translate uv's to the center, scale from the center and translate back 
-				scaleMatrix = TC_TRANSLATE_TO_CENTER * scaleMatrix * TC_TRANSLATE_FROM_CENTER_TO_TOP_LEFT;
+				scaleMatrix = game::TC_TRANSLATE_TO_CENTER * scaleMatrix * game::TC_TRANSLATE_FROM_CENTER_TO_TOP_LEFT;
 
 				//dev->SetTransform(D3DTS_TEXTURE0, &scaleMatrix);
 				ctx.set_texture_transform(dev, &scaleMatrix);
@@ -638,7 +612,7 @@ namespace components
 				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr);
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3); // tc @ 24
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+				dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
 
 #if 0			// can be used to look into the vertex buffer to figure out the layout
 				{
@@ -667,7 +641,7 @@ namespace components
 				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr);
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX2);
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+				dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
 
 				D3DXMATRIX ret = {};
 				dev->GetTransform(D3DTS_TEXTURE0, &ret);
@@ -693,7 +667,7 @@ namespace components
 					dev->SetVertexShader(nullptr);
 
 					dev->SetFVF(D3DFVF_XYZ | D3DFVF_TEX2 | D3DFVF_TEXCOORDSIZE3(1)); // tc @ 12 - missing 4 bytes at the end here - fixed with tc2 size 3?
-					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+					dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
 
 					D3DXMATRIX ret = {};
 					dev->GetTransform(D3DTS_TEXTURE0, &ret);
@@ -797,7 +771,7 @@ namespace components
 				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr);
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_NORMAL | D3DFVF_TEX5 | D3DFVF_TEXCOORDSIZE1(4)); // tc at 16 + 12 :: 68 - 4 as last tc is one float
-				dev->SetTransform(D3DTS_WORLD, &game::identity);
+				dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
 			}
 
 			// related to props like portalgun, pickup-ables
@@ -1126,7 +1100,7 @@ namespace components
 	{
 		const auto dev = game::get_d3d_device();
 		const auto shaderapi = game::get_shaderapi();
-		auto& ctx = model_render::primctx;
+		const auto& ctx = model_render::primctx;
 
 		// 0 = Gamma 1.0 (fixes dark albedo) :: 1 = Gamma 2.2
 		dev->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, ctx.modifiers.with_high_gamma ? 1u : 0u);
@@ -1142,13 +1116,10 @@ namespace components
 				type = D3DPT_TRIANGLELIST;
 			}
 
-			//bool skip_other_sky_surfs = false;
-
 			DWORD og_texfactor = {}, og_colorarg2 = {}, og_colorop = {};
 			if (ctx.modifiers.as_sky)
 			{
-				// uh
-				//dev->SetRenderState(D3DRS_FOGENABLE, FALSE);
+				// dev->SetRenderState(D3DRS_FOGENABLE, FALSE);
 
 				// HACK - as long as sky marking is broken, use WORLD SPACE UI (emissive)
 				// -> means that we can not use a distant light
@@ -1160,17 +1131,6 @@ namespace components
 				dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(25, 25, 25, 255));
 				dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
 				dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-
-				/*if (!model_render::rendered_first_sky_surface)
-				{
-					model_render::rendered_first_sky_surface = true;
-					num_verts *= 6;
-					prim_count *= 6;
-				}
-				else
-				{
-					skip_other_sky_surfs = true;
-				}*/
 			}
 			else if (ctx.modifiers.as_transport_beam)
 			{
@@ -1184,7 +1144,6 @@ namespace components
 				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_ADD);
 			}
 
-			//if (!skip_other_sky_surfs)
 			dev->DrawIndexedPrimitive(type, base_vert_index, min_vert_index, num_verts, start_index, prim_count);
 
 			// restore emissive sky settings
@@ -1259,22 +1218,6 @@ namespace components
 		dev->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, 0);
 #endif
 
-		if (ctx.modifiers.dual_render_with_specified_texture)
-		{
-			// save og texture
-			IDirect3DBaseTexture9* og_tex0 = nullptr;
-			dev->GetTexture(0, &og_tex0);
-
-			// set new texture
-			dev->SetTexture(0, ctx.modifiers.dual_render_texture);
-
-			// re-draw surface
-			dev->DrawIndexedPrimitive(type, base_vert_index, min_vert_index, num_verts, start_index, prim_count);
-
-			// restore texture
-			dev->SetTexture(0, og_tex0);
-		}
-
 		// render the current surface a second time (alpha blended) if set
 		// only works with shaders using basemap2 in sampler7
 		if (ctx.modifiers.dual_render_with_basetexture2)
@@ -1305,14 +1248,11 @@ namespace components
 				dev->GetRenderState(D3DRS_DESTBLEND, &og_destblend);
 
 
-				
-
 				// assign basemap2 to textureslot 0
 				if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[7]);
 					basemap2)
 				{
 					dev->SetTexture(0, basemap2);
-					//dev->SetTexture(0, tex_addons::portal_mask);
 				}
 
 				// enable blending
@@ -1353,24 +1293,27 @@ namespace components
 			}
 		}
 
+		if (ctx.modifiers.dual_render_with_specified_texture)
+		{
+			// save og texture
+			IDirect3DBaseTexture9* og_tex0 = nullptr;
+			dev->GetTexture(0, &og_tex0);
+
+			// set new texture
+			dev->SetTexture(0, ctx.modifiers.dual_render_texture);
+
+			// re-draw surface
+			dev->DrawIndexedPrimitive(type, base_vert_index, min_vert_index, num_verts, start_index, prim_count);
+
+			// restore texture
+			dev->SetTexture(0, og_tex0);
+		}
+
 		if (ff_worldmodel::s_shader)
 		{
 			dev->SetVertexShader(ff_worldmodel::s_shader);
 			dev->SetFVF(NULL);
 			ff_worldmodel::s_shader = nullptr;
-		}
-
-		if (ff_portalfx_04::s_shader)
-		{
-			if (ff_portalfx_04::s_texture)
-			{
-				dev->SetTexture(0, ff_portalfx_04::s_texture);
-				ff_portalfx_04::s_texture = nullptr;
-			}
-
-			dev->SetVertexShader(ff_portalfx_04::s_shader);
-			dev->SetFVF(NULL);
-			ff_portalfx_04::s_shader = nullptr;
 		}
 
 		render_with_new_stride = false;
@@ -1382,35 +1325,6 @@ namespace components
 	}
 
 	HOOK_RETN_PLACE_DEF(cmeshdx8_renderpass_post_draw_retn_addr);
-	//void __declspec(naked) cmeshdx8_renderpass_post_draw_stub()
-	//{
-	//	__asm
-	//	{
-	//		mov		ecx, [esi + 0x50];
-	//		push	ecx;
-	//		push	eax;
-
-	//		mov		eax, do_not_render_next_mesh;
-	//		test	eax, eax;
-	//		jnz		SKIP;
-
-	//		call	edx; // DrawIndexedPrimitive
-	//		jmp		OG;
-
-	//	SKIP:
-	//		add		esp, 0x1C;
-
-	//	OG:
-	//		pushad;
-	//		push	edi;
-	//		call	cmeshdx8_renderpass_post_draw;
-	//		add		esp, 4;
-	//		popad;
-
-	//		jmp		cmeshdx8_renderpass_post_draw_retn_addr;
-	//	}
-	//}
-
 	void __declspec(naked) cmeshdx8_renderpass_post_draw_stub()
 	{
 		__asm
@@ -1433,37 +1347,35 @@ namespace components
 	// ##########################
 	// ##########################
 
-	
 	namespace ff_brushmodels
 	{
 		IDirect3DVertexShader9* s_shader = nullptr;
 		IDirect3DBaseTexture9* s_texture;
 	}
 
-	// cl_brushfastpath 0 will result in this being called
+	// used if cl_brushfastpath = 0
 	void __fastcall tbl_hk::bmodel_renderer::DrawBrushModelEx::Detour(void* ecx, void* o1, IClientEntity* baseentity, model_t* model, const Vector* origin, const QAngle* angles, DrawBrushModelMode_t mode)
 	{
 		const auto dev = game::get_d3d_device();
-		dev->GetVertexShader(&og_bmodel_shader);
+		dev->GetVertexShader(&ff_bmodel::s_shader);
 
 		tbl_hk::bmodel_renderer::table.original<FN>(Index)(ecx, o1, baseentity, model, origin, angles, mode);
 
-		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+		dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
 		dev->SetFVF(NULL);
 
-		if (og_bmodel_shader)
+		if (ff_bmodel::s_shader)
 		{
-			dev->SetVertexShader(og_bmodel_shader);
-			og_bmodel_shader = nullptr;
+			dev->SetVertexShader(ff_bmodel::s_shader);
+			ff_bmodel::s_shader = nullptr;
 		}
 	}
 
-	// flags 0x40000000 = shadow?
-	// called if cl_brushfastpath 1
+	// used if cl_brushfastpath = 1
 	void __fastcall tbl_hk::bmodel_renderer::DrawBrushModelArray::Detour(void* ecx, void* o1, void* o2, int nCount, const BrushArrayInstanceData_t& pInstanceData, int nModelTypeFlags)
 	{
 		const auto dev = game::get_d3d_device();
-		dev->GetVertexShader(&og_bmodel_shader);
+		dev->GetVertexShader(&ff_bmodel::s_shader);
 		//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
 
 		VMatrix mat = {}; 
@@ -1482,26 +1394,24 @@ namespace components
 		mat.m[3][0] = pInstanceData.m_pBrushToWorld->m_flMatVal[0][3];
 		mat.m[3][1] = pInstanceData.m_pBrushToWorld->m_flMatVal[1][3];
 		mat.m[3][2] = pInstanceData.m_pBrushToWorld->m_flMatVal[2][3];
-		mat.m[3][3] = game::identity.m[3][3];
+		mat.m[3][3] = game::IDENTITY.m[3][3];
 
 		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m)); 
- 
 
 		tbl_hk::bmodel_renderer::table.original<FN>(Index)(ecx, o1, o2, nCount, pInstanceData, nModelTypeFlags);
 
-
-		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+		dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
 		dev->SetFVF(NULL);
 
-		if (og_bmodel_shader)
+		if (ff_bmodel::s_shader)
 		{
-			dev->SetVertexShader(og_bmodel_shader);
-			og_bmodel_shader = nullptr;
+			dev->SetVertexShader(ff_bmodel::s_shader);
+			ff_bmodel::s_shader = nullptr;
 		}
 	}
 
-	// not used for brushmodels when cl_brushfastpath 0?
-	void cmeshdx8_renderpassforinstances_pre_draw(CMeshDX8* mesh, [[maybe_unused]] MeshInstanceData_t* data)
+	// not used for brushmodels when cl_brushfastpath = 0
+	void cmeshdx8_renderpassforinstances_pre_draw(const CMeshDX8* mesh, [[maybe_unused]] const MeshInstanceData_t* data)
 	{
 		const auto dev = game::get_d3d_device();
 
@@ -1509,48 +1419,44 @@ namespace components
 		UINT ofs = 0, stride = 0;
 		dev->GetStreamSource(0, &b, &ofs, &stride);
 
-		//Vector* model_org = reinterpret_cast<Vector*>(ENGINE_BASE + 0x50DA90);
-		//VMatrix* model_to_world_mtx = reinterpret_cast<VMatrix*>(ENGINE_BASE + 0x637158);
-
 		// g_pInstanceData ... same as second func argument
-		MeshInstanceData_t* instance_info = reinterpret_cast<MeshInstanceData_t*>(*(DWORD*)(RENDERER_BASE + 0x1754AC));
-
-		/*if (&instance_info != &data)
-		{
-			int x = 1;
-		}*/
+		//MeshInstanceData_t* instance_info = reinterpret_cast<MeshInstanceData_t*>(*(DWORD*)(RENDERER_BASE + 0x1754AC));
 
 		VMatrix mat = {};
-		mat.m[0][0] = instance_info->m_pPoseToWorld->m_flMatVal[0][0];
-		mat.m[1][0] = instance_info->m_pPoseToWorld->m_flMatVal[0][1];
-		mat.m[2][0] = instance_info->m_pPoseToWorld->m_flMatVal[0][2];
+		mat.m[0][0] = data->m_pPoseToWorld->m_flMatVal[0][0];
+		mat.m[1][0] = data->m_pPoseToWorld->m_flMatVal[0][1];
+		mat.m[2][0] = data->m_pPoseToWorld->m_flMatVal[0][2];
 
-		mat.m[0][1] = instance_info->m_pPoseToWorld->m_flMatVal[1][0];
-		mat.m[1][1] = instance_info->m_pPoseToWorld->m_flMatVal[1][1];
-		mat.m[2][1] = instance_info->m_pPoseToWorld->m_flMatVal[1][2];
+		mat.m[0][1] = data->m_pPoseToWorld->m_flMatVal[1][0];
+		mat.m[1][1] = data->m_pPoseToWorld->m_flMatVal[1][1];
+		mat.m[2][1] = data->m_pPoseToWorld->m_flMatVal[1][2];
 
-		mat.m[0][2] = instance_info->m_pPoseToWorld->m_flMatVal[2][0];
-		mat.m[1][2] = instance_info->m_pPoseToWorld->m_flMatVal[2][1];
-		mat.m[2][2] = instance_info->m_pPoseToWorld->m_flMatVal[2][2];
+		mat.m[0][2] = data->m_pPoseToWorld->m_flMatVal[2][0];
+		mat.m[1][2] = data->m_pPoseToWorld->m_flMatVal[2][1];
+		mat.m[2][2] = data->m_pPoseToWorld->m_flMatVal[2][2];
 
-		mat.m[3][0] = instance_info->m_pPoseToWorld->m_flMatVal[0][3];
-		mat.m[3][1] = instance_info->m_pPoseToWorld->m_flMatVal[1][3];
-		mat.m[3][2] = instance_info->m_pPoseToWorld->m_flMatVal[2][3];
-		mat.m[3][3] = game::identity.m[3][3];
+		mat.m[3][0] = data->m_pPoseToWorld->m_flMatVal[0][3];
+		mat.m[3][1] = data->m_pPoseToWorld->m_flMatVal[1][3];
+		mat.m[3][2] = data->m_pPoseToWorld->m_flMatVal[2][3];
+		mat.m[3][3] = game::IDENTITY.m[3][3];
 
-		if (og_bmodel_shader && mesh->m_VertexFormat == 0x2480033) // THIS
+		if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x2480033) // THIS
 		{
 			// tc @ 24
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
 			dev->SetVertexShader(nullptr);
 		}
-		else if (og_bmodel_shader)
+
+#ifdef DEBUG
+		else if (ff_bmodel::s_shader)
 		{
 			if (mesh->m_VertexFormat == 0xa2183)
 			{
 				int break_me = 0;
 			}
 		}
+#endif
+
 		else 
 		{
 			const auto shaderapi = game::get_shaderapi();
@@ -1560,8 +1466,6 @@ namespace components
 			// metal door = 0xa2183
 			if (mesh->m_VertexFormat == 0xa2183) // entities - not brushmodel (eg portal gun stand)
 			{
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m));
-
 				if (current_material_name.contains("props_destruction/glass_"))
 				{
 					IDirect3DBaseTexture9* aa = nullptr;
@@ -1569,9 +1473,10 @@ namespace components
 					dev->SetTexture(0, aa); 
 				}
 				
-				dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_NORMAL | D3DFVF_TEX4 | D3DFVF_TEXCOORDSIZE1(3));
 				dev->GetVertexShader(&ff_brushmodels::s_shader);
 				dev->SetVertexShader(nullptr);
+				dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_NORMAL | D3DFVF_TEX4 | D3DFVF_TEXCOORDSIZE1(3));
+				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m));
 			}
 
 			// somewhat broken - never called ....
@@ -1580,24 +1485,29 @@ namespace components
 				// todo set unique texture
 				dev->SetTexture(0, nullptr); //tex_portal_mask); 
 
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m));
-				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX2);
 				dev->GetVertexShader(&ff_glass_shards::s_shader);
 				dev->SetVertexShader(nullptr);
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX2);
+				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m));
 			}
+
+#ifdef DEBUG
 			else
 			{
 				int break_me = 1; 
 			}
+#endif
 		}
 
-		IDirect3DBaseTexture9* ttex = nullptr;
+#ifdef DEBUG
+		/*IDirect3DBaseTexture9* ttex = nullptr;
 		dev->GetTexture(0, &ttex);
 
 		if (!ttex)
 		{
 			int break_me = 1;
-		}
+		}*/
+#endif
 	}
 
 	void cmeshdx8_renderpassforinstances_post_draw()
@@ -1611,13 +1521,6 @@ namespace components
 			dev->SetFVF(NULL);
 			ff_brushmodels::s_shader = nullptr;
 		}
-
-		/*if (ff_unk01::s_shader)
-		{
-			dev->SetVertexShader(ff_unk01::s_shader);
-			dev->SetFVF(NULL);
-			ff_unk01::s_shader = nullptr;
-		}*/
 	}
 
 	HOOK_RETN_PLACE_DEF(cmeshdx8_renderpassforinstances_pre_draw_retn_addr);
@@ -1626,7 +1529,7 @@ namespace components
 		__asm
 		{
 			// og code
-			call eax;
+			call	eax;
 
 			pushad;
 			push	ebx; // actual instance data
@@ -1659,12 +1562,12 @@ namespace components
 #if 0
 	void cmeshdx8_renderpasswithvertexindexbuffer_pre_draw()
 	{
-		int z = 1;
+		int break_me = 1;
 	}
 
 	void cmeshdx8_renderpasswithvertexindexbuffer_post_draw()
 	{
-		int z = 1;
+		int break_me = 1;
 	}
 
 	HOOK_RETN_PLACE_DEF(cmeshdx8_renderpasswithvertexindexbuffer_retn_addr);
@@ -1677,48 +1580,26 @@ namespace components
 			popad;
 
 			// og code
-			push eax;
-			push ecx;
-			push 0;
-			push esi;
-			push edi;
-			call edx; // DrawIndexedPrimitive
+			push	eax;
+			push	ecx;
+			push	0;
+			push	esi;
+			push	edi;
+			call	edx; // DrawIndexedPrimitive
 
 			pushad;
 			call	cmeshdx8_renderpasswithvertexindexbuffer_post_draw;
 			popad;
 
-			jmp cmeshdx8_renderpasswithvertexindexbuffer_retn_addr;
+			jmp		cmeshdx8_renderpasswithvertexindexbuffer_retn_addr;
 		}
 	}
 #endif
 
-	void drawrenderable_pre_draw(C_BaseEntity* ent)
-	{
-		current_render_ent = ent;
-	}
-
-	HOOK_RETN_PLACE_DEF(drawrenderable_pre_draw_retn_addr);
-	void __declspec(naked) drawrenderable_pre_draw_stub()
-	{
-		__asm
-		{
-			pushad;
-			push	eax;
-			call	drawrenderable_pre_draw;
-			add		esp, 4;
-			popad;
-
-			// og
-			mov     edx, [edi + 0x70];
-			push    eax;
-			call	edx;
-			jmp		drawrenderable_pre_draw_retn_addr;
-		}
-	}
-
 	// -----
 
+	// TODO - this fails when there are multiple portals on a level (static portal = separate prop, so there can be more then 2)
+	// need to find a way to match up the portals
 	void prop_portal_client_think_hk(C_Prop_Portal* portal)
 	{
 		if (portal)
@@ -1727,10 +1608,12 @@ namespace components
 			{
 				model_render::portal1_open_amount = portal->m_fOpenAmount;
 
+#ifdef DEBUG
 				if (portal->m_pLinkedPortal)
 				{
 					int break_me = 1;
 				}
+#endif
 				
 				model_render::portal1_is_linked = portal->m_pLinkedPortal ? true : false;
 				
@@ -1739,10 +1622,12 @@ namespace components
 			{
 				model_render::portal2_open_amount = portal->m_fOpenAmount;
 
+#ifdef DEBUG
 				if (portal->m_pLinkedPortal)
 				{
 					int break_me = 1;
 				}
+#endif
 				
 				model_render::portal2_is_linked = portal->m_pLinkedPortal ? true : false;
 				
@@ -1776,13 +1661,11 @@ namespace components
 		utils::hook(RENDERER_BASE + 0xAD23, cmeshdx8_renderpass_pre_draw_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(cmeshdx8_renderpass_pre_draw_retn_addr, RENDERER_BASE + 0xAD28);
 
-		//utils::hook(RENDERER_BASE + 0xADF5, cmeshdx8_renderpass_post_draw_stub, HOOK_JUMP).install()->quick();
-		//HOOK_RETN_PLACE(cmeshdx8_renderpass_post_draw_retn_addr, RENDERER_BASE + 0xADFC);
 		utils::hook(RENDERER_BASE + 0xADF5, cmeshdx8_renderpass_post_draw_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(cmeshdx8_renderpass_post_draw_retn_addr, RENDERER_BASE + 0xADFC);
 
+
 		// brushmodels - cubes - etc - CMeshMgr::RenderPassForInstances
-		// A56D
 
 		tbl_hk::bmodel_renderer::_interface = utils::module_interface.get<tbl_hk::bmodel_renderer::IVRenderView*>("engine.dll", "VEngineRenderView013");
 
@@ -1800,11 +1683,6 @@ namespace components
 		utils::hook(RENDERER_BASE + 0xA685, cmeshdx8_renderpasswithvertexindexbuffer_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(cmeshdx8_renderpasswithvertexindexbuffer_retn_addr, RENDERER_BASE + 0xA68D);
 #endif
-
-		// TODO: remove?
-		utils::hook::nop(CLIENT_BASE + 0x1E4A18, 6);
-		utils::hook(CLIENT_BASE + 0x1E4A18, drawrenderable_pre_draw_stub, HOOK_JUMP).install()->quick();
-		HOOK_RETN_PLACE(drawrenderable_pre_draw_retn_addr, CLIENT_BASE + 0x1E4A1E);
 
 		// C_Prop_Portal::ClientThink :: hook to get portal 1/2 m_fOpenAmount member var
 		utils::hook(CLIENT_BASE + 0x280012, prop_portal_client_think_stub, HOOK_JUMP).install()->quick();

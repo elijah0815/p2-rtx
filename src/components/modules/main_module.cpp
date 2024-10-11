@@ -1,7 +1,6 @@
 #include "std_include.hpp"
 
-// -novid -disable_d3d9_hacks -limitvsconst -disallowhwmorph -no_compressed_verts -maxdxlevel 90 -dxlevel 90 +sv_cheats 1 +developer 1 +cl_brushfastpath 0 +cl_modelfastpath 0 +r_ShowViewerArea 1 +mat_fullbright 1  +mat_queue_mode 0 +mat_softwarelighting 1 +mat_softwareskin 1 +mat_phong 1 +mat_parallaxmap 0 +mat_frame_sync_enable 0 +mat_fastnobump 1 +mat_disable_bloom 1 +mat_dof_enabled 0 +mat_displacementmap 0 +mat_drawflat 1 +mat_normalmaps 0 +mat_normals 0 +sv_lan 1 +map devtest
-
+// commandline args:
 // dxlevel 100 required
 // -novid -disable_d3d9_hacks -limitvsconst -softparticlesdefaultoff -disallowhwmorph -no_compressed_verts +sv_cheats 1 +developer 1 +r_ShowViewerArea 1 +cl_showpos 1 +r_PortalTestEnts 0 +portal_ghosts_disable 0 +r_portal_earlyz 0 +r_portal_use_complex_frustums 0 +r_portal_use_pvs_optimization 0 +r_portalstencildisable 0 +portal_stencil_depth 1 +portal_draw_ghosting 0 +r_staticprop_lod 0 +r_lod 0 +r_threaded_particles 0 +r_entityclips 0 +cl_brushfastpath 0 +cl_tlucfastpath 0 +cl_modelfastpath 0 +mat_fullbright 1 +mat_queue_mode 0 +mat_softwarelighting 0 +mat_softwareskin 1 +mat_phong 1 +mat_parallaxmap 0 +mat_frame_sync_enable 0 +mat_fastnobump 1 +mat_disable_bloom 1 +mat_dof_enabled 0 +mat_displacementmap 0 +mat_drawflat 1 +mat_normalmaps 0 +mat_normals 0 +sv_lan 1 +map sp_a2_bridge_intro
 
@@ -14,33 +13,20 @@
 // +map sp_a1_intro2
 
 // engine::Shader_WorldEnd interesting for sky
-
 // Shader_DrawChains:: mat_forcedynamic 1 || mat_drawflat 1 => Shader_DrawChainsDynamic (changes hashes but still unstable)
 
 namespace components
 {
-	template <std::size_t Index, typename ReturnType, typename... Args>
+	/*template <std::size_t Index, typename ReturnType, typename... Args>
 	__forceinline ReturnType call_virtual(void* instance, Args... args)
 	{
 		using Fn = ReturnType(__thiscall*)(void*, Args...);
 
-		auto function = (*reinterpret_cast<Fn**>(instance))[Index];
+		auto function = (*static_cast<Fn**>(instance))[Index];
 		return function(instance, args...);
-	}
+	}*/
 
-	void rowMajorToColumnMajor(const float* rowMajor, float* columnMajor)
-	{
-		// Transpose the matrix by swapping the rows and columns
-		for (int i = 0; i < 4; ++i)
-		{
-			for (int j = 0; j < 4; ++j)
-			{
-				columnMajor[j * 4 + i] = rowMajor[i * 4 + j];
-			}
-		}
-	}
-
-	remixapi_LightHandle _handle = nullptr;
+	remixapi_LightHandle light_handle = nullptr;
 
 
 	void create_quad(remixapi_HardcodedVertex* v_out, uint32_t* i_out, const float scale)
@@ -50,35 +36,32 @@ namespace components
 			return;
 		}
 
-		auto makeVertex = [&](float x, float y, float z, float u, float v) {
+		auto make_vertex = [&](float x, float y, float z, float u, float v)
+		{
 			const remixapi_HardcodedVertex vert =
 			{
-			  .position = {x,y,z},
-			  .normal = {0,0,-1},
+			  .position = { x, y, z },
+			  .normal =	  { 0.0f, 0.0f, -1.0f },
 			  .texcoord = { u, v },
 			  .color = 0xFFFFFFFF,
 			};
 			return vert;
-			};
+		};
 
-		v_out[0] = makeVertex(-1.0f * scale, 1, -1.0f * scale, 0.0f, 0.0f); // b l
-		v_out[1] = makeVertex(-1.0f * scale, 1, 1.0f * scale, 0.0f, 1.0f); // t l
-		v_out[2] = makeVertex(1.0f * scale, 1, -1.0f * scale, 1.0f, 0.0f); // b r
-		v_out[3] = makeVertex(1.0f * scale, 1, 1.0f * scale, 1.0f, 1.0f); // t r
+		v_out[0] = make_vertex(-1.0f * scale, 1, -1.0f * scale, 0.0f, 0.0f); // b l
+		v_out[1] = make_vertex(-1.0f * scale, 1,  1.0f * scale, 0.0f, 1.0f); // t l
+		v_out[2] = make_vertex( 1.0f * scale, 1, -1.0f * scale, 1.0f, 0.0f); // b r
+		v_out[3] = make_vertex( 1.0f * scale, 1,  1.0f * scale, 1.0f, 1.0f); // t r
 
-		i_out[0] = 0;
-		i_out[1] = 1;
-		i_out[2] = 2;
-		i_out[3] = 3;
-		i_out[4] = 2;
-		i_out[5] = 1;
+		i_out[0] = 0; i_out[1] = 1; i_out[2] = 2;
+		i_out[3] = 3; i_out[4] = 2; i_out[5] = 1;
 	}
 
-	void create_portal0()
+	void create_portal(std::uint8_t index, remixapi_MeshHandle mesh_handle, remixapi_MaterialHandle material_handle)
 	{
-		if (!model_render::portal0_mtl)
+		if (!material_handle)
 		{
-			//main_module::bridge.DestroyMaterial(portal0_mtl);
+			//main_module::bridge.DestroyMaterial(material_handle);
 			remixapi_MaterialInfo info = {};
 			{
 				info.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO;
@@ -101,12 +84,12 @@ namespace components
 			remixapi_MaterialInfoPortalEXT ext = {};
 			{
 				ext.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO_PORTAL_EXT;
-				ext.rayPortalIndex = 0;
+				ext.rayPortalIndex = index;
 				ext.rotationSpeed = 1.0f;
 			}
 
 			info.pNext = &ext;
-			main_module::bridge.CreateMaterial(&info, &model_render::portal0_mtl);
+			main_module::bridge.CreateMaterial(&info, &material_handle);
 		}
 
 		// mesh
@@ -115,100 +98,40 @@ namespace components
 		uint32_t indices[6] = {};
 		create_quad(verts, indices, 50.0f);
 
-		remixapi_MeshInfoSurfaceTriangles triangles = {
+		remixapi_MeshInfoSurfaceTriangles triangles = 
+		{
 		  .vertices_values = verts,
 		  .vertices_count = ARRAYSIZE(verts),
 		  .indices_values = indices,
 		  .indices_count = 6,
 		  .skinning_hasvalue = FALSE,
 		  .skinning_value = {},
-		  .material = model_render::portal0_mtl,
+		  .material = material_handle,
 		};
 
-		remixapi_MeshInfo i = {
+		remixapi_MeshInfo i = 
+		{
 		  .sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
 		  .hash = 20,
 		  .surfaces_values = &triangles,
 		  .surfaces_count = 1,
 		};
 
-		//main_module::bridge.DestroyMesh(model_render::portal0_mdl);
-		main_module::bridge.CreateMesh(&i, &model_render::portal0_mdl);
+		//main_module::bridge.DestroyMesh(mesh_handle);
+		main_module::bridge.CreateMesh(&i, &mesh_handle);
 	}
 
-	void create_portal1()
-	{
-		if (!model_render::portal1_mtl)
-		{
-			//main_module::bridge.DestroyMaterial(portal0_mtl);
-			remixapi_MaterialInfo info = {};
-			{
-				info.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO;
-				info.hash = 30;
-				info.emissiveIntensity = 0.0f;
-				info.emissiveColorConstant = { 0.0f, 0.0f, 1.0f };
-				info.albedoTexture = L"";
-				info.normalTexture = L"";
-				info.tangentTexture = L"";
-				info.emissiveTexture = L"";
-
-				info.spriteSheetFps = 5;
-				info.spriteSheetCol = 1;
-				info.spriteSheetRow = 1;
-				info.filterMode = 1u;
-				info.wrapModeU = 1u;
-				info.wrapModeV = 1u;
-			}
-
-			remixapi_MaterialInfoPortalEXT ext = {};
-			{
-				ext.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO_PORTAL_EXT;
-				ext.rayPortalIndex = 1;
-				ext.rotationSpeed = 1.0f;
-			}
-
-			info.pNext = &ext;
-			main_module::bridge.CreateMaterial(&info, &model_render::portal1_mtl);
-		}
-
-		// mesh
-
-		remixapi_HardcodedVertex verts[4] = {};
-		uint32_t indices[6] = {};
-		create_quad(verts, indices, 50.0f);
-
-		remixapi_MeshInfoSurfaceTriangles triangles = {
-		  .vertices_values = verts,
-		  .vertices_count = ARRAYSIZE(verts),
-		  .indices_values = indices,
-		  .indices_count = 6,
-		  .skinning_hasvalue = FALSE,
-		  .skinning_value = {},
-		  .material = model_render::portal1_mtl,
-		};
-
-		remixapi_MeshInfo i = {
-		  .sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
-		  .hash = 40,
-		  .surfaces_values = &triangles,
-		  .surfaces_count = 1,
-		};
-
-		//main_module::bridge.DestroyMesh(model_render::portal1_mdl);
-		main_module::bridge.CreateMesh(&i, &model_render::portal1_mdl);
-	}
-
-	void endscene_cb()
+	void once_per_frame_cb()
 	{
 #if 0
 		{
 			main_module::bridge.DestroyMesh(model_render::portal0_mdl);
-			create_portal0();
+			create_portal(0, model_render::portal0_mdl, model_render::portal0_mtl);
 		}
 
 		{
 			main_module::bridge.DestroyMesh(model_render::portal1_mdl);
-			create_portal1();
+			create_portal(1, model_render::portal1_mdl, model_render::portal1_mtl);
 		}
 
 		if (model_render::portal0_mdl)
@@ -231,9 +154,7 @@ namespace components
 				.transform = main_module::portal0,
 				.doubleSided = false
 			};
-
-			auto x = main_module::bridge.DrawInstance(&info);
-			int z = 0;
+			main_module::bridge.DrawInstance(&info);
 		}
 
 		if (model_render::portal1_mdl)
@@ -256,40 +177,39 @@ namespace components
 				.transform = main_module::portal1,
 				.doubleSided = false
 			};
-
-			auto x = main_module::bridge.DrawInstance(&info);
-			int z = 0;
+			main_module::bridge.DrawInstance(&info);
 		}
 #endif
 
-		if (!_handle)
+		if (!light_handle)
 		{
-			auto ext = remixapi_LightInfoSphereEXT{
-			.sType = REMIXAPI_STRUCT_TYPE_LIGHT_INFO_SPHERE_EXT,
-			.pNext = nullptr,
-			.position = remixapi_Float3D {.x = -1550.0f, .y = 1590.0f, .z = -250.0f},
-			.radius = 1,
-			.shaping_hasvalue = false,
-			.shaping_value = {},
+			auto ext = remixapi_LightInfoSphereEXT
+			{
+				.sType = REMIXAPI_STRUCT_TYPE_LIGHT_INFO_SPHERE_EXT,
+				.pNext = nullptr,
+				.position = remixapi_Float3D {.x = -1550.0f, .y = 1590.0f, .z = -250.0f},
+				.radius = 1,
+				.shaping_hasvalue = false,
+				.shaping_value = {},
 			};
 
-			auto info = remixapi_LightInfo{
+			auto info = remixapi_LightInfo
+			{
 				.sType = REMIXAPI_STRUCT_TYPE_LIGHT_INFO,
 				.pNext = &ext,
 				.hash = 1234,
 				.radiance = remixapi_Float3D {100, 20, 20},
 			};
-
-			main_module::bridge.CreateLight(&info, &_handle);
+			main_module::bridge.CreateLight(&info, &light_handle);
 		}
 		else
 		{
-			main_module::bridge.DrawLightInstance(_handle);
+			main_module::bridge.DrawLightInstance(light_handle);
 		}
 	}
 
 	// CViewRender::RenderView
-	void xx(/*void* renderer*/)
+	void on_renderview()
 	{
 		if (static bool init_api = false; !init_api)
 		{
@@ -299,39 +219,33 @@ namespace components
 			if (status == REMIXAPI_ERROR_CODE_SUCCESS)
 			{
 				main_module::m_initialized = true;
-				//remixapi::bridge_setRemixApiCallbacks(nullptr, &endscene_cb, nullptr);
 			}
 
 			// init addon textures
 			model_render::init_texture_addons();
 		}
 
-		endscene_cb();
+		once_per_frame_cb();
 
-		//void* enginerender = reinterpret_cast<void*>(ENGINE_BASE + 0x60F880);
 		auto enginerender = game::get_engine_renderer();
 
 		// old - works
 		//const VMatrix* view = call_virtual<12, const VMatrix*>((void*)enginerender);
 		//const VMatrix* pProjectionMatrix = view + 1; // Increment the pointer to get to the projectionMatrix
 
-		//IDirect3DDevice9* dev = reinterpret_cast<IDirect3DDevice9*>(*(DWORD*)(RENDERER_BASE + 0x179F38));
 		const auto dev = game::get_d3d_device();
 
 		float colView[4][4] = {};
-		rowMajorToColumnMajor(enginerender->m_matrixView.m[0], colView[0]);
+		utils::row_major_to_column_major(enginerender->m_matrixView.m[0], colView[0]);
 
 		float colProj[4][4] = {};
-		rowMajorToColumnMajor(enginerender->m_matrixProjection.m[0], colProj[0]);
+		utils::row_major_to_column_major(enginerender->m_matrixProjection.m[0], colProj[0]);
 
-		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
+		dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
 		dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(colView));
 		dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(colProj));
 
 		main_module::framecount++; // used for debug anim
-
-		// reset this once every frame
-		model_render::rendered_first_sky_surface = false;
 
 		// set a default material with diffuse set to a warm white
 		// so that add light to texture works and does not require rtx.effectLightPlasmaBall (animated)
@@ -342,84 +256,25 @@ namespace components
 		dev->SetMaterial(&dmat);
 	}
 
-	HOOK_RETN_PLACE_DEF(yyy_retn);
-	__declspec(naked) void yyy_stub()
+	HOOK_RETN_PLACE_DEF(cviewrenderer_renderview_retn);
+	__declspec(naked) void cviewrenderer_renderview_stub()
 	{
 		__asm
 		{
 			call    edx; // og
 
 			pushad;
-			call	xx;
+			call	on_renderview;
 			popad;
 
 			mov     ebx, [ebp + 8];
-			jmp		yyy_retn;
+			jmp		cviewrenderer_renderview_retn;
 		}
 	}
 
-#ifdef XXX
-	void xx(void* renderer)
-	{
-		void* enginerender = reinterpret_cast<void*>(ENGINE_BASE + 0x60F880);
 
-		const VMatrix* view = call_virtual<12, const VMatrix*>(enginerender);
-
-		// Increment the pointer to get to the projectionMatrix
-		const VMatrix* pProjectionMatrix = view + 1;
-
-		//static DWORD* backEndDataOut_ptr = (DWORD*)(0x174F970);  // backendEndDataOut pointer
-		//const auto out = reinterpret_cast<game::GfxBackEndData*>(*game::backEndDataOut_ptr);
-		IDirect3DDevice9* dev = reinterpret_cast<IDirect3DDevice9*>(*(DWORD*)(RENDERER_BASE + 0x179F38));
-
-		float colView[4][4] = {};
-		rowMajorToColumnMajor(view[0][0], colView[0]);
-
-		float colProj[4][4] = {};
-		rowMajorToColumnMajor(pProjectionMatrix[0][0], colProj[0]);
-
-		dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(colView));
-		dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(colProj));
-
-	}
-
-	HOOK_RETN_PLACE_DEF(xxx_retn);
-	__declspec(naked) void xxx_stub()
-	{
-		__asm
-		{
-			pushad;
-			push	ecx;
-			call	xx;
-			add		esp, 4;
-			popad;
-
-			mov     edx, [ecx];
-			mov     eax, [edx + 0x24];
-			jmp		xxx_retn;
-		}
-	}
-#endif
-
-	/*void calc_player_view()
-	{
-		int x = 1;
-	}
-
-	HOOK_RETN_PLACE_DEF(pl_view_stub_retn);
-	__declspec(naked) void calc_player_view_stub()
-	{
-		__asm
-		{
-			pushad;
-			call	calc_player_view;
-			popad;
-
-			mov     edx, [esi];
-			xorps   xmm0, xmm0;
-			jmp		pl_view_stub_retn;
-		}
-	}*/
+	// #
+	// #
 
 	// return nullptr a nullptr to skip rendering of ghost - return ent otherwise
 	// - currently used to disable ghosts of chell and the world portalgun so that we can set 'portal_disable_ghosts' to 0
@@ -473,10 +328,14 @@ namespace components
 	}
 
 
+	// #
+	// #
 
 	void on_set_pixelshader_warning()
 	{
+#ifdef DEBUG
 		int break_me = 0;
+#endif
 	}
 
 	HOOK_RETN_PLACE_DEF(set_pixelshader_warning_retn);
@@ -501,19 +360,8 @@ namespace components
 
 	main_module::main_module()
 	{
-		/*HOOK_RETN_PLACE(pl_view_stub_retn, CLIENT_BASE + 0x4DA02);
-		utils::hook(CLIENT_BASE + 0x4D9FD, calc_player_view_stub).install()->quick();*/
-
-		// works but no gunmodel and broken stuff
-#ifdef XXX
-		utils::hook(ENGINE_BASE + 0xE6CF6, xxx_stub).install()->quick();
-		HOOK_RETN_PLACE(xxx_retn, ENGINE_BASE + 0xE6CFB);
-#endif
-
-		utils::hook(CLIENT_BASE + 0x1ECB85, yyy_stub).install()->quick();
-		HOOK_RETN_PLACE(yyy_retn, CLIENT_BASE + 0x1ECB8A);
-
-
+		utils::hook(CLIENT_BASE + 0x1ECB85, cviewrenderer_renderview_stub).install()->quick();
+		HOOK_RETN_PLACE(cviewrenderer_renderview_retn, CLIENT_BASE + 0x1ECB8A);
 
 		// anti cull:
 		// 0x1D125D -> mov     byte ptr [edi+330h], 0 to 1 (cviewrenderer->m_bForceNoVis)

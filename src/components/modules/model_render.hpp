@@ -139,8 +139,7 @@ namespace components
 	class prim_fvf_context {
 	public:
 
-		// retrieve information about the current pass
-		// returns true if successful
+		// retrieve information about the current pass - returns true if successful
 		bool get_info_for_pass(IShaderAPIDX8* shaderapi)
 		{
 			if (shaderapi)
@@ -192,12 +191,6 @@ namespace components
 			}
 		}
 
-		// save texture transform
-		/*void save_texcoord_matrix(IDirect3DDevice9* device)
-		{
-			device->GetTransform(D3DTS_WORLD, &texcoord_matrix_);
-		}*/
-
 		// save render state (e.g. D3DRS_TEXTUREFACTOR)
 		void save_rs(IDirect3DDevice9* device, const D3DRENDERSTATETYPE& state)
 		{
@@ -245,11 +238,6 @@ namespace components
 			}
 		}
 
-		// Restore world matrix
-		/*void RestoreWorldMatrix(IDirect3DDevice9* device) {
-			device->SetTransform(D3DTS_WORLD, &texcoord_matrix_);
-		}*/
-
 		// restore a specific render state (e.g. D3DRS_TEXTUREFACTOR)
 		void restore_render_state(IDirect3DDevice9* device, const D3DRENDERSTATETYPE& state)
 		{
@@ -271,10 +259,11 @@ namespace components
 		// restore texture 0 transform to identity
 		void restore_texture_transform(IDirect3DDevice9* device)
 		{
-			device->SetTransform(D3DTS_TEXTURE0, &game::identity);
+			device->SetTransform(D3DTS_TEXTURE0, &game::IDENTITY);
 			tex0_transform_set = false;
 		}
 
+		// restore all changes
 		void restore_all(IDirect3DDevice9* device)
 		{
 			restore_vs(device);
@@ -293,7 +282,7 @@ namespace components
 			}
 		}
 
-		// Reset the stored data
+		// reset the stored context data
 		void reset_context()
 		{
 			vs_ = nullptr; vs_set = false;
@@ -335,7 +324,7 @@ namespace components
 
 		struct info_s
 		{
-			IMaterialInternal* material;
+			IMaterialInternal* material = nullptr;
 			std::string_view material_name;
 			std::string_view shader_name;
 			BufferedState_t buffer_state {};
@@ -349,6 +338,8 @@ namespace components
 			}
 		};
 
+		// holds information about the current pass
+		// use 'get_info_for_pass()' to populate struct
 		info_s info;
 
 		// constructor for singleton
@@ -362,7 +353,6 @@ namespace components
 		bool tex0_set;
 		IDirect3DBaseTexture9* tex1_;
 		bool tex1_set;
-		//D3DMATRIX texcoord_matrix_;
 		bool tex0_transform_set;
 
 		// store saved render states (with the type as the key)
@@ -385,7 +375,6 @@ namespace components
 
 		static inline remixapi_MeshHandle portal0_mdl = nullptr;
 		static inline remixapi_MaterialHandle portal0_mtl = nullptr;
-
 		static inline remixapi_MeshHandle portal1_mdl = nullptr;
 		static inline remixapi_MaterialHandle portal1_mtl = nullptr;
 
@@ -393,8 +382,5 @@ namespace components
 		static inline bool  portal1_is_linked = false;
 		static inline float portal2_open_amount = 0.0f;
 		static inline bool  portal2_is_linked = false;
-
-		static inline bool rendered_first_sky_surface = false;
-	private:
 	};
 }

@@ -70,4 +70,6 @@ namespace utils
 	std::string convert_wstring(const std::wstring& wstr);
 	const char* va(const char* fmt, ...);
 	void extract_integer_words(const std::string_view& str, std::vector<int>& integers, bool check_for_duplicates);
+
+	void row_major_to_column_major(const float* row_major, float* column_major);
 }

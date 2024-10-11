@@ -155,4 +155,16 @@ namespace utils
 			temp = "";
 		}
 	}
+
+	void row_major_to_column_major(const float* row_major, float* column_major)
+	{
+		// transpose the matrix by swapping the rows and columns
+		for (int i = 0; i < 4; ++i)
+		{
+			for (int j = 0; j < 4; ++j)
+			{
+				column_major[j * 4 + i] = row_major[i * 4 + j];
+			}
+		}
+	}
 }
