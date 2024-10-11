@@ -198,12 +198,6 @@ namespace components
 		IDirect3DBaseTexture9* s_texture;
 	}
 
-	namespace ff_more_models
-	{
-		IDirect3DVertexShader9* s_shader = nullptr;
-		IDirect3DBaseTexture9* s_texture;
-	}
-
 	D3DMATRIX saved_world_mtx_unk = {};
 
 	IDirect3DVertexShader9* og_bmodel_shader = nullptr;
@@ -806,7 +800,6 @@ namespace components
 
 				// noticed some normal issues on vgui_indicator's .. disable normals for now?
 				dev->SetFVF(D3DFVF_XYZB3 /*| D3DFVF_NORMAL*/ | D3DFVF_TEX1 | D3DFVF_TEXCOORDSIZE2(0));
-
 				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 			}
 
@@ -839,8 +832,8 @@ namespace components
 			{
 				do_not_render_next_mesh = true;
 				ctx.save_vs(dev);
-				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
 				dev->SetVertexShader(nullptr);
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
 			}
 
 			// engine/shadowbuild
@@ -877,18 +870,18 @@ namespace components
 					  || ctx.info.material_name.contains("elevator_video_overlay"))
 				{
 					//do_not_render_next_mesh = true;
-					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 					ctx.save_vs(dev);
 					dev->SetVertexShader(nullptr);
+					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 					//dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_TEX4); // no need to set fvf here!
 				}
 
 				// video on intro3
 				else if (ctx.info.material_name.contains("elevator_video_lines"))
 				{
-					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 					ctx.save_vs(dev);
 					dev->SetVertexShader(nullptr);
+					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 				}
 			}
 
@@ -922,12 +915,11 @@ namespace components
 #endif
 			}
 
-			// ? bed
+			// general models (eg. furniture in first lvl - container)
 			else if (mesh->m_VertexFormat == 0xa0103)  
 			{
 				//do_not_render_next_mesh = true;
-				
-				dev->GetVertexShader(&ff_more_models::s_shader);
+				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr);
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64 :: tc @ 24
 			}
@@ -1459,13 +1451,6 @@ namespace components
 			dev->SetVertexShader(ff_portalfx_04::s_shader);
 			dev->SetFVF(NULL);
 			ff_portalfx_04::s_shader = nullptr;
-		}
-
-		if (ff_more_models::s_shader)
-		{
-			dev->SetVertexShader(ff_more_models::s_shader);
-			dev->SetFVF(NULL);
-			ff_more_models::s_shader = nullptr;
 		}
 
 		do_not_render_next_mesh = false;
