@@ -10,10 +10,6 @@ namespace components
 	bool render_with_new_stride = false;
 	std::uint32_t new_stride = 0u;
 
-	IDirect3DVertexBuffer9* s_streamsource = nullptr;
-	UINT s_streamsource_offset = 0u;
-	UINT s_streamsource_stride = 0u;
-
 	namespace ff_model
 	{
 		IDirect3DVertexShader9* s_shader = nullptr;
@@ -117,6 +113,72 @@ namespace components
 		};
 
 		game::get_d3d_device()->SetMaterial(&temp_mat);
+	}
+
+	void lookat_vertex_decl(IDirect3DDevice9* dev)
+	{
+#ifdef DEBUG
+		IDirect3DVertexDeclaration9* vertex_decl = nullptr;
+		dev->GetVertexDeclaration(&vertex_decl);
+
+		enum d3ddecltype : BYTE
+		{
+			D3DDECLTYPE_FLOAT1 = 0,		// 1D float expanded to (value, 0., 0., 1.)
+			D3DDECLTYPE_FLOAT2 = 1,		// 2D float expanded to (value, value, 0., 1.)
+			D3DDECLTYPE_FLOAT3 = 2,		// 3D float expanded to (value, value, value, 1.)
+			D3DDECLTYPE_FLOAT4 = 3,		// 4D float
+			D3DDECLTYPE_D3DCOLOR = 4,	// 4D packed unsigned bytes mapped to 0. to 1. range
+
+			// Input is in D3DCOLOR format (ARGB) expanded to (R, G, B, A)
+			D3DDECLTYPE_UBYTE4 = 5,		// 4D unsigned byte
+			D3DDECLTYPE_SHORT2 = 6,		// 2D signed short expanded to (value, value, 0., 1.)
+			D3DDECLTYPE_SHORT4 = 7,		// 4D signed short
+
+			// The following types are valid only with vertex shaders >= 2.0
+			D3DDECLTYPE_UBYTE4N = 8,	// Each of 4 bytes is normalized by dividing to 255.0
+			D3DDECLTYPE_SHORT2N = 9,	// 2D signed short normalized (v[0]/32767.0,v[1]/32767.0,0,1)
+			D3DDECLTYPE_SHORT4N = 10,	// 4D signed short normalized (v[0]/32767.0,v[1]/32767.0,v[2]/32767.0,v[3]/32767.0)
+			D3DDECLTYPE_USHORT2N = 11,  // 2D unsigned short normalized (v[0]/65535.0,v[1]/65535.0,0,1)
+			D3DDECLTYPE_USHORT4N = 12,  // 4D unsigned short normalized (v[0]/65535.0,v[1]/65535.0,v[2]/65535.0,v[3]/65535.0)
+			D3DDECLTYPE_UDEC3 = 13,		// 3D unsigned 10 10 10 format expanded to (value, value, value, 1)
+			D3DDECLTYPE_DEC3N = 14,		// 3D signed 10 10 10 format normalized and expanded to (v[0]/511.0, v[1]/511.0, v[2]/511.0, 1)
+			D3DDECLTYPE_FLOAT16_2 = 15,	// Two 16-bit floating point values, expanded to (value, value, 0, 1)
+			D3DDECLTYPE_FLOAT16_4 = 16,	// Four 16-bit floating point values
+			D3DDECLTYPE_UNUSED = 17,	// When the type field in a decl is unused.
+		};
+
+		enum d3ddecluse : BYTE
+		{
+			D3DDECLUSAGE_POSITION = 0,
+			D3DDECLUSAGE_BLENDWEIGHT,   // 1
+			D3DDECLUSAGE_BLENDINDICES,  // 2
+			D3DDECLUSAGE_NORMAL,        // 3
+			D3DDECLUSAGE_PSIZE,         // 4
+			D3DDECLUSAGE_TEXCOORD,      // 5
+			D3DDECLUSAGE_TANGENT,       // 6
+			D3DDECLUSAGE_BINORMAL,      // 7
+			D3DDECLUSAGE_TESSFACTOR,    // 8
+			D3DDECLUSAGE_POSITIONT,     // 9
+			D3DDECLUSAGE_COLOR,         // 10
+			D3DDECLUSAGE_FOG,           // 11
+			D3DDECLUSAGE_DEPTH,         // 12
+			D3DDECLUSAGE_SAMPLE,        // 13
+		};
+
+		struct d3dvertelem
+		{
+			WORD Stream;		// Stream index
+			WORD Offset;		// Offset in the stream in bytes
+			d3ddecltype Type;	// Data type
+			BYTE Method;		// Processing method
+			d3ddecluse Usage;	// Semantics
+			BYTE UsageIndex;	// Semantic index
+		};
+
+		d3dvertelem decl[MAX_FVF_DECL_SIZE]; UINT numElements = 0;
+		vertex_decl->GetDeclaration((D3DVERTEXELEMENT9*)decl, &numElements);
+		int break_me = 1; // look into decl
+#endif
 	}
 
 
@@ -621,278 +683,94 @@ namespace components
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3); // tc @ 24
 				dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
 
-				// SHADER_SAMPLER9 = paint
-				// #if PAINTREFRACT		sampler PaintRefractSampler : register(s6);
-				// #if PAINTREFRACT		sampler SplatNormalSampler : register(s10);
-				/*
-				 * SHADER_PARAM( PAINTSPLATNORMALMAP, SHADER_PARAM_TYPE_TEXTURE, "paint/splatnormal_default", "The paint splat normal map to use when paint is enabled on the surface" )
-				 * SHADER_PARAM( PAINTSPLATBUBBLELAYOUT, SHADER_PARAM_TYPE_TEXTURE, "paint/bubblelayout", "The layout texture which defines the distribution of bubbles in the paint" )
-				 * SHADER_PARAM( PAINTSPLATBUBBLE, SHADER_PARAM_TYPE_TEXTURE, "paint/bubble", "The normal mapped texture of a single bubble" )
-				 * SHADER_PARAM( PAINTENVMAP, SHADER_PARAM_TYPE_TEXTURE, "paint/paint_envmap_hdr", "Envmap that is consistent across all surfaces" )
-				 */
+
+				// painted surfaces use the 2nd and 3rd set of texcoords (lightmap coords)
+				// -> so we need to edit the vertex buffer for each and every surface
 
 				// mat_fullbright 1 does not draw paint
 				if (is_rendering_paint)
 				{
 					//ctx.modifiers.do_not_render = true;
-					//dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
-					ctx.save_texture(dev, 0);
-					dev->SetTexture(0, tex_addons::portal_mask);
 
+					/*	// vs
+						float3 vPos : POSITION;
+						float4 vNormal : NORMAL;
+						float2 vBaseTexCoord : TEXCOORD0;
+						float2 vLightmapTexCoord : TEXCOORD1;
+						float2 vLightmapTexCoordOffset : TEXCOORD2;
 
-					// vs
-					// float3 vPos : POSITION;
-					// float4 vNormal : NORMAL;
-					// float2 vBaseTexCoord : TEXCOORD0;
-					// float2 vLightmapTexCoord : TEXCOORD1;
-					// float2 vLightmapTexCoordOffset : TEXCOORD2;
-					// if (g_bBumpmap && g_bBumpmapDiffuseLighting)
-					// {
-					// 	o.lightmapTexCoord1And2.xy = v.vLightmapTexCoord + v.vLightmapTexCoordOffset;
-					// 
-					// 	float2 lightmapTexCoord2 = o.lightmapTexCoord1And2.xy + v.vLightmapTexCoordOffset;
-					// 	float2 lightmapTexCoord3 = lightmapTexCoord2 + v.vLightmapTexCoordOffset;
-					// 
-					// 	// reversed component order
-					// 	o.lightmapTexCoord1And2.w = lightmapTexCoord2.x;
-					// 	o.lightmapTexCoord1And2.z = lightmapTexCoord2.y;
-					// 
-					// 	o.lightmapTexCoord3.xy = lightmapTexCoord3;
-					// }
-
-					// ps
-					// i.Lightmap1and2Coord
-					// = bumpCoord1 = Lightmap1and2Coord.xy;
-					// = bumpCoord2 = Lightmap1and2Coord.wz;
-					// >> float2 paintCoord = bumpCoord1.xy - ( bumpCoord2.xy - bumpCoord1.xy ); // remove offset from 1st of the bumped coords for vanilla coords
-
-					struct dest_vert
-					{
-						Vector pos;				// 12
-						Vector normal;			// 12
-						//unsigned int color;
-						Vector2D tc_base;		// 8
-						Vector2D tc1;			// 8
-						Vector2D tc2;			// 8
-						Vector2D tc3;			// 8
-						Vector2D tc4;			// 8
-						Vector2D tc5;			// 8
-						Vector2D tc6;			// 8
-
-					}; // 36 ... 24 ... 20 .. 80
-
-					UINT dest_vert_stride = 80u;
-					const DWORD FVF = D3DFVF_XYZ | D3DFVF_NORMAL /*| D3DFVF_DIFFUSE*/ | D3DFVF_TEX7;
-					if (static bool create_dyn_vb = false; !create_dyn_vb)
-					{
-						create_dyn_vb = true;
-						if (auto hr = dev->CreateVertexBuffer(
-							1024, 
-							D3DUSAGE_DYNAMIC,
-							FVF,
-							D3DPOOL_DEFAULT, 
-							&model_render::vb_dyn_paint,
-							nullptr); 
-							hr >= 0)
 						{
-							int succ = 1;
-						}
-					}
+							o.lightmapTexCoord1And2.xy = v.vLightmapTexCoord + v.vLightmapTexCoordOffset;
 
-#if 1				// can be used to look into the vertex buffer to figure out the layout
-					{
-						IDirect3DVertexBuffer9* buff = nullptr;
-						UINT t_stride = 0u, t_offset = 0u;
-						dev->GetStreamSource(0, &buff, &t_offset, &t_stride);
-
-						s_streamsource = buff;
-						s_streamsource_offset = t_offset;
-						s_streamsource_stride = t_stride;
-
-
-						IDirect3DVertexDeclaration9* pVertexDecl = nullptr;
-						dev->GetVertexDeclaration(&pVertexDecl);
-
-						typedef enum d3ddecltype : BYTE
-						{
-							D3DDECLTYPE_FLOAT1 = 0,  // 1D float expanded to (value, 0., 0., 1.)
-							D3DDECLTYPE_FLOAT2 = 1,  // 2D float expanded to (value, value, 0., 1.)
-							D3DDECLTYPE_FLOAT3 = 2,  // 3D float expanded to (value, value, value, 1.)
-							D3DDECLTYPE_FLOAT4 = 3,  // 4D float
-							D3DDECLTYPE_D3DCOLOR = 4,  // 4D packed unsigned bytes mapped to 0. to 1. range
-							// Input is in D3DCOLOR format (ARGB) expanded to (R, G, B, A)
-							D3DDECLTYPE_UBYTE4 = 5,  // 4D unsigned byte
-							D3DDECLTYPE_SHORT2 = 6,  // 2D signed short expanded to (value, value, 0., 1.)
-							D3DDECLTYPE_SHORT4 = 7,  // 4D signed short
-
-							// The following types are valid only with vertex shaders >= 2.0
-
-
-							D3DDECLTYPE_UBYTE4N = 8,  // Each of 4 bytes is normalized by dividing to 255.0
-							D3DDECLTYPE_SHORT2N = 9,  // 2D signed short normalized (v[0]/32767.0,v[1]/32767.0,0,1)
-							D3DDECLTYPE_SHORT4N = 10,  // 4D signed short normalized (v[0]/32767.0,v[1]/32767.0,v[2]/32767.0,v[3]/32767.0)
-							D3DDECLTYPE_USHORT2N = 11,  // 2D unsigned short normalized (v[0]/65535.0,v[1]/65535.0,0,1)
-							D3DDECLTYPE_USHORT4N = 12,  // 4D unsigned short normalized (v[0]/65535.0,v[1]/65535.0,v[2]/65535.0,v[3]/65535.0)
-							D3DDECLTYPE_UDEC3 = 13,  // 3D unsigned 10 10 10 format expanded to (value, value, value, 1)
-							D3DDECLTYPE_DEC3N = 14,  // 3D signed 10 10 10 format normalized and expanded to (v[0]/511.0, v[1]/511.0, v[2]/511.0, 1)
-							D3DDECLTYPE_FLOAT16_2 = 15,  // Two 16-bit floating point values, expanded to (value, value, 0, 1)
-							D3DDECLTYPE_FLOAT16_4 = 16,  // Four 16-bit floating point values
-							D3DDECLTYPE_UNUSED = 17,  // When the type field in a decl is unused.
-						};
-
-						typedef enum d3ddecluse : BYTE
-						{
-							D3DDECLUSAGE_POSITION = 0,
-							D3DDECLUSAGE_BLENDWEIGHT,   // 1
-							D3DDECLUSAGE_BLENDINDICES,  // 2
-							D3DDECLUSAGE_NORMAL,        // 3
-							D3DDECLUSAGE_PSIZE,         // 4
-							D3DDECLUSAGE_TEXCOORD,      // 5
-							D3DDECLUSAGE_TANGENT,       // 6
-							D3DDECLUSAGE_BINORMAL,      // 7
-							D3DDECLUSAGE_TESSFACTOR,    // 8
-							D3DDECLUSAGE_POSITIONT,     // 9
-							D3DDECLUSAGE_COLOR,         // 10
-							D3DDECLUSAGE_FOG,           // 11
-							D3DDECLUSAGE_DEPTH,         // 12
-							D3DDECLUSAGE_SAMPLE,        // 13
-						};
-
-						struct d3dvertelem
-						{
-							WORD    Stream;     // Stream index
-							WORD    Offset;     // Offset in the stream in bytes
-							d3ddecltype     Type;       // Data type
-							BYTE    Method;     // Processing method
-							d3ddecluse     Usage;      // Semantics
-							BYTE    UsageIndex; // Semantic index
-						};
-
-						d3dvertelem decl[MAX_FVF_DECL_SIZE];
-						UINT numElements = 0;
-						pVertexDecl->GetDeclaration((D3DVERTEXELEMENT9*)decl, &numElements);
-
-						IDirect3DIndexBuffer9* ib_buf = nullptr;
-						dev->GetIndices(&ib_buf);
-
-						void* src_ib_data;
-						ib_buf->Lock(primlist->m_FirstIndex, primlist->m_NumIndices, &src_ib_data, D3DLOCK_READONLY);
-
-						std::unordered_set<std::uint8_t> indices;
-						indices.reserve(256);
-						for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++)
-						{
-							indices.insert(*reinterpret_cast<std::uint8_t*>(((DWORD)src_ib_data + i)));
+							float2 lightmapTexCoord2 = o.lightmapTexCoord1And2.xy + v.vLightmapTexCoordOffset;
+							o.lightmapTexCoord1And2.w = lightmapTexCoord2.x;
+							o.lightmapTexCoord1And2.z = lightmapTexCoord2.y;
 						}
 
-						ib_buf->Unlock();
+						// ps
+						float2 paintCoord = lightmapTexCoord1And2.xy - ( lightmapTexCoord1And2.wz - lightmapTexCoord1And2.xy );
 
-						UINT min_vert = 0u;
-						UINT max_vert = 0u;
+						// sampler PaintRefractSampler	: register(s6);
+						// sampler paintSampler			: register(s9);
+						// sampler SplatNormalSampler	: register(s10);
+					*/
 
-						{
-							auto [min_it, max_it] = std::minmax_element(indices.begin(), indices.end());
-							min_vert = *min_it;
-							max_vert = *max_it;
-						}
-						
-						IDirect3DVertexBuffer9* asd = reinterpret_cast<IDirect3DVertexBuffer9*>(*(DWORD*)mesh->m_pVertexBuffer);
+					//lookat_vertex_decl(dev);
 
-						//
+					IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
+					dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
 
-						auto first_vert = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x17547C);
-						auto num_verts = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x1754A0);
-
+					if (vb)  
+					{
 						void* src_buffer_data;
-						if (buff)  
+						auto first_vert = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x17547C);
+						//auto num_verts = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x1754A0);
+
+						// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
+						if (auto hr = vb->Lock(first_vert * t_stride, mesh->m_NumVertices * t_stride, &src_buffer_data, 0); 
+								 hr >= 0)
 						{
-							// lock src
-							//if (auto hr = buff->Lock(0, (max_vert) * s_streamsource_stride, &src_buffer_data, 0); hr >= 0)
-							if (auto hr = buff->Lock(first_vert * s_streamsource_stride, (mesh->m_NumVertices) * s_streamsource_stride, &src_buffer_data, 0); hr >= 0)
+							struct src_vert
 							{
-								// lock dynbuffer
-								//void* dyn_buffer_data = nullptr;
-								//if (auto hr = model_render::vb_dyn_paint->Lock(s_streamsource_offset, s_streamsource_stride * mesh->m_NumVertices, &dyn_buffer_data, D3DLOCK_DISCARD); hr >= 0)
-								{
-									struct src_vert
-									{
-										Vector pos;				 // 12
-										Vector normal;			 // 12	> 24
-										Vector2D tc_base;		 // 8	> 32
-										Vector2D tc_lmap;		 // 8	> 40
-										Vector2D tc_lmap_offset; // 8	> 48
-										Vector2D tc3;			 // 8	> 56
-										Vector2D tc4;			 // 8	> 64
-										Vector2D tc5;			 // 8	> 72
-										Vector2D tc6;			 // 8	> 80
-										// ... 80
-									};
+								Vector pos;				 // 12
+								Vector normal;			 // 12	> 24
+								Vector2D tc_base;		 // 8	> 32
+								Vector2D tc_lmap;		 // 8	> 40
+								Vector2D tc_lmap_offset; // 8	> 48
+								Vector2D tc3;			 // 8	> 56 // @48 actually float3 tangent
+								Vector2D tc4;			 // 8	> 64 // @60 actually float3 binormal
+								Vector2D tc5;			 // 8	> 72 
+								Vector2D tc6;			 // 8	> 80 // last 8 byte junk?
+							};
 
-									for (auto i = 0; i < mesh->m_NumVertices; i++)
-									//for (auto i : indices)
-									{
-										const auto v_pos_in_src_buffer = i * s_streamsource_stride;
-										const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
+							for (auto i = 0; i < mesh->m_NumVertices; i++)
+							{
+								const auto v_pos_in_src_buffer = i * t_stride;
+								const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
 
-										//const auto v_pos_in_dyn_buffer = (i * s_streamsource_stride) + (s_streamsource_offset * s_streamsource_stride);
-										//const auto dest = reinterpret_cast<dest_vert*>(((DWORD)dyn_buffer_data + v_pos_in_dyn_buffer));
-
-										src->pos.z += 2.0f;
-
-										src->tc_base = src->tc_lmap + src->tc_lmap_offset;
-
-										Vector2D aa = src->tc_base + src->tc_lmap_offset;
-										src->tc_base = src->tc_base - (aa - src->tc_base);
-
-										// can see something
-										//src->tc_base = src->tc_lmap * 4.0f; //src->tc_base - (src->tc_lmap - src->tc_base); 
-										//src->tc_base.y = 0.4f;
-
-									}
-
-									//model_render::vb_dyn_paint->Unlock();
-								}
-
-								buff->Unlock();
+								// calc paint coordinates
+								src->tc_base = src->tc_lmap + src->tc_lmap_offset;
+								src->tc_base = src->tc_base - ((src->tc_base + src->tc_lmap_offset) - src->tc_base);
 							}
+
+							vb->Unlock();
 						}
 					}
-#endif
-					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
-					//dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);
-					//dev->SetTransform(D3DTS_PROJECTION, &ctx.info.buffer_state.m_Transform[2]);
 
-					//dev->SetStreamSource(0, model_render::vb_dyn_paint, s_streamsource_offset, s_streamsource_stride);
- 					dev->SetFVF(FVF);
+					dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
+					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]); // needed? 
 
 					if (ctx.info.buffer_state.m_BoundTexture[9])
 					{
-						if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[9]);
-							basemap2)
+						ctx.save_texture(dev, 0);
+
+						if (const auto  paint_map = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[9]);
+										paint_map)
 						{
-							dev->SetTexture(0, basemap2);
+							dev->SetTexture(0, paint_map);
 						}
 					}
 				}
-
-#if 0			// can be used to look into the vertex buffer to figure out the layout
-				{
-					IDirect3DVertexBuffer9* buff = nullptr;
-					UINT t_stride = 0u, t_offset = 0u;
-					dev->GetStreamSource(0, &buff, &t_offset, &t_stride);
-
-					// looking at the data, the actual stride seems to be 48?
-
-					void* buffer_data;
-					if (buff) 
-					{
-						if (const auto hr = buff->Lock(0, t_stride * 10u, &buffer_data, D3DLOCK_READONLY); hr >= 0)
-						{
-							buff->Unlock(); // break here
-						}
-					}
-				}
-#endif
 			}
 
 			// transport tubes
@@ -1597,14 +1475,6 @@ namespace components
 		}
 
 		render_with_new_stride = false;
-
-		if (s_streamsource)
-		{
-			dev->SetStreamSource(0, s_streamsource, s_streamsource_offset, s_streamsource_stride);
-			s_streamsource = nullptr;
-			s_streamsource_offset = 0u;
-			s_streamsource_stride = 0u;
-		}
 
 		// reset prim/pass modifications
 		model_render::primctx.restore_all(dev); 
