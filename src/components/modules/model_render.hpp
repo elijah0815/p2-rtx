@@ -207,6 +207,14 @@ namespace components
 			saved_texture_stage_state_[type] = temp;
 		}
 
+		//// save steamsource data
+		//void save_streamsource_data(IDirect3DVertexBuffer9* buffer, UINT offset, UINT stride)
+		//{
+		//	streamsource_ = buffer;
+		//	streamsource_offset_ = offset;
+		//	streamsource_stride_ = stride;
+		//}
+
 		// restore vertex shader
 		void restore_vs(IDirect3DDevice9* device)
 		{
@@ -343,17 +351,20 @@ namespace components
 		info_s info;
 
 		// constructor for singleton
-		prim_fvf_context() : vs_(nullptr), vs_set(false), tex0_(nullptr), tex0_set(false), tex1_(nullptr), tex1_set(false), tex0_transform_set(false) {}
+		prim_fvf_context() {}
 
 	private:
 		// Render states to save
-		IDirect3DVertexShader9* vs_;
-		bool vs_set;
-		IDirect3DBaseTexture9* tex0_;
-		bool tex0_set;
-		IDirect3DBaseTexture9* tex1_;
-		bool tex1_set;
-		bool tex0_transform_set;
+		IDirect3DVertexShader9* vs_ = nullptr;
+		bool vs_set = false;
+		IDirect3DBaseTexture9* tex0_ = nullptr;
+		bool tex0_set = false;
+		IDirect3DBaseTexture9* tex1_ = nullptr;
+		bool tex1_set = false;
+		bool tex0_transform_set = false;
+		//IDirect3DVertexBuffer9* streamsource_ = nullptr;
+		//UINT streamsource_offset_ = 0u;
+		//UINT streamsource_stride_ = 0u;
 
 		// store saved render states (with the type as the key)
 		std::unordered_map<D3DRENDERSTATETYPE, DWORD> saved_render_state_;
@@ -377,6 +388,8 @@ namespace components
 		static inline remixapi_MaterialHandle portal0_mtl = nullptr;
 		static inline remixapi_MeshHandle portal1_mdl = nullptr;
 		static inline remixapi_MaterialHandle portal1_mtl = nullptr;
+
+		static inline IDirect3DVertexBuffer9* vb_dyn_paint = nullptr;
 
 		static inline float portal1_open_amount = 0.0f;
 		static inline bool  portal1_is_linked = false;
