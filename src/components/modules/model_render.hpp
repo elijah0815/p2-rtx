@@ -362,9 +362,6 @@ namespace components
 		IDirect3DBaseTexture9* tex1_ = nullptr;
 		bool tex1_set = false;
 		bool tex0_transform_set = false;
-		//IDirect3DVertexBuffer9* streamsource_ = nullptr;
-		//UINT streamsource_offset_ = 0u;
-		//UINT streamsource_stride_ = 0u;
 
 		// store saved render states (with the type as the key)
 		std::unordered_map<D3DRENDERSTATETYPE, DWORD> saved_render_state_;
@@ -388,8 +385,6 @@ namespace components
 		static inline remixapi_MaterialHandle portal0_mtl = nullptr;
 		static inline remixapi_MeshHandle portal1_mdl = nullptr;
 		static inline remixapi_MaterialHandle portal1_mtl = nullptr;
-
-		static inline IDirect3DVertexBuffer9* vb_dyn_paint = nullptr;
 
 		static inline float portal1_open_amount = 0.0f;
 		static inline bool  portal1_is_linked = false;

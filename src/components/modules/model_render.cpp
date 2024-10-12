@@ -770,6 +770,17 @@ namespace components
 							dev->SetTexture(0, paint_map);
 						}
 					}
+
+					//DWORD val;
+					//dev->GetRenderState((D3DRENDERSTATETYPE)42, &val);
+
+					// set remix texture categories
+					ctx.save_rs(dev, (D3DRENDERSTATETYPE)42);
+					dev->SetRenderState((D3DRENDERSTATETYPE)42, IgnoreOpacityMicromap | DecalStatic);
+
+					// set custom remix hash
+					ctx.save_rs(dev, (D3DRENDERSTATETYPE)150);
+					dev->SetRenderState((D3DRENDERSTATETYPE)150, 0x1337);
 				}
 			}
 
