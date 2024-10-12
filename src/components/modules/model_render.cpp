@@ -407,7 +407,7 @@ namespace components
 	// Helper function to draw portal gel's
 	// > will directly edit the vertex buffer when brushmodels are rendered
 	// > this currently alters all BSP vertices (but with one lock/unlock) and will f'up texcoords if mat_forcedynamic is NOT 1 (recreates VB each frame)
-	void render_painted_surface(prim_fvf_context& ctx)
+	void render_painted_surface(prim_fvf_context& ctx, [[maybe_unused]] CPrimList* primlist = nullptr)
 	{
 		/*	// vs
 			float3 vPos : POSITION;
@@ -448,65 +448,102 @@ namespace components
 			// This can be pretty bad performance wise if used on a lot of individual surfaces
 			// > BSP is not rendered in batches so we would lock and unlock the VB for each surface
 			// > Brushmodels are rendered in batches -> waaaay less locks
-			// - Brushmodels are considered static if mat_forcedynamic or mat_drawflat is not 1 
+			// - Brushmodels are considered static if mat_forcedynamic or mat_drawflat is not 1 (vb is NOT recreated every frame)
 			if (is_rendering_bmodel_paint)
 			{
-				// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
-				if (auto hr = vb->Lock(first_vert * t_stride, num_verts_real * t_stride, &src_buffer_data, 0);
-					hr >= 0)
+				IDirect3DIndexBuffer9* ib = nullptr;
+				if (SUCCEEDED(dev->GetIndices(&ib)))
 				{
-					struct src_vert
+					void* ib_data; // lock index buffer to retrieve the relevant vertex indices
+					if (SUCCEEDED(ib->Lock(0, 0, &ib_data, D3DLOCK_READONLY)))
 					{
-						Vector pos;				 // 12
-						Vector normal;			 // 12	> 24
-						Vector2D tc_base;		 // 8	> 32
-						Vector2D tc_lmap;		 // 8	> 40
-						Vector2D tc_lmap_offset; // 8	> 48
-						Vector2D tc3;			 // 8	> 56 // @48 actually float3 tangent
-						Vector2D tc4;			 // 8	> 64 // @60 actually float3 binormal
-						Vector2D tc5;			 // 8	> 72 
-						Vector2D tc6;			 // 8	> 80 // last 8 byte junk?
-					};
+						// add relevant indices without duplicates
+						std::unordered_set<std::uint16_t> indices; indices.reserve(primlist->m_NumIndices);
+						for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++)
+						{
+							indices.insert(static_cast<std::uint16_t*>(ib_data)[primlist->m_FirstIndex + i]);
+						}
 
-					for (auto i = 0u; i < num_verts_real; i++)
-					{
-						const auto v_pos_in_src_buffer = i * t_stride;
-						const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
+						ib->Unlock();
 
-						// calc paint coordinates
-						src->tc_base = src->tc_lmap + src->tc_lmap_offset;
-						src->tc_base = src->tc_base - ((src->tc_base + src->tc_lmap_offset) - src->tc_base);
+						// get the range of vertices that we are going to work with
+						UINT min_vert = 0u, max_vert = 0u;
+						{
+							auto [min_it, max_it] = std::minmax_element(indices.begin(), indices.end());
+							min_vert = *min_it;
+							max_vert = *max_it;
+						}
+
+						// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
+						if (SUCCEEDED(vb->Lock(min_vert * t_stride, max_vert * t_stride, &src_buffer_data, 0)))
+						{
+							struct src_vert
+							{
+								Vector pos;				 // 12
+								Vector normal;			 // 12	> 24
+								Vector2D tc_base;		 // 8	> 32
+								Vector2D tc_lmap;		 // 8	> 40
+								Vector2D tc_lmap_offset; // 8	> 48
+								Vector2D tc3;			 // 8	> 56 // @48 actually float3 tangent
+								Vector2D tc4;			 // 8	> 64 // @60 actually float3 binormal
+								Vector2D tc5;			 // 8	> 72 
+								Vector2D tc6;			 // 8	> 80 // last 8 byte junk?
+							};
+
+							for (auto i : indices)
+							{
+								// we need to subtract min_vert because we locked @ min_vert which is the start of our lock
+								i -= min_vert;
+
+								const auto v_pos_in_src_buffer = i * t_stride;
+								const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
+
+								// mark this vertex as modified - yes this even works if paint is cleared 
+								if (src->tc6.x != 1.337f)
+								{
+									src->tc6.x = 1.337f;
+
+									// calc paint coordinates
+									src->tc_base = src->tc_lmap + src->tc_lmap_offset;
+									src->tc_base = src->tc_base - ((src->tc_base + src->tc_lmap_offset) - src->tc_base);
+								}
+							}
+
+							vb->Unlock();
+						}
 					}
-
-					vb->Unlock();
 				}
 			}
-		}
 
-		dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
-		//dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 
-		if (ctx.info.buffer_state.m_BoundTexture[9])
-		{
-			ctx.save_texture(dev, 0);
+			// #
+			// this part of the code will be used for BSP paint & brushmodel paint
 
-			if (const auto  paint_map = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[9]);
-				paint_map)
+			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
+
+			// assign paint map texture to texture slot 0
+			if (ctx.info.buffer_state.m_BoundTexture[9])
 			{
-				dev->SetTexture(0, paint_map);
+				ctx.save_texture(dev, 0);
+
+				if (const auto  paint_map = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[9]);
+					paint_map)
+				{
+					dev->SetTexture(0, paint_map);
+				}
 			}
+
+			// this requires dxvk-remix modifications (that are not yet? on the main branch)
+			// same hash works for all the different gels
+
+			// set remix texture categories
+			ctx.save_rs(dev, (D3DRENDERSTATETYPE)42);
+			dev->SetRenderState((D3DRENDERSTATETYPE)42, IgnoreOpacityMicromap | DecalStatic);
+
+			// set custom remix hash
+			ctx.save_rs(dev, (D3DRENDERSTATETYPE)150);
+			dev->SetRenderState((D3DRENDERSTATETYPE)150, 0x1337);
 		}
-
-		// this requires dxvk-remix modifications (that are not yet? on the main branch)
-		// same hash works for all the different gels
-
-		// set remix texture categories
-		ctx.save_rs(dev, (D3DRENDERSTATETYPE)42);
-		dev->SetRenderState((D3DRENDERSTATETYPE)42, IgnoreOpacityMicromap | DecalStatic);
-
-		// set custom remix hash
-		ctx.save_rs(dev, (D3DRENDERSTATETYPE)150);
-		dev->SetRenderState((D3DRENDERSTATETYPE)150, 0x1337);
 	}
 
 
@@ -629,7 +666,7 @@ namespace components
 			// needs mat_forcedynamic 1 because this alters ALL of the world surfaces ...
 			if (is_rendering_bmodel_paint)
 			{
-				//render_painted_surface(ctx);
+				render_painted_surface(ctx, primlist);
 			}
 		}
 
@@ -916,7 +953,7 @@ namespace components
 				// mat_fullbright 1 does not draw paint
 				if (is_rendering_paint)
 				{
-					render_painted_surface(ctx/*, mesh->m_NumVertices*/);
+					render_painted_surface(ctx);
 				}
 			}
 
