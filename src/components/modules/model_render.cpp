@@ -354,56 +354,6 @@ namespace components
 		}
 	}
 
-#if 0
-	void BuildMSurfacePrimVerts(const worldbrushdata_t* pBrushData, const mprimitive_t* prim, CMeshBuilder* builder, const msurface2_t* surfID)
-	{
-		auto i = 0u;
-		if (prim->vertCount)
-		{
-			do
-			{
-				const auto v = &pBrushData->primverts[i + prim->firstVert];
-
-				const auto pos = builder->m_VertexBuilder.m_pCurrPosition;
-				pos[0] = v->pos.x;
-				pos[1] = v->pos.y;
-				pos[2] = v->pos.z;
-
-				const auto normal = builder->m_VertexBuilder.m_pCurrNormal;
-				normal[0] = surfID->plane->normal.x;
-				normal[1] = surfID->plane->normal.y;
-				normal[2] = surfID->plane->normal.z;
-
-				// only modify if is_rendering_paint is true
-				// src->tc_base = src->tc_lmap + src->tc_lmap_offset;
-				// src->tc_base = src->tc_base - ((src->tc_base + src->tc_lmap_offset) - src->tc_base);
-
-				const auto base_and_lmap = builder->m_VertexBuilder.m_pCurrTexCoord[0];
-				base_and_lmap[0] = v->texCoord[0];
-				base_and_lmap[1] = v->texCoord[1];
-
-				const auto lmap_offset = builder->m_VertexBuilder.m_pCurrTexCoord[1];
-				lmap_offset[0] = v->lightCoord[0];
-				lmap_offset[1] = v->lightCoord[1];
-
-				// not needed for FF
-				/*if ((surfID->flags & 0x100) != 0)
-				{
-					TangentSpaceComputeBasis(&tangentS, &tangentT, &surfID->plane->normal, &tVect, 0);
-					*(Vector*)((char*)builder->m_VertexBuilder.m_pTangentS + builder->m_VertexBuilder.m_nCurrentVertex * builder->m_VertexBuilder.m_VertexSize_TangentS) = tangentS;
-					*(Vector*)((char*)builder->m_VertexBuilder.m_pTangentT + builder->m_VertexBuilder.m_nCurrentVertex * builder->m_VertexBuilder.m_VertexSize_TangentT) = tangentT;
-				}*/
-
-				//CVertexBuilder::AdvanceVertex(&builder->m_VertexBuilder);
-				utils::hook::call<void* (__fastcall)(CVertexBuilder*)>(ENGINE_BASE + 0x6EFD0)(&builder->m_VertexBuilder);
-				
-				++i;
-
-			} while (i < prim->vertCount);
-		}
-	}
-#endif
-
 	// Helper function to draw portal gel's
 	// > will directly edit the vertex buffer when brushmodels are rendered
 	// > this currently alters all BSP vertices (but with one lock/unlock) and will f'up texcoords if mat_forcedynamic is NOT 1 (recreates VB each frame)
@@ -2077,10 +2027,8 @@ namespace components
 		// C_Prop_Portal::ClientThink :: hook to get portal 1/2 m_fOpenAmount member var
 		utils::hook(CLIENT_BASE + 0x280012, prop_portal_client_think_stub, HOOK_JUMP).install()->quick();
 
-		// Shader_DrawSurfaceDynamic :: change texcoords when building the vertexbuffer
-		// so that we do not need to lock and unlock for each world surface when rendering
-		//utils::hook(ENGINE_BASE + 0xE1ED4, BuildMSurfacePrimVerts, HOOK_CALL).install()->quick(); // this is not used for world surfaces ....
-
+		// Shader_DrawSurfaceDynamic -> BuildMSurfaceVertexArrays :: change texcoords when building the vertexbuffer
+		// so that we do not need to lock and unlock for each BSP surface when rendering
 		utils::hook(ENGINE_BASE + 0xF7193, BuildMSurfaceVertexArrays_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(BuildMSurfaceVertexArrays_retn_addr, ENGINE_BASE + 0xF7198);
 
