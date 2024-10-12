@@ -7,6 +7,7 @@ namespace components
 {
 	bool is_portalgun_viewmodel = false;
 	int	 is_rendering_paint = false;
+	int	 is_rendering_bmodel_paint = false;
 	bool render_with_new_stride = false;
 	std::uint32_t new_stride = 0u;
 
@@ -288,6 +289,105 @@ namespace components
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_dn.jpg", &tex_addons::sky_gray_dn);
 	}
 
+	void render_painted_surface(prim_fvf_context& ctx)
+	{
+		/*	// vs
+			float3 vPos : POSITION;
+			float4 vNormal : NORMAL;
+			float2 vBaseTexCoord : TEXCOORD0;
+			float2 vLightmapTexCoord : TEXCOORD1;
+			float2 vLightmapTexCoordOffset : TEXCOORD2;
+
+			{
+				o.lightmapTexCoord1And2.xy = v.vLightmapTexCoord + v.vLightmapTexCoordOffset;
+
+				float2 lightmapTexCoord2 = o.lightmapTexCoord1And2.xy + v.vLightmapTexCoordOffset;
+				o.lightmapTexCoord1And2.w = lightmapTexCoord2.x;
+				o.lightmapTexCoord1And2.z = lightmapTexCoord2.y;
+			}
+
+			// ps
+			float2 paintCoord = lightmapTexCoord1And2.xy - ( lightmapTexCoord1And2.wz - lightmapTexCoord1And2.xy );
+
+			// sampler PaintRefractSampler	: register(s6);
+			// sampler paintSampler			: register(s9);
+			// sampler SplatNormalSampler	: register(s10);
+		*/
+
+		const auto dev = game::get_d3d_device();
+		const auto shaderapi = game::get_shaderapi();
+		//lookat_vertex_decl(dev);
+
+		IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
+		dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
+
+		if (vb)
+		{
+			void* src_buffer_data;
+			auto first_vert = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x17547C);
+			auto num_verts_real = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x1754A0);
+
+			// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
+			if (auto hr = vb->Lock(first_vert * t_stride, num_verts_real * t_stride, &src_buffer_data, 0);
+				hr >= 0)
+			{
+				struct src_vert
+				{
+					Vector pos;				 // 12
+					Vector normal;			 // 12	> 24
+					Vector2D tc_base;		 // 8	> 32
+					Vector2D tc_lmap;		 // 8	> 40
+					Vector2D tc_lmap_offset; // 8	> 48
+					Vector2D tc3;			 // 8	> 56 // @48 actually float3 tangent
+					Vector2D tc4;			 // 8	> 64 // @60 actually float3 binormal
+					Vector2D tc5;			 // 8	> 72 
+					Vector2D tc6;			 // 8	> 80 // last 8 byte junk?
+				};
+
+				for (auto i = 0; i < num_verts_real; i++)
+				{
+					const auto v_pos_in_src_buffer = i * t_stride;
+					const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
+
+					// calc paint coordinates
+					src->tc_base = src->tc_lmap + src->tc_lmap_offset;
+					src->tc_base = src->tc_base - ((src->tc_base + src->tc_lmap_offset) - src->tc_base);
+				}
+
+				vb->Unlock();
+			}
+		}
+
+		dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
+		dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
+
+		if (ctx.info.buffer_state.m_BoundTexture[9])
+		{
+			ctx.save_texture(dev, 0);
+
+			if (const auto  paint_map = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[9]);
+				paint_map)
+			{
+				dev->SetTexture(0, paint_map);
+			}
+		}
+
+		// this requires dxvk-remix modifications (that are not yet? on the main branch)
+		// same hash works for all the different gels
+
+		// set remix texture categories
+		ctx.save_rs(dev, (D3DRENDERSTATETYPE)42);
+		dev->SetRenderState((D3DRENDERSTATETYPE)42, IgnoreOpacityMicromap | DecalStatic);
+
+		// set custom remix hash
+		ctx.save_rs(dev, (D3DRENDERSTATETYPE)150);
+		dev->SetRenderState((D3DRENDERSTATETYPE)150, 0x1337);
+	}
+
+
+	// 
+	// main render path for every surface
+
 	void cmeshdx8_renderpass_pre_draw(CMeshDX8* mesh, CPrimList* primlist)
 	{
 		const auto dev = game::get_d3d_device();
@@ -322,11 +422,6 @@ namespace components
 
 		if (ctx.get_info_for_pass(shaderapi))
 		{
-			if (ctx.info.shader_name.contains("paint"))
-			{
-				int break_me = 1;    
-			}
-
 			// added format check
 			if (mesh->m_VertexFormat == 0x2480033 || mesh->m_VertexFormat == 0x80033)
 			{
@@ -405,6 +500,12 @@ namespace components
 			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
 			dev->SetVertexShader(nullptr);
+
+			// needs mat_forcedynamic 1 because this alters ALL of the world surfaces ...
+			if (is_rendering_bmodel_paint)
+			{
+				//render_painted_surface(ctx);
+			}
 		}
 
 		// player model - gun - grabable stuff - portal button - portal door - stairs
@@ -690,97 +791,7 @@ namespace components
 				// mat_fullbright 1 does not draw paint
 				if (is_rendering_paint)
 				{
-					//ctx.modifiers.do_not_render = true;
-
-					/*	// vs
-						float3 vPos : POSITION;
-						float4 vNormal : NORMAL;
-						float2 vBaseTexCoord : TEXCOORD0;
-						float2 vLightmapTexCoord : TEXCOORD1;
-						float2 vLightmapTexCoordOffset : TEXCOORD2;
-
-						{
-							o.lightmapTexCoord1And2.xy = v.vLightmapTexCoord + v.vLightmapTexCoordOffset;
-
-							float2 lightmapTexCoord2 = o.lightmapTexCoord1And2.xy + v.vLightmapTexCoordOffset;
-							o.lightmapTexCoord1And2.w = lightmapTexCoord2.x;
-							o.lightmapTexCoord1And2.z = lightmapTexCoord2.y;
-						}
-
-						// ps
-						float2 paintCoord = lightmapTexCoord1And2.xy - ( lightmapTexCoord1And2.wz - lightmapTexCoord1And2.xy );
-
-						// sampler PaintRefractSampler	: register(s6);
-						// sampler paintSampler			: register(s9);
-						// sampler SplatNormalSampler	: register(s10);
-					*/
-
-					//lookat_vertex_decl(dev);
-
-					IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
-					dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
-
-					if (vb)  
-					{
-						void* src_buffer_data;
-						auto first_vert = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x17547C);
-						//auto num_verts = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x1754A0);
-
-						// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
-						if (auto hr = vb->Lock(first_vert * t_stride, mesh->m_NumVertices * t_stride, &src_buffer_data, 0); 
-								 hr >= 0)
-						{
-							struct src_vert
-							{
-								Vector pos;				 // 12
-								Vector normal;			 // 12	> 24
-								Vector2D tc_base;		 // 8	> 32
-								Vector2D tc_lmap;		 // 8	> 40
-								Vector2D tc_lmap_offset; // 8	> 48
-								Vector2D tc3;			 // 8	> 56 // @48 actually float3 tangent
-								Vector2D tc4;			 // 8	> 64 // @60 actually float3 binormal
-								Vector2D tc5;			 // 8	> 72 
-								Vector2D tc6;			 // 8	> 80 // last 8 byte junk?
-							};
-
-							for (auto i = 0; i < mesh->m_NumVertices; i++)
-							{
-								const auto v_pos_in_src_buffer = i * t_stride;
-								const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
-
-								// calc paint coordinates
-								src->tc_base = src->tc_lmap + src->tc_lmap_offset;
-								src->tc_base = src->tc_base - ((src->tc_base + src->tc_lmap_offset) - src->tc_base);
-							}
-
-							vb->Unlock();
-						}
-					}
-
-					dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
-					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]); // needed? 
-
-					if (ctx.info.buffer_state.m_BoundTexture[9])
-					{
-						ctx.save_texture(dev, 0);
-
-						if (const auto  paint_map = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[9]);
-										paint_map)
-						{
-							dev->SetTexture(0, paint_map);
-						}
-					}
-
-					//DWORD val;
-					//dev->GetRenderState((D3DRENDERSTATETYPE)42, &val);
-
-					// set remix texture categories
-					ctx.save_rs(dev, (D3DRENDERSTATETYPE)42);
-					dev->SetRenderState((D3DRENDERSTATETYPE)42, IgnoreOpacityMicromap | DecalStatic);
-
-					// set custom remix hash
-					ctx.save_rs(dev, (D3DRENDERSTATETYPE)150);
-					dev->SetRenderState((D3DRENDERSTATETYPE)150, 0x1337);
+					render_painted_surface(ctx/*, mesh->m_NumVertices*/);
 				}
 			}
 
@@ -1830,7 +1841,6 @@ namespace components
 		int break_me = 0;
 	}*/
 
-	// draw_painted_surfaces_og_func
 	HOOK_RETN_PLACE_DEF(draw_painted_surfaces_og_func);
 	HOOK_RETN_PLACE_DEF(draw_painted_surfaces_retn_addr);
 	void __declspec(naked) draw_painted_surfaces_stub()
@@ -1849,6 +1859,25 @@ namespace components
 			jmp		draw_painted_surfaces_retn_addr;
 		}
 	}
+
+
+	HOOK_RETN_PLACE_DEF(draw_painted_bmodel_surfaces_retn_addr);
+	void __declspec(naked) draw_painted_bmodel_surfaces_stub()
+	{
+		__asm
+		{
+			mov		is_rendering_bmodel_paint, 1;
+
+			// og
+			push    edi;
+			push    0xFFFFFFFF;
+			call    edx; // mesh->Draw()
+			
+			mov		is_rendering_bmodel_paint, 0;
+			jmp		draw_painted_bmodel_surfaces_retn_addr;
+		}
+	}
+
 
 	model_render::model_render()
 	{
@@ -1886,10 +1915,14 @@ namespace components
 		// C_Prop_Portal::ClientThink :: hook to get portal 1/2 m_fOpenAmount member var
 		utils::hook(CLIENT_BASE + 0x280012, prop_portal_client_think_stub, HOOK_JUMP).install()->quick();
 
-		//utils::hook::nop(ENGINE_BASE + 0xE8C82, 6);
+		// 
 		utils::hook(ENGINE_BASE + 0xE8C7D, draw_painted_surfaces_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(draw_painted_surfaces_retn_addr, ENGINE_BASE + 0xE8C82);
 		HOOK_RETN_PLACE(draw_painted_surfaces_og_func, ENGINE_BASE + 0xE1C20);
+
+		// CBrushBatchRender::DrawOpaqueBrushModel :: hook around mesh->Draw to detect paint rendering
+		utils::hook(ENGINE_BASE + 0x7231C, draw_painted_bmodel_surfaces_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(draw_painted_bmodel_surfaces_retn_addr, ENGINE_BASE + 0x72321);
 	}
 }
 

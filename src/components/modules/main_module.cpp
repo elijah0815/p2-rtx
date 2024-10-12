@@ -423,5 +423,9 @@ namespace components
 
 		// Shader_DrawChains :: disable g_pMaterialSystemConfig->nFullbright == 1 check when rendering painted surfaces (binds the "lightmap" (paint map))
 		utils::hook::set<BYTE>(ENGINE_BASE + 0xE8C4D, 0xEB);
+
+		// CBrushBatchRender::DrawOpaqueBrushModel :: ^ same for brushmodels
+		utils::hook::nop(ENGINE_BASE + 0x7153A, 2);
+		utils::hook::set<BYTE>(ENGINE_BASE + 0x71540, 0xEB);
 	}
 }
