@@ -351,7 +351,7 @@ namespace components
 		info_s info;
 
 		// constructor for singleton
-		prim_fvf_context() {}
+		prim_fvf_context() = default;
 
 	private:
 		// Render states to save
@@ -377,7 +377,7 @@ namespace components
 		~model_render() = default;
 		const char* get_name() override { return "model_render"; }
 
-		static void init_texture_addons();
+		static void init_texture_addons(bool release = false);
 
 		static inline prim_fvf_context primctx {};
 

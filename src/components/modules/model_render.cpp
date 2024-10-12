@@ -54,6 +54,51 @@ namespace components
 		LPDIRECT3DTEXTURE9 sky_gray_dn;
 	}
 
+	// #TODO call from somewhere appropriate
+	void model_render::init_texture_addons(bool release)
+	{
+		if (release)
+		{
+			if (tex_addons::portal_mask) tex_addons::portal_mask->Release();
+			if (tex_addons::portal_blue) tex_addons::portal_blue->Release();
+			if (tex_addons::portal_blue_closed) tex_addons::portal_blue_closed->Release();
+			if (tex_addons::portal_orange) tex_addons::portal_orange->Release();
+			if (tex_addons::portal_orange_closed) tex_addons::portal_orange_closed->Release();
+			if (tex_addons::glass_shards) tex_addons::glass_shards->Release();
+			if (tex_addons::glass_window_lamps) tex_addons::glass_window_lamps->Release();
+			if (tex_addons::glass_window_observ) tex_addons::glass_window_observ->Release();
+			if (tex_addons::black_shader) tex_addons::black_shader->Release();
+			if (tex_addons::blue_laser_dualrender) tex_addons::blue_laser_dualrender->Release();
+			if (tex_addons::sky_gray_ft) tex_addons::sky_gray_ft->Release();
+			if (tex_addons::sky_gray_bk) tex_addons::sky_gray_bk->Release();
+			if (tex_addons::sky_gray_lf) tex_addons::sky_gray_lf->Release();
+			if (tex_addons::sky_gray_rt) tex_addons::sky_gray_rt->Release();
+			if (tex_addons::sky_gray_up) tex_addons::sky_gray_up->Release();
+			if (tex_addons::sky_gray_dn) tex_addons::sky_gray_dn->Release();
+			return;
+		}
+
+		const auto dev = game::get_d3d_device();
+
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_mask.png", &tex_addons::portal_mask);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_blue.png", &tex_addons::portal_blue);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_blue_closed.png", &tex_addons::portal_blue_closed);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_orange.png", &tex_addons::portal_orange);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_orange_closed.png", &tex_addons::portal_orange_closed);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_shards.png", &tex_addons::glass_shards);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_window_refract.png", &tex_addons::glass_window_lamps);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_window_observ.png", &tex_addons::glass_window_observ);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\black_shader.png", &tex_addons::black_shader);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\laser_blue_dualrender_alpha_col.png", &tex_addons::blue_laser_dualrender);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_ft.jpg", &tex_addons::sky_gray_ft);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_bk.jpg", &tex_addons::sky_gray_bk);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_lf.jpg", &tex_addons::sky_gray_lf);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_rt.jpg", &tex_addons::sky_gray_rt);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_up.jpg", &tex_addons::sky_gray_up);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_dn.jpg", &tex_addons::sky_gray_dn);
+	}
+
+	// check for specific material var and return it in 'out_var'
 	bool has_materialvar(IMaterialInternal* cmat, const char* var_name, IMaterialVar** out_var = nullptr)
 	{
 		bool found = false;
@@ -67,7 +112,7 @@ namespace components
 		return found;
 	}
 
-	// returns true if exists
+	// adds '$nocull' material var to material - returns true if exists
 	bool add_nocull_materialvar(IMaterialInternal* cmat)
 	{
 		bool found = false;
@@ -89,8 +134,10 @@ namespace components
 
 	D3DCOLORVALUE g_old_light_to_texture_color = {};
 
-	// only supports 1 saved state for now (should be enough)
-	// values also influence radiance (can be larger than 1)
+	// To be used before rendering a surface with a texture that is marked with the 'add light to tex' category in remix
+	// > will change the color and intensity of the light created by remix
+	// > supports 1 saved state for now (should be enough)
+	// > values also influence radiance (can be larger than 1)
 	void add_light_to_texture_color_edit(const float& r, const float& g, const float& b, const float scalar = 1.0f)
 	{
 		const auto dev = game::get_d3d_device();
@@ -116,7 +163,8 @@ namespace components
 		game::get_d3d_device()->SetMaterial(&temp_mat);
 	}
 
-	void lookat_vertex_decl(IDirect3DDevice9* dev)
+	// can be used to figure out the layout of the vertex buffer
+	void lookat_vertex_decl([[maybe_unused]] IDirect3DDevice9* dev)
 	{
 #ifdef DEBUG
 		IDirect3DVertexDeclaration9* vertex_decl = nullptr;
@@ -192,7 +240,6 @@ namespace components
 		D3DMATRIX saved_view = {};
 		D3DMATRIX saved_proj = {};
 
-
 		// MODELFLAG_MATERIALPROXY | MODELFLAG_STUDIOHDR_AMBIENT_BOOST
 		if (pInfo.flags == 0x80000011 || pInfo.flags == 0x11)
 		{
@@ -264,31 +311,102 @@ namespace components
 	// #
 	// #
 
-	
 
-	// #TODO call from somewhere appropriate
-	void model_render::init_texture_addons()
+	// This is a mid-hook function that's called when the vertex buffer used to render painted BSP is being build
+	// > Gets called right after the og function assigned the last uv coord
+	// > Doing this here saves a lot of performance - skipping the need to lock and unlock the VB for each surface in 'render_painted_surface' 
+	void BuildMSurfaceVertexArrays_mid_hk(CMeshBuilder* builder)
 	{
-		const auto dev = game::get_d3d_device();
+		// only modify if is_rendering_paint is true because this function is also used elsewhere
+		if (is_rendering_paint)
+		{
+			const auto o_tc_base = builder->m_VertexBuilder.m_pCurrTexCoord[0];
+			const auto o_tc_lmap = builder->m_VertexBuilder.m_pCurrTexCoord[1];
+			const auto o_tc_lmap_offset = builder->m_VertexBuilder.m_pCurrTexCoord[2];
 
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_mask.png", &tex_addons::portal_mask);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_blue.png", &tex_addons::portal_blue);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_blue_closed.png", &tex_addons::portal_blue_closed);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_orange.png", &tex_addons::portal_orange);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_orange_closed.png", &tex_addons::portal_orange_closed);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_shards.png", &tex_addons::glass_shards);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_window_refract.png", &tex_addons::glass_window_lamps);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_window_observ.png", &tex_addons::glass_window_observ);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\black_shader.png", &tex_addons::black_shader);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\laser_blue_dualrender_alpha_col.png", &tex_addons::blue_laser_dualrender);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_ft.jpg", &tex_addons::sky_gray_ft);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_bk.jpg", &tex_addons::sky_gray_bk);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_lf.jpg", &tex_addons::sky_gray_lf);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_rt.jpg", &tex_addons::sky_gray_rt);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_up.jpg", &tex_addons::sky_gray_up);
-		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_dn.jpg", &tex_addons::sky_gray_dn);
+			Vector2D tc_lmap = { o_tc_lmap[0], o_tc_lmap[1] };
+			Vector2D tc_offs = { o_tc_lmap_offset[0], o_tc_lmap_offset[1] };
+
+			// same code as in 'render_painted_surface'
+			Vector2D tc_base = tc_lmap + tc_offs;
+			tc_base = tc_base - ((tc_base + tc_offs) - tc_base);
+
+			o_tc_base[0] = tc_base[0];
+			o_tc_base[1] = tc_base[1];
+		}
 	}
 
+	HOOK_RETN_PLACE_DEF(BuildMSurfaceVertexArrays_retn_addr);
+	void __declspec(naked) BuildMSurfaceVertexArrays_stub()
+	{
+		__asm
+		{
+			// og
+			movss   dword ptr[eax + 4], xmm0;
+
+			pushad;
+			push	esi; // builder
+			call	BuildMSurfaceVertexArrays_mid_hk;
+			add		esp, 4;
+			popad;
+
+			jmp		BuildMSurfaceVertexArrays_retn_addr;
+		}
+	}
+
+#if 0
+	void BuildMSurfacePrimVerts(const worldbrushdata_t* pBrushData, const mprimitive_t* prim, CMeshBuilder* builder, const msurface2_t* surfID)
+	{
+		auto i = 0u;
+		if (prim->vertCount)
+		{
+			do
+			{
+				const auto v = &pBrushData->primverts[i + prim->firstVert];
+
+				const auto pos = builder->m_VertexBuilder.m_pCurrPosition;
+				pos[0] = v->pos.x;
+				pos[1] = v->pos.y;
+				pos[2] = v->pos.z;
+
+				const auto normal = builder->m_VertexBuilder.m_pCurrNormal;
+				normal[0] = surfID->plane->normal.x;
+				normal[1] = surfID->plane->normal.y;
+				normal[2] = surfID->plane->normal.z;
+
+				// only modify if is_rendering_paint is true
+				// src->tc_base = src->tc_lmap + src->tc_lmap_offset;
+				// src->tc_base = src->tc_base - ((src->tc_base + src->tc_lmap_offset) - src->tc_base);
+
+				const auto base_and_lmap = builder->m_VertexBuilder.m_pCurrTexCoord[0];
+				base_and_lmap[0] = v->texCoord[0];
+				base_and_lmap[1] = v->texCoord[1];
+
+				const auto lmap_offset = builder->m_VertexBuilder.m_pCurrTexCoord[1];
+				lmap_offset[0] = v->lightCoord[0];
+				lmap_offset[1] = v->lightCoord[1];
+
+				// not needed for FF
+				/*if ((surfID->flags & 0x100) != 0)
+				{
+					TangentSpaceComputeBasis(&tangentS, &tangentT, &surfID->plane->normal, &tVect, 0);
+					*(Vector*)((char*)builder->m_VertexBuilder.m_pTangentS + builder->m_VertexBuilder.m_nCurrentVertex * builder->m_VertexBuilder.m_VertexSize_TangentS) = tangentS;
+					*(Vector*)((char*)builder->m_VertexBuilder.m_pTangentT + builder->m_VertexBuilder.m_nCurrentVertex * builder->m_VertexBuilder.m_VertexSize_TangentT) = tangentT;
+				}*/
+
+				//CVertexBuilder::AdvanceVertex(&builder->m_VertexBuilder);
+				utils::hook::call<void* (__fastcall)(CVertexBuilder*)>(ENGINE_BASE + 0x6EFD0)(&builder->m_VertexBuilder);
+				
+				++i;
+
+			} while (i < prim->vertCount);
+		}
+	}
+#endif
+
+	// Helper function to draw portal gel's
+	// > will directly edit the vertex buffer when brushmodels are rendered
+	// > this currently alters all BSP vertices (but with one lock/unlock) and will f'up texcoords if mat_forcedynamic is NOT 1 (recreates VB each frame)
 	void render_painted_surface(prim_fvf_context& ctx)
 	{
 		/*	// vs
@@ -327,39 +445,46 @@ namespace components
 			auto first_vert = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x17547C);
 			auto num_verts_real = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x1754A0);
 
-			// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
-			if (auto hr = vb->Lock(first_vert * t_stride, num_verts_real * t_stride, &src_buffer_data, 0);
-				hr >= 0)
+			// This can be pretty bad performance wise if used on a lot of individual surfaces
+			// > BSP is not rendered in batches so we would lock and unlock the VB for each surface
+			// > Brushmodels are rendered in batches -> waaaay less locks
+			// - Brushmodels are considered static if mat_forcedynamic or mat_drawflat is not 1 
+			if (is_rendering_bmodel_paint)
 			{
-				struct src_vert
+				// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
+				if (auto hr = vb->Lock(first_vert * t_stride, num_verts_real * t_stride, &src_buffer_data, 0);
+					hr >= 0)
 				{
-					Vector pos;				 // 12
-					Vector normal;			 // 12	> 24
-					Vector2D tc_base;		 // 8	> 32
-					Vector2D tc_lmap;		 // 8	> 40
-					Vector2D tc_lmap_offset; // 8	> 48
-					Vector2D tc3;			 // 8	> 56 // @48 actually float3 tangent
-					Vector2D tc4;			 // 8	> 64 // @60 actually float3 binormal
-					Vector2D tc5;			 // 8	> 72 
-					Vector2D tc6;			 // 8	> 80 // last 8 byte junk?
-				};
+					struct src_vert
+					{
+						Vector pos;				 // 12
+						Vector normal;			 // 12	> 24
+						Vector2D tc_base;		 // 8	> 32
+						Vector2D tc_lmap;		 // 8	> 40
+						Vector2D tc_lmap_offset; // 8	> 48
+						Vector2D tc3;			 // 8	> 56 // @48 actually float3 tangent
+						Vector2D tc4;			 // 8	> 64 // @60 actually float3 binormal
+						Vector2D tc5;			 // 8	> 72 
+						Vector2D tc6;			 // 8	> 80 // last 8 byte junk?
+					};
 
-				for (auto i = 0; i < num_verts_real; i++)
-				{
-					const auto v_pos_in_src_buffer = i * t_stride;
-					const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
+					for (auto i = 0u; i < num_verts_real; i++)
+					{
+						const auto v_pos_in_src_buffer = i * t_stride;
+						const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
 
-					// calc paint coordinates
-					src->tc_base = src->tc_lmap + src->tc_lmap_offset;
-					src->tc_base = src->tc_base - ((src->tc_base + src->tc_lmap_offset) - src->tc_base);
+						// calc paint coordinates
+						src->tc_base = src->tc_lmap + src->tc_lmap_offset;
+						src->tc_base = src->tc_base - ((src->tc_base + src->tc_lmap_offset) - src->tc_base);
+					}
+
+					vb->Unlock();
 				}
-
-				vb->Unlock();
 			}
 		}
 
 		dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
-		dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
+		//dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 
 		if (ctx.info.buffer_state.m_BoundTexture[9])
 		{
@@ -388,7 +513,7 @@ namespace components
 	// 
 	// main render path for every surface
 
-	void cmeshdx8_renderpass_pre_draw(CMeshDX8* mesh, CPrimList* primlist)
+	void cmeshdx8_renderpass_pre_draw(CMeshDX8* mesh, [[maybe_unused]] CPrimList* primlist)
 	{
 		const auto dev = game::get_d3d_device();
 
@@ -1914,6 +2039,13 @@ namespace components
 
 		// C_Prop_Portal::ClientThink :: hook to get portal 1/2 m_fOpenAmount member var
 		utils::hook(CLIENT_BASE + 0x280012, prop_portal_client_think_stub, HOOK_JUMP).install()->quick();
+
+		// Shader_DrawSurfaceDynamic :: change texcoords when building the vertexbuffer
+		// so that we do not need to lock and unlock for each world surface when rendering
+		//utils::hook(ENGINE_BASE + 0xE1ED4, BuildMSurfacePrimVerts, HOOK_CALL).install()->quick(); // this is not used for world surfaces ....
+
+		utils::hook(ENGINE_BASE + 0xF7193, BuildMSurfaceVertexArrays_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(BuildMSurfaceVertexArrays_retn_addr, ENGINE_BASE + 0xF7198);
 
 		// 
 		utils::hook(ENGINE_BASE + 0xE8C7D, draw_painted_surfaces_stub, HOOK_JUMP).install()->quick();

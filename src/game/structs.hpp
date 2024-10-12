@@ -2352,6 +2352,62 @@ namespace components
 		ThirdPersonPlayerBody	= 1 << 20,
 		IgnoreBakedLighting		= 1 << 21,
 	};
+
+	struct msurface2_t
+	{
+		unsigned int flags;
+		cplane_t* plane;
+		int firstvertindex;
+		unsigned __int16 decals;
+		unsigned __int16 m_ShadowDecals;
+		unsigned __int16 m_nFirstOverlayFragment;
+		__int16 materialSortID;
+		unsigned __int16 vertBufferIndex;
+		unsigned __int16 m_bDynamicShadowsEnabled : 1;
+		unsigned __int16 texinfo : 15;
+		void* pDispInfo; // IDispInfo
+		int visframe;
+	};
+
+	struct __declspec(align(4)) CIndexBuilder : IndexDesc_t
+	{
+		IIndexBuffer* m_pIndexBuffer;
+		int m_nMaxIndexCount;
+		int m_nIndexCount;
+		int m_nIndexOffset;
+		int m_nCurrentIndex;
+		int m_nTotalIndexCount;
+		unsigned int m_nBufferOffset;
+		unsigned int m_nBufferFirstIndex;
+		bool m_bModify;
+	};
+
+	struct __declspec(align(4)) CVertexBuilder : VertexDesc_t
+	{
+		IVertexBuffer* m_pVertexBuffer;
+		bool m_bModify;
+		int m_nMaxVertexCount;
+		int m_nVertexCount;
+		int m_nCurrentVertex;
+		float* m_pCurrPosition;
+		float* m_pCurrNormal;
+		unsigned __int8* m_pCurrColor;
+		float* m_pCurrTexCoord[8];
+		int m_nTotalVertexCount;
+		unsigned int m_nBufferOffset;
+		unsigned int m_nBufferFirstVertex;
+		__int8 m_bWrittenNormal : 1;
+		__int8 m_bWrittenUserData : 1;
+	};
+
+	struct CMeshBuilder : MeshDesc_t
+	{
+		IMesh* m_pMesh;
+		MaterialPrimitiveType_t m_Type;
+		bool m_bGenerateIndices;
+		CIndexBuilder m_IndexBuilder;
+		CVertexBuilder m_VertexBuilder;
+	};
 }
 
 

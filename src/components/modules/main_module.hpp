@@ -6,7 +6,7 @@ namespace components
 	{
 	public:
 		main_module();
-		~main_module() = default;
+		~main_module();
 		const char* get_name() override { return "main_module"; }
 
 		static inline std::uint64_t framecount = 0u;

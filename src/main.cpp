@@ -40,7 +40,9 @@ DWORD WINAPI find_window_loop(LPVOID)
 		goto INIT_FAIL;
 	}
 
+#ifdef DEBUG
 	Beep(523, 100);
+#endif
 		
 #ifdef GIT_DESCRIBE
 	SetWindowTextA(main_window, utils::va("Portal 2 - RTX - %s", GIT_DESCRIBE));

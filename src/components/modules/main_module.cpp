@@ -428,4 +428,10 @@ namespace components
 		utils::hook::nop(ENGINE_BASE + 0x7153A, 2);
 		utils::hook::set<BYTE>(ENGINE_BASE + 0x71540, 0xEB);
 	}
+
+	main_module::~main_module()
+	{
+		// release textures
+		components::model_render::init_texture_addons(true);
+	}
 }
