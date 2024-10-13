@@ -133,6 +133,7 @@ namespace components
 
 
 	D3DCOLORVALUE g_old_light_to_texture_color = {};
+	bool g_light_to_texture_modified = false;
 
 	// To be used before rendering a surface with a texture that is marked with the 'add light to tex' category in remix
 	// > will change the color and intensity of the light created by remix
@@ -150,17 +151,24 @@ namespace components
 
 		temp_mat.Diffuse = { .r = r * scalar, .g = g * scalar, .b = b * scalar };
 		dev->SetMaterial(&temp_mat);
+
+		g_light_to_texture_modified = true;
 	}
 
 	// restore color
 	void add_light_to_texture_color_restore()
 	{
-		const D3DMATERIAL9 temp_mat = 
+		if (g_light_to_texture_modified)
 		{
-			.Diffuse = {.r = g_old_light_to_texture_color.r, .g = g_old_light_to_texture_color.g, .b = g_old_light_to_texture_color.b }
-		};
+			const D3DMATERIAL9 temp_mat =
+			{
+				.Diffuse = {.r = g_old_light_to_texture_color.r, .g = g_old_light_to_texture_color.g, .b = g_old_light_to_texture_color.b }
+			};
 
-		game::get_d3d_device()->SetMaterial(&temp_mat);
+			game::get_d3d_device()->SetMaterial(&temp_mat);
+
+			g_light_to_texture_modified = false;
+		}
 	}
 
 	// can be used to figure out the layout of the vertex buffer
@@ -378,7 +386,6 @@ namespace components
 		{
 			dev->SetTexture(0, ff_model::s_texture);
 			ff_model::s_texture = nullptr;
-			add_light_to_texture_color_restore();
 		}
 	}
 
@@ -1393,7 +1400,8 @@ namespace components
 			{
 				//ctx.modifiers.do_not_render = true;
 
-				
+				/*dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);*/
 
 				// a little heavy but this fixes shader rendering
 				// FF wont draw anything ... ?
@@ -1457,7 +1465,7 @@ namespace components
 
 				//ctx.save_vs(dev);
 				//dev->SetVertexShader(nullptr);
-				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX8);
+				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX2);
 				//dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 			}
 
@@ -1465,9 +1473,10 @@ namespace components
 			// maybe use r_paintblob_wireframe to force wireframe mode later
 			else if (mesh->m_VertexFormat == 0x100003)
 			{
-#ifdef DEBUG
-				int break_me = 1;
-#endif
+				ctx.save_vs(dev);
+				dev->SetVertexShader(nullptr);
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3);
+				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 			}
 #ifdef DEBUG
 			else
@@ -1725,6 +1734,7 @@ namespace components
 		}
 
 		render_with_new_stride = false;
+		add_light_to_texture_color_restore();
 
 		// reset prim/pass modifications
 		model_render::primctx.restore_all(dev); 
