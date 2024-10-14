@@ -735,8 +735,7 @@ namespace components
 		// also renders some foliage (2nd level - emissive)
 		else if (ff_model::s_shader) // 0xa0103
 		{
-			
-			// ctx.modifiers.do_not_render = true;
+			//ctx.modifiers.do_not_render = true;
 
 			// replace all refract shaders with wireframe
 			if (ctx.info.shader_name.contains("Refract_DX90"))
@@ -745,8 +744,8 @@ namespace components
 				ctx.info.material->vftable->SetShader(ctx.info.material, "Wireframe");
 			}
 
-			// change observer window texture
-			else if (ctx.info.material_name.contains("lab/glassw"))
+			// change observer window texture (models/props_lab/glasswindow_observation)
+			else if (ctx.info.material_name.ends_with("w_observation"))
 			{
 				if (tex_addons::glass_window_observ)
 				{
@@ -756,7 +755,8 @@ namespace components
 					add_light_to_texture_color_edit(0.9f, 1.3f, 1.5f, 0.05f);
 				}
 			}
-			else if (ctx.info.material_name.contains("glass/glassw"))
+			// glass/glasswindow_ ...
+			else if (ctx.info.material_name.starts_with("glass/glassw"))
 			{
 				if (tex_addons::glass_window_lamps)
 				{
@@ -1169,6 +1169,7 @@ namespace components
 			}
 
 			// HUD
+			// Video decals
 			else if (mesh->m_VertexFormat == 0x80007) 
 			{
 				//ctx.modifiers.do_not_render = true;
@@ -1198,9 +1199,17 @@ namespace components
 				// video on intro3
 				else if (ctx.info.material_name.contains("elevator_video_lines"))
 				{
+					//ctx.modifiers.do_not_render = true;
 					ctx.save_vs(dev);
 					dev->SetVertexShader(nullptr);
 					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
+
+					/*ctx.save_texture(dev, 0);
+					if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[2]);
+						basemap2)
+					{
+						dev->SetTexture(0, basemap2);
+					}*/
 				}
 			}
 
@@ -1403,9 +1412,15 @@ namespace components
 				/*dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
 				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);*/
 
+				//dev->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, FALSE);
+				//dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
+
 				// a little heavy but this fixes shader rendering
 				// FF wont draw anything ... ?
 
+				// maybe edit vert texcoords directly within Client :: C_OP_RenderSprites::Render
+
+#if 1
 				IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
 				if (SUCCEEDED(dev->GetStreamSource(0, &vb, &t_offset, &t_stride)))
 				{
@@ -1462,6 +1477,7 @@ namespace components
 						}
 					}
 				}
+#endif
 
 				//ctx.save_vs(dev);
 				//dev->SetVertexShader(nullptr);
