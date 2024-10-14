@@ -7,23 +7,24 @@ namespace components
 
 	void loader::initialize()
 	{
-		loader::mem_allocator_.clear();
-		loader::_register(new main_module());
-		loader::_register(new model_render());
+		mem_allocator_.clear();
+		_register(new flags());
+		_register(new main_module());
+		_register(new model_render());
 
 		XASSERT(MH_EnableHook(MH_ALL_HOOKS) != MH_STATUS::MH_OK);
 	}
 
 	void loader::uninitialize()
 	{
-		std::ranges::reverse(loader::components_.begin(), loader::components_.end());
-		for (const auto component : loader::components_)
+		std::ranges::reverse(components_.begin(), components_.end());
+		for (const auto component : components_)
 		{
 			delete component;
 		}
 
-		loader::components_.clear();
-		loader::mem_allocator_.clear();
+		components_.clear();
+		mem_allocator_.clear();
 		fflush(stdout);
 		fflush(stderr);
 	}
@@ -33,7 +34,7 @@ namespace components
 		if (component)
 		{
 			game::loaded_modules.push_back("component registered: "s + component->get_name() + "\n");
-			loader::components_.push_back(component);
+			components_.push_back(component);
 		}
 	}
 
