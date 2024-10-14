@@ -262,13 +262,12 @@ namespace components
 	{
 		__asm
 		{
-			call    edx; // og
-
+			mov     dword ptr[ebp - 0xC], 0; // og
+			
 			pushad;
 			call	on_renderview;
 			popad;
 
-			mov     ebx, [ebp + 8];
 			jmp		cviewrenderer_renderview_retn;
 		}
 	}
@@ -361,8 +360,9 @@ namespace components
 
 	main_module::main_module()
 	{
-		utils::hook(CLIENT_BASE + 0x1ECB85, cviewrenderer_renderview_stub).install()->quick();
-		HOOK_RETN_PLACE(cviewrenderer_renderview_retn, CLIENT_BASE + 0x1ECB8A);
+		utils::hook(CLIENT_BASE + 0x1ECDC5, 7);
+		utils::hook(CLIENT_BASE + 0x1ECDC5, cviewrenderer_renderview_stub).install()->quick();
+		HOOK_RETN_PLACE(cviewrenderer_renderview_retn, CLIENT_BASE + 0x1ECDCC);
 
 		// anti cull:
 		// 0x1D125D -> mov     byte ptr [edi+330h], 0 to 1 (cviewrenderer->m_bForceNoVis)
