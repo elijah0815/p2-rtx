@@ -8,6 +8,8 @@
 #define ENGINE_BASE				game::engine_module
 #define CLIENT_BASE				game::client_module
 
+using namespace components;
+
 namespace game
 {
 	extern std::vector<std::string> loaded_modules;
@@ -20,6 +22,8 @@ namespace game
 	extern const D3DXMATRIX IDENTITY;
 	extern const D3DXMATRIX TC_TRANSLATE_TO_CENTER;
 	extern const D3DXMATRIX TC_TRANSLATE_FROM_CENTER_TO_TOP_LEFT;
+
+	extern void con_add_command(ConCommand* cmd, const char* name, void(__cdecl* callback)(), const char* desc);
 
 	// CRender gRender
 	inline components::CRender* get_engine_renderer() { return reinterpret_cast<components::CRender*>(ENGINE_BASE + 0x60F880); }

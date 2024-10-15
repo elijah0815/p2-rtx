@@ -2418,6 +2418,88 @@ namespace components
 		CIndexBuilder m_IndexBuilder;
 		CVertexBuilder m_VertexBuilder;
 	};
+
+	
+	struct ConCommandBase_vtbl;
+	struct ConCommandBase
+	{
+		ConCommandBase_vtbl* vftable;
+		ConCommandBase* m_pNext;
+		bool m_bRegistered;
+		const char* m_pszName;
+		const char* m_pszHelpString;
+		int m_nFlags;
+	};
+
+	struct ConCommandBase_vtbl
+	{
+		void(__thiscall * ConCommandBase_Destructor)(ConCommandBase*);
+		bool(__thiscall* IsCommand)(ConCommandBase*);
+		bool(__thiscall* IsFlagSet)(ConCommandBase*, int);
+		void(__thiscall* AddFlags)(ConCommandBase*, int);
+		void(__thiscall* RemoveFlags)(ConCommandBase*, int);
+		int(__thiscall* GetFlags)(ConCommandBase*);
+		const char* (__thiscall* GetName)(ConCommandBase*);
+		const char* (__thiscall* GetHelpText)(ConCommandBase*);
+		bool(__thiscall* IsRegistered)(ConCommandBase*);
+		int(__thiscall* GetDLLIdentifier)(ConCommandBase*);
+		void(__thiscall* Create)(ConCommandBase*, const char*, const char*, int);
+		void(__thiscall* Init)(ConCommandBase*);
+	};
+
+	const struct CCommand
+	{
+		int m_nArgc;
+		int m_nArgv0Size;
+		char m_pArgSBuffer[512];
+		char m_pArgvBuffer[512];
+		const char* m_ppArgv[64];
+	};
+
+	struct ICommandCallback_vtbl;
+	struct ICommandCallback
+	{
+		ICommandCallback_vtbl* vftable;
+	};
+
+	struct ICommandCallback_vtbl
+	{
+		void(__thiscall* CommandCallback)(ICommandCallback*, const CCommand*);
+	};
+
+	union $DBE510182F331AFA63E289BCE7D04441
+	{
+		void(__cdecl* m_fnCommandCallbackV1)();
+		void(__cdecl* m_fnCommandCallback)(const CCommand*);
+		ICommandCallback* m_pCommandCallback;
+	};
+
+	struct ICommandCompletionCallback_vtbl;
+	struct ICommandCompletionCallback
+	{
+		ICommandCompletionCallback_vtbl* vftable;
+	};
+
+	struct ICommandCompletionCallback_vtbl
+	{
+		int(__thiscall* CommandCompletionCallback)(ICommandCompletionCallback*, const char*, void* CUtlString);
+	};
+
+	union $E9983340D3446DFCFEC741F54422A481
+	{
+		int(__cdecl* m_fnCompletionCallback)(const char*, char(*)[64]);
+		ICommandCompletionCallback* m_pCommandCompletionCallback;
+	};
+
+	struct __declspec(align(4)) ConCommand : ConCommandBase
+	{
+		$DBE510182F331AFA63E289BCE7D04441 u1;
+		$E9983340D3446DFCFEC741F54422A481 u2;
+		__int8 m_bHasCompletionCallback : 1;
+		__int8 m_bUsingNewCommandCallback : 1;
+		__int8 m_bUsingCommandCallbackInterface : 1;
+	};
+
 }
 
 

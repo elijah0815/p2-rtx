@@ -32,4 +32,12 @@ namespace game
 		0.0f, 0.0f, 1.0f, 0.0f,	// identity
 		0.5f, 0.5f, 0.0f, 1.0f,	// translate back to the top left corner
 	};
+
+	// adds a simple console command
+	void con_add_command(ConCommand* cmd, const char* name, void(__cdecl* callback)(), const char* desc)
+	{
+		// ConCommand *this, const char *pName, void (__cdecl *callback)(), const char *pHelpString, int flags, int (__cdecl *completionFunc)(const char *, char (*)[64]
+		utils::hook::call<void(__fastcall)(ConCommand* this_ptr, void* null, const char*, void(__cdecl*)(), const char*, int, int(__cdecl*)(const char*, char(*)[64]))>(CLIENT_BASE + 0x6298D0)
+			(cmd, nullptr, name, callback, desc, 0x20000, nullptr);
+	}
 }

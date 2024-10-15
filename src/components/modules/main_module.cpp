@@ -456,9 +456,18 @@ namespace components
 		}
 	}
 
+	ConCommand test_cmd{};
+
+	void test_cmd_fn()
+	{
+		__debugbreak();
+	}
+
 	main_module::main_module()
 	{
-		utils::hook(CLIENT_BASE + 0x1ECDC5, 7);
+		game::con_add_command(&test_cmd, "testcmd", test_cmd_fn, "This is a test");
+
+		utils::hook::nop(CLIENT_BASE + 0x1ECDC5, 7);
 		utils::hook(CLIENT_BASE + 0x1ECDC5, cviewrenderer_renderview_stub).install()->quick();
 		HOOK_RETN_PLACE(cviewrenderer_renderview_retn, CLIENT_BASE + 0x1ECDCC);
 
@@ -541,6 +550,7 @@ namespace components
 
 	main_module::~main_module()
 	{
+
 		// release textures
 		components::model_render::init_texture_addons(true);
 	}
