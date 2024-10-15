@@ -33,6 +33,19 @@ namespace utils
 		return ret;
 	}
 
+	
+
+	std::string split_string_between_delims(const std::string& str, const char delim_start, const char delim_end)
+	{
+		const auto first = str.find_last_of(delim_start);
+		if (first == std::string::npos) return "";
+
+		const auto last = str.find_first_of(delim_end, first);
+		if (last == std::string::npos) return "";
+
+		return str.substr(first + 1, last - first - 1);
+	}
+
 	bool starts_with(std::string_view haystack, std::string_view needle)
 	{
 		return (haystack.size() >= needle.size() && !strncmp(needle.data(), haystack.data(), needle.size()));
@@ -101,6 +114,74 @@ namespace utils
 		return result;
 	}
 
+	int is_space(int c)
+	{
+		if (c < -1)
+		{
+			return 0;
+		}
+
+		return _isspace_l(c, nullptr);
+	}
+
+	// trim from start
+	std::string& ltrim(std::string& s)
+	{
+		s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](int val)
+			{
+				return !is_space(val);
+			}));
+
+		return s;
+	}
+
+	// trim from end
+	std::string& rtrim(std::string& s)
+	{
+		s.erase(std::find_if(s.rbegin(), s.rend(), [](int val)
+			{
+				return !is_space(val);
+
+			}).base(), s.end());
+
+		return s;
+	}
+
+	// trim from both ends
+	std::string& trim(std::string& s)
+	{
+		return ltrim(rtrim(s));
+	}
+
+	bool has_matching_symbols(const std::string& str, char opening_symbol, char closing_symbol, bool single_only)
+	{
+		int count = 0;
+
+		for (char c : str)
+		{
+			if (c == opening_symbol)
+			{
+				count++;
+			}
+			else if (c == closing_symbol)
+			{
+				count--;
+
+				if (count < 0)
+				{
+					return false;  // malformed
+				}
+			}
+
+			if (single_only && count > 1)
+			{
+				return false;
+			}
+		}
+
+		return count == 0;
+	}
+
 	const char* va(const char* fmt, ...)
 	{
 		static char g_vaBuffer[VA_BUFFER_COUNT][VA_BUFFER_SIZE];
@@ -166,5 +247,30 @@ namespace utils
 				column_major[j * 4 + i] = row_major[i * 4 + j];
 			}
 		}
+	}
+
+	/**
+	* @brief			open handle to a file within the home-path (root)
+	* @param sub_dir	sub directory within home-path (root)
+	* @param file_name	the file name
+	* @param file		in-out file handle
+	* @return			file handle state (valid or not)
+	*/
+	bool open_file_homepath(const std::string& sub_dir, const std::string& file_name, std::ifstream& file)
+	{
+		char path[MAX_PATH];
+		GetModuleFileNameA(nullptr, path, MAX_PATH); // path of the exe
+		
+		std::string	file_path = path;
+		erase_substring(file_path, "portal2.exe");
+		file_path += sub_dir + "\\" + file_name;
+
+		file.open(file_path);
+		if (!file.is_open())
+		{
+			return false;
+		}
+
+		return true;
 	}
 }

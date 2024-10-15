@@ -6,6 +6,7 @@ namespace utils
 
 	int try_stoi(const std::string& str, const int& default_return_val);
 	float try_stof(const std::string& str, const float& default_return_val = 0.0f);
+	std::string split_string_between_delims(const std::string& str, const char delim_start, const char delim_end);
 
 	static std::vector<std::string> split(const std::string& raw_input, const std::vector<char>& delims)
 	{
@@ -68,8 +69,14 @@ namespace utils
 	bool erase_substring(std::string& base, const std::string& replace);
 	std::string str_to_lower(std::string input);
 	std::string convert_wstring(const std::wstring& wstr);
+	std::string& ltrim(std::string& s);
+	std::string& rtrim(std::string& s);
+	std::string& trim(std::string& s);
+	bool has_matching_symbols(const std::string& str, char opening_symbol = '(', char closing_symbol = ')', bool single_only = false);
 	const char* va(const char* fmt, ...);
 	void extract_integer_words(const std::string_view& str, std::vector<int>& integers, bool check_for_duplicates);
 
 	void row_major_to_column_major(const float* row_major, float* column_major);
+
+	bool open_file_homepath(const std::string& sub_dir, const std::string& file_name, std::ifstream& file);
 }

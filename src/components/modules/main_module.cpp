@@ -2,7 +2,7 @@
 
 // commandline args:
 // dxlevel 100 required
-// -novid -disable_d3d9_hacks -limitvsconst -softparticlesdefaultoff -disallowhwmorph -no_compressed_verts +sv_cheats 1 +developer 1 +r_ShowViewerArea 1 +cl_showpos 1 +r_PortalTestEnts 0 +portal_ghosts_disable 0 +r_portal_earlyz 0 +r_portal_use_complex_frustums 0 +r_portal_use_pvs_optimization 0 +r_portalstencildisable 0 +portal_stencil_depth 1 +portal_draw_ghosting 0 +r_staticprop_lod 0 +r_lod 0 +r_threaded_particles 0 +r_entityclips 0 +cl_brushfastpath 0 +cl_tlucfastpath 0 +cl_modelfastpath 0 +mat_fullbright 1 +mat_queue_mode 0 +mat_softwarelighting 0 +mat_softwareskin 1 +mat_phong 1 +mat_parallaxmap 0 +mat_frame_sync_enable 0 +mat_fastnobump 1 +mat_disable_bloom 1 +mat_dof_enabled 0 +mat_displacementmap 0 +mat_drawflat 1 +mat_normalmaps 0 +mat_normals 0 +sv_lan 1 +map sp_a2_bridge_intro
+// -novid -disable_d3d9_hacks -limitvsconst -softparticlesdefaultoff -disallowhwmorph -no_compressed_verts +sv_cheats 1 +developer 1 +r_ShowViewerArea 1 +cl_showpos 1 +r_PortalTestEnts 0 +portal_ghosts_disable 0 +r_portal_earlyz 0 +r_portal_use_complex_frustums 0 +r_portal_use_pvs_optimization 0 +r_portalstencildisable 0 +r_portal_stencil_depth 1 +portal_draw_ghosting 0 +r_staticprop_lod 0 +r_lod 0 +r_threaded_particles 0 +r_entityclips 0 +cl_brushfastpath 0 +cl_tlucfastpath 0 +cl_modelfastpath 0 +mat_fullbright 1 +mat_queue_mode 0 +mat_softwarelighting 0 +mat_softwareskin 1 +mat_phong 1 +mat_parallaxmap 0 +mat_frame_sync_enable 0 +mat_fastnobump 1 +mat_disable_bloom 1 +mat_dof_enabled 0 +mat_displacementmap 0 +mat_drawflat 1 +mat_normalmaps 0 +mat_normals 0 +sv_lan 1 +map sp_a2_bridge_intro
 
 // r_PortalTestEnts			:: 0 = needed for anti culling of entities
 // portal_ghosts_disable	:: 0 = okay until virtual instances are working (see cportalghost_should_draw)			|| 1 = disable rendering of ghost models
@@ -398,43 +398,38 @@ namespace components
 
 	void r_recursiveworldnode_visframecount()
 	{
-		// search engine.dll for 'Leaf %d, Area %d, Cluster %d\n'
-		// get 'CM_PointLeafnum' and 'CM_LeafArea'
-
-		const auto world = game::get_hoststate_worldbrush_data();
-		const auto r_visframecount = *reinterpret_cast<int*>(ENGINE_BASE + 0x6A56B4);
-
-		// get 'g_CurrentViewOrigin' by xrefing 'LeafVisBuild'
-		const auto g_CurrentViewOrigin = reinterpret_cast<float*>(ENGINE_BASE + 0x50DB50);
-
-		// CM_PointLeafnum :: get current leaf
-		const auto current_leaf = utils::hook::call<int(__cdecl)(float*)>(ENGINE_BASE + 0x158540)(g_CurrentViewOrigin);
-
-		// CM_LeafArea :: get current player area
-		const auto current_area = utils::hook::call<int(__cdecl)(int leafnum)>(ENGINE_BASE + 0x159470)(current_leaf);
-
-		fleaf_s forced_leaf_array =
+		const auto map_settings = map_settings::settings();
+		if (!map_settings->area_settings.empty())
 		{
-			.area_num = 4,
-			.forced_leaf_nums = { 712, 713, 714, 780 },
-		};
+			// search engine.dll for 'Leaf %d, Area %d, Cluster %d\n'
+			// get 'CM_PointLeafnum' and 'CM_LeafArea'
 
-		// check if area has overrides
-		if (forced_leaf_array.area_num == current_area)
-		{
-			for (auto i = 0u; i < 4u; i++)
+			const auto world = game::get_hoststate_worldbrush_data();
+			const auto r_visframecount = *reinterpret_cast<int*>(ENGINE_BASE + 0x6A56B4);
+
+			// get 'g_CurrentViewOrigin' by xrefing 'LeafVisBuild'
+			const auto g_CurrentViewOrigin = reinterpret_cast<float*>(ENGINE_BASE + 0x50DB50);
+
+			// CM_PointLeafnum :: get current leaf
+			const auto current_leaf = utils::hook::call<int(__cdecl)(float*)>(ENGINE_BASE + 0x158540)(g_CurrentViewOrigin);
+
+			// CM_LeafArea :: get current player area
+			const auto current_area = utils::hook::call<int(__cdecl)(int leafnum)>(ENGINE_BASE + 0x159470)(current_leaf);
+
+			if (map_settings->area_settings.contains(current_area))
 			{
-				const auto findex = forced_leaf_array.forced_leaf_nums[i];
-				if (findex < world->numleafs) // check if leaf index is valid
+				auto tweaks = map_settings->area_settings.find(current_area);
+				for (auto l : tweaks->second)
 				{
-					// force leaf to be visible
-					mleaf_t* leaf = &world->leafs[findex];
-					leaf->visframe = r_visframecount;
+					if (l < world->numleafs) // check if leaf index is valid
+					{
+						// force leaf to be visible
+						mleaf_t* leaf = &world->leafs[l];
+						leaf->visframe = r_visframecount;
+					}
 				}
 			}
 		}
-
-		int x = 1;
 	}
 
 	HOOK_RETN_PLACE_DEF(r_recursiveworldnode_retn);
@@ -479,6 +474,7 @@ namespace components
 		//utils::hook::set<BYTE>(ENGINE_BASE + 0xE68F8, 0xEB);
 		//utils::hook::nop(ENGINE_BASE + 0xE69C3, 2);
 
+		// def. needs 'r_portal_stencil_depth 1' if not enabled
 		if (flags::has_flag("xo_disable_all_culling"))
 		{
 			// R_RecursiveWorldNode :: while (node->visframe == r_visframecount .. ) -> renders the entire map if everything after this is enabled

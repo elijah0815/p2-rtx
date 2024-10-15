@@ -40,4 +40,9 @@ namespace game
 		utils::hook::call<void(__fastcall)(ConCommand* this_ptr, void* null, const char*, void(__cdecl*)(), const char*, int, int(__cdecl*)(const char*, char(*)[64]))>(CLIENT_BASE + 0x6298D0)
 			(cmd, nullptr, name, callback, desc, 0x20000, nullptr);
 	}
+
+	const char* get_map_name()
+	{
+		return utils::hook::call<const char*(__cdecl)()>(CLIENT_BASE + 0x1EEEE0)();
+	}
 }
