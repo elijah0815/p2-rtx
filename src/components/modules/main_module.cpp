@@ -358,6 +358,104 @@ namespace components
 	}
 
 
+	//void r_recursiveworldnode_visframecount()
+	//{
+	//	static int mod_val = 0;
+	//	auto r_visframecount = reinterpret_cast<int*>(ENGINE_BASE + 0x6A56B4);
+
+	//	if (*r_visframecount > 2 && mod_val != *r_visframecount)
+	//	{
+	//		*r_visframecount = *r_visframecount -1;
+	//		mod_val = *r_visframecount;
+	//	}
+	//	
+	//	int x = 1;
+	//}
+
+	//HOOK_RETN_PLACE_DEF(r_recursiveworldnode_retn);
+	//__declspec(naked) void r_recursiveworldnode_stub()
+	//{
+	//	__asm
+	//	{
+	//		// og
+	//		mov     esi, ecx;
+	//		mov		[ebp - 0xC], ebx;
+
+	//		pushad;
+	//		call	r_recursiveworldnode_visframecount;
+	//		popad;
+
+	//		jmp		r_recursiveworldnode_retn;
+
+	//	}
+	//}
+
+	struct fleaf_s
+	{
+		int area_num;
+		int forced_leaf_nums[4];
+	};
+
+	void r_recursiveworldnode_visframecount()
+	{
+		// search engine.dll for 'Leaf %d, Area %d, Cluster %d\n'
+		// get 'CM_PointLeafnum' and 'CM_LeafArea'
+
+		const auto world = game::get_hoststate_worldbrush_data();
+		const auto r_visframecount = *reinterpret_cast<int*>(ENGINE_BASE + 0x6A56B4);
+
+		// get 'g_CurrentViewOrigin' by xrefing 'LeafVisBuild'
+		const auto g_CurrentViewOrigin = reinterpret_cast<float*>(ENGINE_BASE + 0x50DB50);
+
+		// CM_PointLeafnum :: get current leaf
+		const auto current_leaf = utils::hook::call<int(__cdecl)(float*)>(ENGINE_BASE + 0x158540)(g_CurrentViewOrigin);
+
+		// CM_LeafArea :: get current player area
+		const auto current_area = utils::hook::call<int(__cdecl)(int leafnum)>(ENGINE_BASE + 0x159470)(current_leaf);
+
+		fleaf_s forced_leaf_array =
+		{
+			.area_num = 4,
+			.forced_leaf_nums = { 712, 713, 714, 780 },
+		};
+
+		// check if area has overrides
+		if (forced_leaf_array.area_num == current_area)
+		{
+			for (auto i = 0u; i < 4u; i++)
+			{
+				const auto findex = forced_leaf_array.forced_leaf_nums[i];
+				if (findex < world->numleafs) // check if leaf index is valid
+				{
+					// force leaf to be visible
+					mleaf_t* leaf = &world->leafs[findex];
+					leaf->visframe = r_visframecount;
+				}
+			}
+		}
+
+		int x = 1;
+	}
+
+	HOOK_RETN_PLACE_DEF(r_recursiveworldnode_retn);
+	__declspec(naked) void r_recursiveworldnode_stub()
+	{
+		__asm
+		{
+			pushad;
+			call	r_recursiveworldnode_visframecount;
+			popad;
+
+			// og
+			mov     ebx, edx;
+			mov     eax, [ebx];
+			push    esi;
+
+			jmp		r_recursiveworldnode_retn;
+
+		}
+	}
+
 	main_module::main_module()
 	{
 		utils::hook(CLIENT_BASE + 0x1ECDC5, 7);
@@ -377,6 +475,15 @@ namespace components
 			// R_RecursiveWorldNode :: while (node->visframe == r_visframecount .. ) -> renders the entire map if everything after this is enabled
 			utils::hook::nop(ENGINE_BASE + 0xE68EF, 6);
 		}
+
+		// ^ edit r_visframecount
+		//utils::hook(ENGINE_BASE + 0xE68CC, r_recursiveworldnode_stub, HOOK_JUMP).install()->quick();
+		//HOOK_RETN_PLACE(r_recursiveworldnode_retn, ENGINE_BASE + 0xE68D1);
+		//utils::hook::set<BYTE>(ENGINE_BASE + 0xE68EF + 1, 0x8C); // jne to jl 0x85 -> 0x8C
+
+		utils::hook(ENGINE_BASE + 0xE68C7, r_recursiveworldnode_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(r_recursiveworldnode_retn, ENGINE_BASE + 0xE68CC);
+
 
 		// ^ :: while( ... node->contents < -1 .. ) -> jl to jle
 		utils::hook::set<BYTE>(ENGINE_BASE + 0xE68F8, 0x7E);

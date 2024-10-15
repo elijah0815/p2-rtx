@@ -502,6 +502,16 @@ namespace components
 		$827FC955A655E715E2ACE31D316F483B ___u10;
 	};
 
+	struct CCommonHostState
+	{
+		model_t* worldmodel;
+		worldbrushdata_t* worldbrush;
+		float interval_per_tick;
+		int max_splitscreen_players;
+		int max_splitscreen_players_clientdll;
+	};
+
+
 	enum ShaderStencilOp_t : __int32
 	{
 		SHADER_STENCILOP_KEEP = 0x1,
