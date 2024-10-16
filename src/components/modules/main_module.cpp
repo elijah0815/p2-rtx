@@ -26,103 +26,121 @@ namespace components
 		return function(instance, args...);
 	}*/
 
-	remixapi_LightHandle light_handle = nullptr;
-
-
-	void create_quad(remixapi_HardcodedVertex* v_out, uint32_t* i_out, const float scale)
+	namespace api
 	{
-		if (!v_out || !i_out)
+		bool m_initialized = false;
+		remixapi_Interface bridge = {};
+
+		remixapi_LightHandle light_handle = nullptr;
+
+		void init()
 		{
-			return;
+			const auto status = remixapi::bridge_initRemixApi(&api::bridge);
+			if (status == REMIXAPI_ERROR_CODE_SUCCESS)
+			{
+				m_initialized = true;
+			}
 		}
 
-		auto make_vertex = [&](float x, float y, float z, float u, float v)
+		void create_quad(remixapi_HardcodedVertex* v_out, uint32_t* i_out, const float scale)
 		{
-			const remixapi_HardcodedVertex vert =
+			if (!v_out || !i_out)
 			{
-			  .position = { x, y, z },
-			  .normal =	  { 0.0f, 0.0f, -1.0f },
-			  .texcoord = { u, v },
-			  .color = 0xFFFFFFFF,
+				return;
+			}
+
+			auto make_vertex = [&](float x, float y, float z, float u, float v)
+				{
+					const remixapi_HardcodedVertex vert =
+					{
+					  .position = { x, y, z },
+					  .normal = { 0.0f, 0.0f, -1.0f },
+					  .texcoord = { u, v },
+					  .color = 0xFFFFFFFF,
+					};
+					return vert;
+				};
+
+			v_out[0] = make_vertex(-1.0f * scale, 1, -1.0f * scale, 0.0f, 0.0f); // b l
+			v_out[1] = make_vertex(-1.0f * scale, 1, 1.0f * scale, 0.0f, 1.0f); // t l
+			v_out[2] = make_vertex(1.0f * scale, 1, -1.0f * scale, 1.0f, 0.0f); // b r
+			v_out[3] = make_vertex(1.0f * scale, 1, 1.0f * scale, 1.0f, 1.0f); // t r
+
+			i_out[0] = 0; i_out[1] = 1; i_out[2] = 2;
+			i_out[3] = 3; i_out[4] = 2; i_out[5] = 1;
+		}
+
+		void create_portal(std::uint8_t index, remixapi_MeshHandle mesh_handle, remixapi_MaterialHandle material_handle)
+		{
+			if (!material_handle)
+			{
+				//main_module::bridge.DestroyMaterial(material_handle);
+				remixapi_MaterialInfo info = {};
+				{
+					info.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO;
+					info.hash = 10;
+					info.emissiveIntensity = 0.0f;
+					info.emissiveColorConstant = { 1.0f, 0.0f, 0.0f };
+					info.albedoTexture = L"";
+					info.normalTexture = L"";
+					info.tangentTexture = L"";
+					info.emissiveTexture = L"";
+
+					info.spriteSheetFps = 5;
+					info.spriteSheetCol = 1;
+					info.spriteSheetRow = 1;
+					info.filterMode = 1u;
+					info.wrapModeU = 1u;
+					info.wrapModeV = 1u;
+				}
+
+				remixapi_MaterialInfoPortalEXT ext = {};
+				{
+					ext.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO_PORTAL_EXT;
+					ext.rayPortalIndex = index;
+					ext.rotationSpeed = 1.0f;
+				}
+
+				info.pNext = &ext;
+				api::bridge.CreateMaterial(&info, &material_handle);
+			}
+
+			// mesh
+
+			remixapi_HardcodedVertex verts[4] = {};
+			uint32_t indices[6] = {};
+			create_quad(verts, indices, 50.0f);
+
+			remixapi_MeshInfoSurfaceTriangles triangles =
+			{
+			  .vertices_values = verts,
+			  .vertices_count = ARRAYSIZE(verts),
+			  .indices_values = indices,
+			  .indices_count = 6,
+			  .skinning_hasvalue = FALSE,
+			  .skinning_value = {},
+			  .material = material_handle,
 			};
-			return vert;
-		};
 
-		v_out[0] = make_vertex(-1.0f * scale, 1, -1.0f * scale, 0.0f, 0.0f); // b l
-		v_out[1] = make_vertex(-1.0f * scale, 1,  1.0f * scale, 0.0f, 1.0f); // t l
-		v_out[2] = make_vertex( 1.0f * scale, 1, -1.0f * scale, 1.0f, 0.0f); // b r
-		v_out[3] = make_vertex( 1.0f * scale, 1,  1.0f * scale, 1.0f, 1.0f); // t r
-
-		i_out[0] = 0; i_out[1] = 1; i_out[2] = 2;
-		i_out[3] = 3; i_out[4] = 2; i_out[5] = 1;
-	}
-
-	void create_portal(std::uint8_t index, remixapi_MeshHandle mesh_handle, remixapi_MaterialHandle material_handle)
-	{
-		if (!material_handle)
-		{
-			//main_module::bridge.DestroyMaterial(material_handle);
-			remixapi_MaterialInfo info = {};
+			remixapi_MeshInfo i =
 			{
-				info.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO;
-				info.hash = 10;
-				info.emissiveIntensity = 0.0f;
-				info.emissiveColorConstant = { 1.0f, 0.0f, 0.0f };
-				info.albedoTexture = L"";
-				info.normalTexture = L"";
-				info.tangentTexture = L"";
-				info.emissiveTexture = L"";
+			  .sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
+			  .hash = 20,
+			  .surfaces_values = &triangles,
+			  .surfaces_count = 1,
+			};
 
-				info.spriteSheetFps = 5;
-				info.spriteSheetCol = 1;
-				info.spriteSheetRow = 1;
-				info.filterMode = 1u;
-				info.wrapModeU = 1u;
-				info.wrapModeV = 1u;
-			}
-
-			remixapi_MaterialInfoPortalEXT ext = {};
-			{
-				ext.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO_PORTAL_EXT;
-				ext.rayPortalIndex = index;
-				ext.rotationSpeed = 1.0f;
-			}
-
-			info.pNext = &ext;
-			main_module::bridge.CreateMaterial(&info, &material_handle);
+			//main_module::bridge.DestroyMesh(mesh_handle);
+			api::bridge.CreateMesh(&i, &mesh_handle);
 		}
-
-		// mesh
-
-		remixapi_HardcodedVertex verts[4] = {};
-		uint32_t indices[6] = {};
-		create_quad(verts, indices, 50.0f);
-
-		remixapi_MeshInfoSurfaceTriangles triangles = 
-		{
-		  .vertices_values = verts,
-		  .vertices_count = ARRAYSIZE(verts),
-		  .indices_values = indices,
-		  .indices_count = 6,
-		  .skinning_hasvalue = FALSE,
-		  .skinning_value = {},
-		  .material = material_handle,
-		};
-
-		remixapi_MeshInfo i = 
-		{
-		  .sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
-		  .hash = 20,
-		  .surfaces_values = &triangles,
-		  .surfaces_count = 1,
-		};
-
-		//main_module::bridge.DestroyMesh(mesh_handle);
-		main_module::bridge.CreateMesh(&i, &mesh_handle);
 	}
+
+	
 
 	void once_per_frame_cb()
 	{
+		remix_vars::on_client_frame();
+
 #if 0
 		{
 			main_module::bridge.DestroyMesh(model_render::portal0_mdl);
@@ -212,19 +230,19 @@ namespace components
 	// CViewRender::RenderView
 	void on_renderview()
 	{
-		if (static bool init_api = false; !init_api)
-		{
-			init_api = true;
+		//if (static bool init_once = false; !init_once)
+		//{
+		//	init_once = true;
 
-			const auto status = remixapi::bridge_initRemixApi(&main_module::bridge);
-			if (status == REMIXAPI_ERROR_CODE_SUCCESS)
-			{
-				main_module::m_initialized = true;
-			}
+		//	// init remix api
+		//	api::init();
 
-			// init addon textures
-			model_render::init_texture_addons();
-		}
+		//	// parse rtx.conf once
+		//	remix_vars::get()->parse_rtx_options();
+
+		//	// init addon textures
+		//	model_render::init_texture_addons();
+		//}
 
 		once_per_frame_cb();
 
@@ -269,6 +287,35 @@ namespace components
 			popad;
 
 			jmp		cviewrenderer_renderview_retn;
+		}
+	}
+
+
+	// #
+	// #
+
+	void on_map_load_hk(const char* map_name)
+	{
+		remix_vars::on_map_load();
+		map_settings::on_map_load(map_name);
+	}
+
+	HOOK_RETN_PLACE_DEF(on_map_load_stub_retn);
+	__declspec(naked) void on_map_load_stub()
+	{
+		__asm
+		{
+			pushad;
+			push    eax;
+			call	on_map_load_hk;
+			add		esp, 4;
+			popad;
+
+			// og
+			lea     ecx, [edi + 0x68];
+			xor		edx, edx;
+			jmp		on_map_load_stub_retn;
+
 		}
 	}
 
@@ -421,7 +468,7 @@ namespace components
 				auto tweaks = map_settings->area_settings.find(current_area);
 				for (auto l : tweaks->second)
 				{
-					if (l < world->numleafs) // check if leaf index is valid
+					if (l < static_cast<std::uint32_t>(world->numleafs)) // check if leaf index is valid
 					{
 						// force leaf to be visible
 						mleaf_t* leaf = &world->leafs[l];
@@ -451,16 +498,23 @@ namespace components
 		}
 	}
 
-	ConCommand test_cmd{};
-
-	void test_cmd_fn()
-	{
-		__debugbreak();
-	}
-
 	main_module::main_module()
 	{
-		game::con_add_command(&test_cmd, "testcmd", test_cmd_fn, "This is a test");
+		api::init();
+
+		// parse rtx.conf once
+		remix_vars::get()->parse_rtx_options();
+
+		// init addon textures
+		model_render::init_texture_addons();
+
+		// #
+		// #
+
+		// CModelLoader::Map_LoadModel :: event stub
+		utils::hook(ENGINE_BASE + 0xFCD5C, on_map_load_stub).install()->quick();
+		HOOK_RETN_PLACE(on_map_load_stub_retn, ENGINE_BASE + 0xFCD61);
+
 
 		utils::hook::nop(CLIENT_BASE + 0x1ECDC5, 7);
 		utils::hook(CLIENT_BASE + 0x1ECDC5, cviewrenderer_renderview_stub).install()->quick();
@@ -546,7 +600,6 @@ namespace components
 
 	main_module::~main_module()
 	{
-
 		// release textures
 		components::model_render::init_texture_addons(true);
 	}

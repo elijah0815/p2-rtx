@@ -2,6 +2,17 @@
 
 namespace components
 {
+	namespace api
+	{
+		extern bool m_initialized;
+		extern remixapi_Interface bridge;
+
+		extern remixapi_Transform portal0 = {};
+		extern remixapi_Transform portal1 = {};
+
+		extern void init();
+	}
+
 	class main_module : public component
 	{
 	public:
@@ -10,11 +21,6 @@ namespace components
 		const char* get_name() override { return "main_module"; }
 
 		static inline std::uint64_t framecount = 0u;
-		static inline remixapi_Interface bridge = {};
-		static inline bool m_initialized = false;
-
-		static inline remixapi_Transform portal0 = {};
-		static inline remixapi_Transform portal1 = {};
 
 	private:
 	};

@@ -4,7 +4,7 @@ namespace utils
 {
 	#define VECTOR_SUBTRACT(a,b,c)	((c)[0]=(a)[0]-(b)[0],(c)[1]=(a)[1]-(b)[1],(c)[2]=(a)[2]-(b)[2])
 
-	int try_stoi(const std::string& str, const int& default_return_val);
+	int try_stoi(const std::string& str, const int& default_return_val = 0);
 	float try_stof(const std::string& str, const float& default_return_val = 0.0f);
 	std::string split_string_between_delims(const std::string& str, const char delim_start, const char delim_end);
 
@@ -77,6 +77,8 @@ namespace utils
 	void extract_integer_words(const std::string_view& str, std::vector<int>& integers, bool check_for_duplicates);
 
 	void row_major_to_column_major(const float* row_major, float* column_major);
+	bool float_equal(float a, float b, float eps = 1.e-6f);
+	float finterp_to(const float current, const float target, const float delta_time, const float interpolation_speed);
 
 	bool open_file_homepath(const std::string& sub_dir, const std::string& file_name, std::ifstream& file);
 }

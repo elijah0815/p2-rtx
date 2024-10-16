@@ -289,12 +289,10 @@ namespace components
 						for (auto i : indices)
 						{
 							// we need to subtract min_vert because we locked @ min_vert which is the start of our lock
-							i -= min_vert;
+							i -= static_cast<std::uint16_t>(min_vert);
 
 							const auto v_pos_in_src_buffer = i * t_stride;
 							const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
-
-							int break_me = 1;
 
 							//if (src->tc7.z != 1.337f)
 							{
@@ -473,8 +471,8 @@ namespace components
 		if (vb)
 		{
 			void* src_buffer_data;
-			auto first_vert = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x17547C);
-			auto num_verts_real = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x1754A0);
+			//auto first_vert = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x17547C);
+			//auto num_verts_real = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x1754A0);
 
 			// This can be pretty bad performance wise if used on a lot of individual surfaces
 			// > BSP is not rendered in batches so we would lock and unlock the VB for each surface
@@ -524,7 +522,7 @@ namespace components
 							for (auto i : indices)
 							{
 								// we need to subtract min_vert because we locked @ min_vert which is the start of our lock
-								i -= min_vert;
+								i -= static_cast<std::uint16_t>(min_vert);
 
 								const auto v_pos_in_src_buffer = i * t_stride;
 								const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
@@ -1460,7 +1458,7 @@ namespace components
 								for (auto i : indices)
 								{
 									// we need to subtract min_vert because we locked @ min_vert which is the start of our lock
-									i -= min_vert;
+									i -= static_cast<std::uint16_t>(min_vert);
 
 									const auto v_pos_in_src_buffer = i * t_stride;
 									const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));

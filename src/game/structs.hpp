@@ -2500,6 +2500,17 @@ namespace components
 		__int8 m_bUsingCommandCallbackInterface : 1;
 	};
 
+	struct CGlobalVarsBase
+	{
+		float realtime;
+		int framecount;
+		float absoluteframetime;
+		float curtime;
+		float frametime;
+		int maxClients;
+		int tickcount;
+		// ....
+	};
 }
 
 

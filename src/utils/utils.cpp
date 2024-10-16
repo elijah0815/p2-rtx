@@ -249,6 +249,35 @@ namespace utils
 		}
 	}
 
+	bool float_equal(const float a, const float b, const float eps)
+	{
+		return std::fabs(a - b) < eps;
+	}
+
+	// https://github.com/EpicGames/UnrealEngine/blob/release/Engine/Source/Runtime/Core/Private/Math/UnrealMath.cpp
+	float finterp_to(const float current, const float target, const float delta_time, const float interpolation_speed)
+	{
+		// If no interp speed, jump to target value
+		if (interpolation_speed <= 0.0f)
+		{
+			return target;
+		}
+
+		// distance to reach
+		const float distance = target - current;
+
+		// If distance is too small, just set the desired location
+		if (distance * distance < 1.e-8f)
+		{
+			return target;
+		}
+
+		// Delta Move, Clamp so we do not over shoot.
+		const float delta_move = distance * std::clamp(delta_time * interpolation_speed, 0.0f, 1.0f);
+
+		return current + delta_move;
+	}
+
 	/**
 	* @brief			open handle to a file within the home-path (root)
 	* @param sub_dir	sub directory within home-path (root)

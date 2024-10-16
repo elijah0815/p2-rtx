@@ -35,6 +35,7 @@ namespace game
 	inline components::CShaderAPIDx8* get_cshaderapi() { return reinterpret_cast<components::CShaderAPIDx8*>((RENDERER_BASE + 0x1769A0)); }
 
 	inline components::worldbrushdata_t* get_hoststate_worldbrush_data() { return reinterpret_cast<components::CCommonHostState*>(ENGINE_BASE + 0x439C1C)->worldbrush; }
+	inline components::CGlobalVarsBase* get_global_vars() { return reinterpret_cast<components::CGlobalVarsBase*>(*(DWORD*)(CLIENT_BASE + 0x9220BC)); }
 
 	inline components::CAutoInitBasicPropPortalDrawingMaterials* base_portal_mats() { return reinterpret_cast<components::CAutoInitBasicPropPortalDrawingMaterials*>(CLIENT_BASE + 0x9FE710); }
 }

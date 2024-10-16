@@ -12,7 +12,7 @@ namespace components
 		static inline map_settings* p_this = nullptr;
 		static map_settings* get() { return p_this; }
 
-		static void on_map_load();
+		static void on_map_load(const std::string& map_name);
 
 		enum PARSE_MODE : std::uint32_t
 		{
@@ -43,18 +43,18 @@ namespace components
 		};
 
 		static inline map_settings_s* settings() { return &m_loaded_map_settings; }
-		void set_settings_for_loaded_map(bool reload_settings = false);
+		void set_settings_for_map(const std::string& map_name, bool reload_settings = false);
 
 	private:
 		static inline map_settings_s m_loaded_map_settings = {};
 		static inline std::vector<map_settings_s> m_settings;
 		static inline std::vector<std::string> m_args;
 
+		bool load_settings();
 		map_settings_s* get_or_create_settings(bool parse_mode = true, const char* map_name = nullptr);
 		void parse_culling();
 		void parse_markers();
-		//void open_and_set_var_config(const std::string& config, bool ignore_hashes = false, const char* custom_path = nullptr);
+		void open_and_set_var_config(const std::string& config, bool ignore_hashes = false, const char* custom_path = nullptr);
 		void parse_api_var_configs();
-		bool load_settings();
 	};
 }
