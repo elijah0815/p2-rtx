@@ -807,11 +807,10 @@ namespace components
 				auto tweaks = map_settings->area_settings.find(current_area);
 				for (auto l : tweaks->second)
 				{
-					if (l < static_cast<std::uint32_t>(world->numnodes))
+					if (l < static_cast<std::uint32_t>(world->numleafs))
 					{
 						// force leaf to be visible
-						auto n = &world->nodes[l];
-						n->visframe = game::get_visframecount();
+						force_leaf_vis(l, &world->nodes[player_current_node]);
 					}
 				}
 			}
@@ -839,13 +838,13 @@ namespace components
 		//for (auto i = 0; i < world->numnodes; i++)
 		//{
 		//	// force leaf to be visible
-		//	world->nodes[i].visframe = r_visframecount;
+		//	world->nodes[i].visframe = game::get_visframecount();
 		//}
 
 		//for (auto i = 0; i < world->numleafs; i++)
 		//{
 		//	// force leaf to be visible
-		//	world->leafs[i].visframe = r_visframecount;
+		//	world->leafs[i].visframe = game::get_visframecount();
 		//}
 	}
 
