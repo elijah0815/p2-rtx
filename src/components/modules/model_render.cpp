@@ -172,7 +172,7 @@ namespace components
 	}
 
 	// can be used to figure out the layout of the vertex buffer
-	void lookat_vertex_decl([[maybe_unused]] IDirect3DDevice9* dev, CPrimList* primlist = nullptr)
+	void lookat_vertex_decl([[maybe_unused]] IDirect3DDevice9* dev, [[maybe_unused]] CPrimList* primlist = nullptr)
 	{
 #ifdef DEBUG
 		IDirect3DVertexDeclaration9* vertex_decl = nullptr;
