@@ -8,9 +8,10 @@
 // portal_ghosts_disable	:: 0 = okay until virtual instances are working (see cportalghost_should_draw)			|| 1 = disable rendering of ghost models
 // r_portal_stencil_depth	:: 0 = okay as long most/all culling is disabled (may still produce missing surfaces)	|| 1 = might lower performance but should fix invisible surfaces
 
+// >> r_novis - like enabling flag 'xo_disable_all_culling'
+// >> mat_leafvis 1 - print current leaf and area index to console
+// >> cl_particles_show_bbox 1 - can be used to see fx names
 
-// cl_particles_show_bbox 1 can be used to see fx names
-// +map sp_a1_intro2
 
 // engine::Shader_WorldEnd interesting for sky
 // Shader_DrawChains:: mat_forcedynamic 1 || mat_drawflat 1 => Shader_DrawChainsDynamic (changes hashes but still unstable)
@@ -26,6 +27,14 @@ namespace components
 		return function(instance, args...);
 	}*/
 
+	//remixapi_MaterialHandle emissive_line_green_mat = nullptr;
+	//remixapi_MaterialHandle emissive_line_red_mat = nullptr;
+
+	remixapi_MaterialHandle remix_debug_line_materials[3];
+	remixapi_MeshHandle remix_debug_line_list[128] = {};
+	std::uint32_t remix_debug_line_amount = 0u;
+	std::uint64_t remix_debug_last_line_hash = 0u;
+
 	namespace api
 	{
 		bool m_initialized = false;
@@ -33,12 +42,43 @@ namespace components
 
 		remixapi_LightHandle light_handle = nullptr;
 
+		void end_cb()
+		{
+			if (remix_debug_line_amount)
+			{
+				for (auto l = 1u; l < remix_debug_line_amount + 1; l++)
+				{
+					if (remix_debug_line_list[l])
+					{
+						remixapi_Transform t0 = {};
+						t0.matrix[0][0] = 1.0f;
+						t0.matrix[1][1] = 1.0f;
+						t0.matrix[2][2] = 1.0f;
+
+						const remixapi_InstanceInfo inst =
+						{
+							.sType = REMIXAPI_STRUCT_TYPE_INSTANCE_INFO,
+							.pNext = nullptr,
+							.categoryFlags = 0,
+							.mesh = remix_debug_line_list[l],
+							.transform = t0,
+							.doubleSided = true
+						};
+
+						api::bridge.DrawInstance(&inst);
+					}
+				}
+			}
+		}
+
 		void init()
 		{
 			const auto status = remixapi::bridge_initRemixApi(&api::bridge);
 			if (status == REMIXAPI_ERROR_CODE_SUCCESS)
 			{
 				m_initialized = true;
+
+				remixapi::bridge_setRemixApiCallbacks(end_cb, nullptr, nullptr);
 			}
 		}
 
@@ -135,11 +175,165 @@ namespace components
 		}
 	}
 
-	
+
+
+	void create_line_quad(remixapi_HardcodedVertex* v_out, uint32_t* i_out, const Vector& p1, const Vector& p2, const float width)
+	{
+		if (!v_out || !i_out)
+		{
+			return;
+		}
+
+		auto make_vertex = [&](const Vector& pos, float u, float v)
+		{
+			const remixapi_HardcodedVertex vert =
+			{
+			  .position = { pos.x, pos.y, pos.z },
+			  .normal = { 0.0f, 0.0f, -1.0f },
+			  .texcoord = { u, v },
+			  .color = 0xFFFFFFFF,
+			};
+			return vert;
+		};
+
+
+		// Calculate direction of the line
+		Vector lineDir = p2 - p1;
+		lineDir.Normalize();
+
+		// Default up vector (z-axis)
+		Vector up = { 0.0f, 0.0f, 1.0f };
+
+		// Check if lineDir is parallel or very close to the up vector
+		if (fabs(DotProduct(lineDir, up)) > 0.999f)
+		{
+			// If they are parallel, choose a different up vector (e.g., x-axis)
+			up = { 1.0f, 0.0f, 0.0f };
+		}
+
+		Vector perp = lineDir.Cross(up); //CrossProduct(lineDir, up); // Find perpendicular vector to line
+		perp.Normalize(); // Normalize it to unit length
+
+		// Scale by half width to offset quad vertices
+		Vector offset = perp * (width * 0.5f);
+
+		//v_out[0] = make_vertex(p1.x, p1.y, p1.z, 0.0f, 0.0f); // b l
+		//v_out[1] = make_vertex(p1.x, p1.y + width, p1.z, 0.0f, 1.0f); // t l
+		//v_out[2] = make_vertex(p2.x, p2.y, p2.z, 1.0f, 0.0f); // b r
+		//v_out[3] = make_vertex(p2.x, p2.y + width, p2.z, 1.0f, 1.0f); // t r
+
+		v_out[0] = make_vertex(p1 - offset, 0.0f, 0.0f); // Bottom left
+		v_out[1] = make_vertex(p1 + offset, 0.0f, 1.0f); // Top left
+		v_out[2] = make_vertex(p2 - offset, 1.0f, 0.0f); // Bottom right
+		v_out[3] = make_vertex(p2 + offset, 1.0f, 1.0f); // Top right
+
+		i_out[0] = 0; i_out[1] = 1; i_out[2] = 2;
+		i_out[3] = 3; i_out[4] = 2; i_out[5] = 1;
+	}
+
+	enum DEBUG_REMIX_LINE_COLOR
+	{
+		RED = 0u,
+		GREEN = 1u,
+		TEAL = 2u,
+	};
+
+	void add_remix_line(const Vector& p1, const Vector& p2, const float width, DEBUG_REMIX_LINE_COLOR color)
+	{
+		if (remix_debug_line_materials[color])
+		{
+			remix_debug_line_amount++;
+
+			//Vector p1 = { 0.0f, 0.0f, 0.0f };
+			//Vector p2 = { 0.0f, 0.0f, 2000.0f };
+			remixapi_HardcodedVertex verts[4] = {};
+			uint32_t indices[6] = {};
+			create_line_quad(verts, indices, p1, p2, width);
+
+			remixapi_MeshInfoSurfaceTriangles triangles =
+			{
+			  .vertices_values = verts,
+			  .vertices_count = ARRAYSIZE(verts),
+			  .indices_values = indices,
+			  .indices_count = 6,
+			  .skinning_hasvalue = FALSE,
+			  .skinning_value = {},
+			  .material = remix_debug_line_materials[color],
+			};
+
+			remixapi_MeshInfo info
+			{
+				.sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
+				.hash = remix_debug_last_line_hash ? remix_debug_last_line_hash : 1,
+				.surfaces_values = &triangles,
+				.surfaces_count = 1,
+			};
+
+			api::bridge.CreateMesh(&info, &remix_debug_line_list[remix_debug_line_amount]);
+			remix_debug_last_line_hash = reinterpret_cast<std::uint64_t>(remix_debug_line_list[remix_debug_line_amount]);
+		}
+	}
 
 	void once_per_frame_cb()
 	{
 		remix_vars::on_client_frame();
+
+		if (!remix_debug_line_materials[0])
+		{
+			remixapi_MaterialInfo info
+			{
+				.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO,
+				.hash = 1,
+				.albedoTexture = L"",
+				.normalTexture = L"",
+				.tangentTexture = L"",
+				.emissiveTexture = L"",
+				.emissiveIntensity = 1.0f,
+				.emissiveColorConstant = { 1.0f, 0.0f, 0.0f },
+			};
+
+			info.albedoTexture = L"";
+			info.normalTexture = L"";
+			info.tangentTexture = L"";
+			info.emissiveTexture = L"";
+
+			remixapi_MaterialInfoOpaqueEXT ext = {};
+			{
+				ext.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO_OPAQUE_EXT;
+				ext.useDrawCallAlphaState = 1;
+				ext.opacityConstant = 1.0f;
+				ext.roughnessTexture = L"";
+				ext.metallicTexture = L"";
+				ext.heightTexture = L"";
+			}
+
+			info.pNext = &ext;
+
+			api::bridge.CreateMaterial(&info, &remix_debug_line_materials[0]);
+
+			info.hash = 2;
+			info.emissiveColorConstant = { 0.0f, 1.0f, 0.0f };
+			api::bridge.CreateMaterial(&info, &remix_debug_line_materials[1]);
+
+			info.hash = 3;
+			info.emissiveColorConstant = { 0.0f, 1.0f, 1.0f };
+			api::bridge.CreateMaterial(&info, &remix_debug_line_materials[2]);
+		}
+
+		// destroy all lines added the prev. frame
+		if (remix_debug_line_amount)
+		{
+			for (auto& line : remix_debug_line_list)
+			{
+				if (line)
+				{
+					api::bridge.DestroyMesh(line);
+					line = nullptr;
+				}
+			}
+
+			remix_debug_line_amount = 0;
+		}
 
 #if 0
 		{
@@ -230,20 +424,6 @@ namespace components
 	// CViewRender::RenderView
 	void on_renderview()
 	{
-		//if (static bool init_once = false; !init_once)
-		//{
-		//	init_once = true;
-
-		//	// init remix api
-		//	api::init();
-
-		//	// parse rtx.conf once
-		//	remix_vars::get()->parse_rtx_options();
-
-		//	// init addon textures
-		//	model_render::init_texture_addons();
-		//}
-
 		once_per_frame_cb();
 
 		auto enginerender = game::get_engine_renderer();
@@ -405,46 +585,252 @@ namespace components
 	}
 
 
-	//void r_recursiveworldnode_visframecount()
-	//{
-	//	static int mod_val = 0;
-	//	auto r_visframecount = reinterpret_cast<int*>(ENGINE_BASE + 0x6A56B4);
+	
 
-	//	if (*r_visframecount > 2 && mod_val != *r_visframecount)
-	//	{
-	//		*r_visframecount = *r_visframecount -1;
-	//		mod_val = *r_visframecount;
-	//	}
-	//	
-	//	int x = 1;
-	//}
 
-	//HOOK_RETN_PLACE_DEF(r_recursiveworldnode_retn);
-	//__declspec(naked) void r_recursiveworldnode_stub()
-	//{
-	//	__asm
-	//	{
-	//		// og
-	//		mov     esi, ecx;
-	//		mov		[ebp - 0xC], ebx;
 
-	//		pushad;
-	//		call	r_recursiveworldnode_visframecount;
-	//		popad;
+	
 
-	//		jmp		r_recursiveworldnode_retn;
 
-	//	}
-	//}
 
-	struct fleaf_s
+	void debug_draw_cube(const VectorAligned& center, const VectorAligned& half_diagonal, const float width, const DEBUG_REMIX_LINE_COLOR& color)
 	{
-		int area_num;
-		int forced_leaf_nums[4];
-	};
+		Vector min, max;
+		Vector corners[8];
 
+		// calculate min and max positions based on the center and half diagonal
+		min = center - half_diagonal;
+		max = center + half_diagonal;
+
+		// get the corners of the cube
+		corners[0] = Vector(min.x, min.y, min.z);
+		corners[1] = Vector(min.x, min.y, max.z);
+		corners[2] = Vector(min.x, max.y, min.z);
+		corners[3] = Vector(min.x, max.y, max.z);
+		corners[4] = Vector(max.x, min.y, min.z);
+		corners[5] = Vector(max.x, min.y, max.z);
+		corners[6] = Vector(max.x, max.y, min.z);
+		corners[7] = Vector(max.x, max.y, max.z);
+
+		// define the edges
+		Vector lines[12][2];
+		lines[0][0]  = corners[0];	lines[0][1]  = corners[1]; // Edge 1
+		lines[1][0]  = corners[0];	lines[1][1]  = corners[2]; // Edge 2
+		lines[2][0]  = corners[0];	lines[2][1]  = corners[4]; // Edge 3
+		lines[3][0]  = corners[1];	lines[3][1]  = corners[3]; // Edge 4
+		lines[4][0]  = corners[1];	lines[4][1]  = corners[5]; // Edge 5
+		lines[5][0]  = corners[2];	lines[5][1]  = corners[3]; // Edge 6
+		lines[6][0]  = corners[2];	lines[6][1]  = corners[6]; // Edge 7
+		lines[7][0]  = corners[3];	lines[7][1]  = corners[7]; // Edge 8
+		lines[8][0]  = corners[4];	lines[8][1]  = corners[5]; // Edge 9
+		lines[9][0]  = corners[4];	lines[9][1]  = corners[6]; // Edge 10
+		lines[10][0] = corners[5];	lines[10][1] = corners[7]; // Edge 11
+		lines[11][0] = corners[6];	lines[11][1] = corners[7]; // Edge 12
+
+		for (auto e = 0u; e < 12; e++)
+		{
+			add_remix_line(lines[e][0], lines[e][1], width, color);
+		}
+	}
+
+	void force_node_vis(int node_index, mnode_t* player_node, int current_vis_frame)
+	{
+		//mnode_t* node = &nodes[node_index];
+
+		// set the visframe for this node
+		//node->visframe = current_vis_frame;
+
+		const auto world = game::get_hoststate_worldbrush_data();
+		const auto root_node = &world->nodes[0];
+
+		int next_node_index = node_index;
+		while (next_node_index >= 0)
+		{
+			const auto node = &world->nodes[next_node_index];
+			node->visframe = current_vis_frame;
+
+			if (node == player_node)
+			{
+				break;
+			}
+
+			if (node == root_node)
+			{
+				break;
+			}
+
+			next_node_index = &node->parent[0] - root_node;
+		}
+	}
+
+	void force_leaf_vis(int leaf_index, mnode_t* player_node, int current_vis_frame)
+	{
+		const auto world = game::get_hoststate_worldbrush_data();
+		auto leaf_node = &world->leafs[leaf_index];
+		auto parent_node_index = &leaf_node->parent[0] - &world->nodes[0];
+
+		// force leaf vis
+		leaf_node->visframe = current_vis_frame;
+
+		force_node_vis(parent_node_index, player_node, current_vis_frame);
+	}
+
+	void pre_recursive_world_node()
+	{
+		const auto world = game::get_hoststate_worldbrush_data();
+		const auto g_CurrentViewOrigin = reinterpret_cast<float*>(ENGINE_BASE + 0x50DB50);
+
+		// CM_PointLeafnum :: get current leaf
+		const auto current_leaf = utils::hook::call<int(__cdecl)(float*)>(ENGINE_BASE + 0x158540)(g_CurrentViewOrigin);
+
+		// CM_LeafArea :: get current player area
+		const auto current_area = utils::hook::call<int(__cdecl)(int leafnum)>(ENGINE_BASE + 0x159470)(current_leaf);
+
+
+		int player_node_index = -1;
+
+		// visualize node / leaf the player is currently in
+		{
+			int node_index = 0;
+			const auto root_node = &world->nodes[0];
+			int leaf_index = 0;
+
+			while (node_index >= 0)
+			{
+				const auto node = &world->nodes[node_index];
+
+				// check which child we should go to based on the player's position
+				float dist = DotProduct(g_CurrentViewOrigin, node->plane->normal) - node->plane->dist;
+
+				// if the player is on the front side of the plane
+				if (dist > 0)
+				{
+					auto next_node_index = node->children[0] - root_node;
+					if (next_node_index < 0)
+					{
+						leaf_index = reinterpret_cast<mleaf_t*>(node->children[0]) - &world->leafs[0];
+						break;
+					}
+					node_index = next_node_index; // go to the front child
+				}
+				else
+				{
+					auto next_node_index = node->children[1] - root_node;
+					if (next_node_index < 0)
+					{
+						leaf_index = reinterpret_cast<mleaf_t*>(node->children[1]) - &world->leafs[0];
+						break;
+					}
+					node_index = next_node_index; // go to the back child
+				}
+			}
+
+			// show leaf index as 3D text
+			if (leaf_index < world->numleafs)
+			{
+				const auto curr_leaf = &world->leafs[leaf_index];
+				auto txt = utils::va("Leaf: %i", leaf_index);
+				utils::hook::call<void(__cdecl)(const float*, float, const char*)>(ENGINE_BASE + 0xC3FE0)(&curr_leaf->m_vecCenter.x, 0.0f, txt);
+
+				debug_draw_cube(curr_leaf->m_vecCenter, curr_leaf->m_vecHalfDiagonal, 2.0f, DEBUG_REMIX_LINE_COLOR::RED);
+			}
+
+			// show node index as 3D text
+			if (node_index < world->numnodes)
+			{
+				player_node_index = node_index;
+
+				const auto node = &world->nodes[node_index];
+				auto txt = utils::va("Node: %i", node_index);
+
+				Vector pos_copy = node->m_vecCenter;
+				pos_copy.z += 2.0f;
+
+				utils::hook::call<void(__cdecl)(const float*, float, const char*)>(ENGINE_BASE + 0xC3FE0)(&pos_copy.x, 0.0f, txt);
+
+				debug_draw_cube(node->m_vecCenter, node->m_vecHalfDiagonal, 1.0f, DEBUG_REMIX_LINE_COLOR::TEAL);
+			}
+		}
+		
+
+
+		const auto r_visframecount = *reinterpret_cast<int*>(ENGINE_BASE + 0x6A56B4);
+
+		const auto map_settings = map_settings::settings();
+		if (!map_settings->area_settings.empty())
+		{
+			if (map_settings->area_settings.contains(current_area))
+			{
+				auto tweaks = map_settings->area_settings.find(current_area);
+				for (auto l : tweaks->second)
+				{
+					if (l < static_cast<std::uint32_t>(world->numnodes))
+					{
+						// force leaf to be visible
+						auto n = &world->nodes[l];
+						n->visframe = r_visframecount;
+					}
+				}
+			}
+		}
+
+		// I think I have to set all nodes from the player to our target visible or else
+		// the recursive function wont ever consider out goal as it never reaches it?
+
+		//force_node_vis(1095, &world->nodes[player_node_index], r_visframecount);
+		//force_node_vis(1125, &world->nodes[player_node_index], r_visframecount);
+		//force_node_vis(1124, &world->nodes[player_node_index], r_visframecount);
+		//force_node_vis(1123, &world->nodes[player_node_index], r_visframecount);
+		//force_node_vis(1121, &world->nodes[player_node_index], r_visframecount);
+		//force_node_vis(1012, &world->nodes[player_node_index], r_visframecount);
+		//force_node_vis(977, &world->nodes[player_node_index], r_visframecount);
+		//force_node_vis(945, &world->nodes[player_node_index], r_visframecount);
+		//force_node_vis(799, &world->nodes[player_node_index], r_visframecount);
+
+		//force_leaf_vis(1123, &world->nodes[player_node_index], r_visframecount);
+		//force_leaf_vis(1117, &world->nodes[player_node_index], r_visframecount);
+		//force_leaf_vis(937, &world->nodes[player_node_index], r_visframecount);
+
+		//world->nodes[1095].visframe = r_visframecount;
+		//world->leafs[1090].visframe = r_visframecount;
+
+		// force all nodes in area
+		//for (auto i = 0; i < world->numnodes; i++)
+		//{
+		//	// force leaf to be visible
+		//	world->nodes[i].visframe = r_visframecount;
+		//}
+
+		//for (auto i = 0; i < world->numleafs; i++)
+		//{
+		//	// force leaf to be visible
+		//	world->leafs[i].visframe = r_visframecount;
+		//}
+	}
+
+	HOOK_RETN_PLACE_DEF(pre_recursive_world_node_retn);
+	__declspec(naked) void pre_recursive_world_node_stub()
+	{
+		__asm
+		{
+			pushad;
+			call	pre_recursive_world_node;
+			popad;
+
+			// og
+			mov     edx, [edx + 0x54];
+			mov     ecx, ebx;
+			jmp		pre_recursive_world_node_retn;
+
+		}
+	}
+
+
+
+	// prob. bad to check for vis overrides here as it is also called recursivly?
 	void r_recursiveworldnode_visframecount()
 	{
+#if 0
 		const auto map_settings = map_settings::settings();
 		if (!map_settings->area_settings.empty())
 		{
@@ -475,8 +861,28 @@ namespace components
 						leaf->visframe = r_visframecount;
 					}
 				}
+
+				// force all nodes in area
+				//for (auto i = 0; i < world->numnodes; i++)
+				//{
+				//	auto node = &world->nodes[i];
+				//	//if (node->area == current_area)
+				//	{
+				//		// force leaf to be visible
+				//		node->visframe = r_visframecount;
+				//	}
+				//}
+
+				// debug
+				//for (auto i = 0; i < world->numleafs; i++)
+				//{
+				//	// force leaf to be visible
+				//	mleaf_t* leaf = &world->leafs[i];
+				//	leaf->visframe = r_visframecount;
+				//}
 			}
 		}
+#endif
 	}
 
 	HOOK_RETN_PLACE_DEF(r_recursiveworldnode_retn);
@@ -528,12 +934,19 @@ namespace components
 		//utils::hook::set<BYTE>(ENGINE_BASE + 0xE68F8, 0xEB);
 		//utils::hook::nop(ENGINE_BASE + 0xE69C3, 2);
 
+		// same as r_novis 1
 		// def. needs 'r_portal_stencil_depth 1' if not enabled
 		if (flags::has_flag("xo_disable_all_culling"))
 		{
 			// R_RecursiveWorldNode :: while (node->visframe == r_visframecount .. ) -> renders the entire map if everything after this is enabled
 			utils::hook::nop(ENGINE_BASE + 0xE68EF, 6);
 		}
+
+
+		// stub before calling 'R_RecursiveWorldNode' to override node/leaf vis
+		utils::hook(ENGINE_BASE + 0xE6D6D, pre_recursive_world_node_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(pre_recursive_world_node_retn, ENGINE_BASE + 0xE6D72);
+
 
 		// ^ edit r_visframecount
 		//utils::hook(ENGINE_BASE + 0xE68CC, r_recursiveworldnode_stub, HOOK_JUMP).install()->quick();
@@ -559,6 +972,10 @@ namespace components
 
 		// R_DrawLeaf :: backface check (emissive lamps) plane normal >= -0.00999f
 		utils::hook::nop(ENGINE_BASE + 0xE65C3, 6);
+
+
+
+
 
 		// CClientLeafSystem::ExtractCulledRenderables :: disable 'engine->CullBox' check to disable entity culling in leafs
 		// needs r_PortalTestEnts to be 0 -> je to jmp (0xEB)

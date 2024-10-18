@@ -296,11 +296,26 @@ namespace components
 		unsigned __int8 pad[2];
 	};
 
+	struct mnode_t
+	{
+		int contents;
+		int visframe;
+		mnode_t* parent;
+		__int16 area;
+		__int16 flags;
+		VectorAligned m_vecCenter;
+		VectorAligned m_vecHalfDiagonal;
+		cplane_t* plane;
+		mnode_t* children[2];
+		unsigned __int16 firstsurface;
+		unsigned __int16 numsurfaces;
+	};
+
 	struct mleaf_t
 	{
 		int contents;
 		int visframe;
-		void* parent; // mnode_t
+		mnode_t* parent; // mnode_t
 		__int16 area;
 		__int16 flags;
 		VectorAligned m_vecCenter;
@@ -421,7 +436,7 @@ namespace components
 		int numvertnormals;
 		Vector* vertnormals;
 		int numnodes;
-		void* nodes; // mnode_t
+		mnode_t* nodes;
 		unsigned __int16* m_LeafMinDistToWater;
 		int numtexinfo;
 		mtexinfo_t* texinfo;
