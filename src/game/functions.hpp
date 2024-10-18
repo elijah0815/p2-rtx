@@ -24,6 +24,8 @@ namespace game
 	extern const D3DXMATRIX TC_TRANSLATE_FROM_CENTER_TO_TOP_LEFT;
 
 	extern void con_add_command(ConCommand* cmd, const char* name, void(__cdecl* callback)(), const char* desc);
+	extern void debug_add_text_overlay(const float* pos, float duration, const char* text);
+
 	extern const char* get_map_name();
 	extern int get_visframecount();
 

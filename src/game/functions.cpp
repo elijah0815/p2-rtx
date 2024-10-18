@@ -41,6 +41,18 @@ namespace game
 			(cmd, nullptr, name, callback, desc, 0x20000, nullptr);
 	}
 
+	/**
+	 * Calls CDebugOverlay::AddTextOverlay
+	 * @param pos		Position of text in 3D Space
+	 * @param duration	Duration in which text is visible - use 0.0f for per frame stuff
+	 * @param text		The text
+	 */
+	void debug_add_text_overlay(const float* pos, float duration, const char* text)
+	{
+		utils::hook::call<void(__cdecl)(const float*, float, const char*)>(ENGINE_BASE + 0xC3FE0)
+			(pos, duration, text);
+	}
+
 	int get_visframecount() {
 		return *reinterpret_cast<int*>(ENGINE_BASE + 0x6A56B4);
 	}
