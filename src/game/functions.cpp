@@ -41,8 +41,12 @@ namespace game
 			(cmd, nullptr, name, callback, desc, 0x20000, nullptr);
 	}
 
-	const char* get_map_name()
-	{
+	int get_visframecount() {
+		return *reinterpret_cast<int*>(ENGINE_BASE + 0x6A56B4);
+	}
+
+	const char* get_map_name() {
 		return utils::hook::call<const char*(__cdecl)()>(CLIENT_BASE + 0x1EEEE0)();
 	}
+
 }

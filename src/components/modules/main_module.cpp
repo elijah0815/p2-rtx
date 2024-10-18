@@ -585,15 +585,16 @@ namespace components
 	}
 
 
-	
 
 
-
-	
-
-
-
-	void debug_draw_cube(const VectorAligned& center, const VectorAligned& half_diagonal, const float width, const DEBUG_REMIX_LINE_COLOR& color)
+	/**
+	 * Draw a wireframe box using the remix api
+	 * @param center		Center of the cube
+	 * @param half_diagonal Half diagonal distance of the box
+	 * @param width			Line width
+	 * @param color			Line color
+	 */
+	void debug_draw_box(const VectorAligned& center, const VectorAligned& half_diagonal, const float width, const DEBUG_REMIX_LINE_COLOR& color)
 	{
 		Vector min, max;
 		Vector corners[8];
@@ -633,13 +634,13 @@ namespace components
 		}
 	}
 
-	void force_node_vis(int node_index, mnode_t* player_node, int current_vis_frame)
+	/**
+	 * Force visibility of a specific node
+	 * @param node_index	The node to force vis for
+	 * @param player_node	The node the player is currently in
+	 */
+	void force_node_vis(int node_index, mnode_t* player_node)
 	{
-		//mnode_t* node = &nodes[node_index];
-
-		// set the visframe for this node
-		//node->visframe = current_vis_frame;
-
 		const auto world = game::get_hoststate_worldbrush_data();
 		const auto root_node = &world->nodes[0];
 
@@ -647,14 +648,12 @@ namespace components
 		while (next_node_index >= 0)
 		{
 			const auto node = &world->nodes[next_node_index];
-			node->visframe = current_vis_frame;
 
-			if (node == player_node)
-			{
-				break;
-			}
+			// force node vis
+			node->visframe = game::get_visframecount();
 
-			if (node == root_node)
+			// we only need to traverse to the root node or the player node
+			if (node == player_node || node == root_node)
 			{
 				break;
 			}
@@ -663,18 +662,24 @@ namespace components
 		}
 	}
 
-	void force_leaf_vis(int leaf_index, mnode_t* player_node, int current_vis_frame)
+	/**
+	 * Force visibility of a specific leaf
+	 * @param leaf_index   The leaf to force vis for
+	 * @param player_node  The node the player is currently in
+	 */
+	void force_leaf_vis(int leaf_index, mnode_t* player_node)
 	{
 		const auto world = game::get_hoststate_worldbrush_data();
 		auto leaf_node = &world->leafs[leaf_index];
 		auto parent_node_index = &leaf_node->parent[0] - &world->nodes[0];
 
 		// force leaf vis
-		leaf_node->visframe = current_vis_frame;
+		leaf_node->visframe = game::get_visframecount();
 
-		force_node_vis(parent_node_index, player_node, current_vis_frame);
+		force_node_vis(parent_node_index, player_node);
 	}
 
+	// Called once before 'R_RecursiveWorldNode' is getting called for the first time
 	void pre_recursive_world_node()
 	{
 		const auto world = game::get_hoststate_worldbrush_data();
@@ -690,6 +695,8 @@ namespace components
 		int player_node_index = -1;
 
 		// visualize node / leaf the player is currently in
+		// TODO: create toggle cmd
+		// TODO: skip if map_settings contains no forced leafs/nodes
 		{
 			int node_index = 0;
 			const auto root_node = &world->nodes[0];
@@ -732,7 +739,7 @@ namespace components
 				auto txt = utils::va("Leaf: %i", leaf_index);
 				utils::hook::call<void(__cdecl)(const float*, float, const char*)>(ENGINE_BASE + 0xC3FE0)(&curr_leaf->m_vecCenter.x, 0.0f, txt);
 
-				debug_draw_cube(curr_leaf->m_vecCenter, curr_leaf->m_vecHalfDiagonal, 2.0f, DEBUG_REMIX_LINE_COLOR::RED);
+				debug_draw_box(curr_leaf->m_vecCenter, curr_leaf->m_vecHalfDiagonal, 2.0f, DEBUG_REMIX_LINE_COLOR::RED);
 			}
 
 			// show node index as 3D text
@@ -748,13 +755,10 @@ namespace components
 
 				utils::hook::call<void(__cdecl)(const float*, float, const char*)>(ENGINE_BASE + 0xC3FE0)(&pos_copy.x, 0.0f, txt);
 
-				debug_draw_cube(node->m_vecCenter, node->m_vecHalfDiagonal, 1.0f, DEBUG_REMIX_LINE_COLOR::TEAL);
+				debug_draw_box(node->m_vecCenter, node->m_vecHalfDiagonal, 1.0f, DEBUG_REMIX_LINE_COLOR::TEAL);
 			}
 		}
-		
 
-
-		const auto r_visframecount = *reinterpret_cast<int*>(ENGINE_BASE + 0x6A56B4);
 
 		const auto map_settings = map_settings::settings();
 		if (!map_settings->area_settings.empty())
@@ -768,7 +772,7 @@ namespace components
 					{
 						// force leaf to be visible
 						auto n = &world->nodes[l];
-						n->visframe = r_visframecount;
+						n->visframe = game::get_visframecount();
 					}
 				}
 			}
