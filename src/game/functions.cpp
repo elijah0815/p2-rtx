@@ -8,6 +8,7 @@ namespace game
 	DWORD materialsystem_module = 0u;
 	DWORD engine_module = 0u;
 	DWORD client_module = 0u;
+	DWORD server_module = 0u;
 
 	const D3DXMATRIX IDENTITY =
 	{

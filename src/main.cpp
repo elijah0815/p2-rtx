@@ -34,6 +34,7 @@ DWORD WINAPI find_window_loop(LPVOID)
 	GET_MODULE_HANDLE(game::materialsystem_module, "MaterialSystem.dll", _time);
 	GET_MODULE_HANDLE(game::engine_module, "engine.dll", _time);
 	GET_MODULE_HANDLE(game::client_module, "client.dll", _time);
+	GET_MODULE_HANDLE(game::server_module, "server.dll", _time);
 
 	if (MH_INIT_STATUS = MH_Initialize(); MH_INIT_STATUS != MH_STATUS::MH_OK)
 	{

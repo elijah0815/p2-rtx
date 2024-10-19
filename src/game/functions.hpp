@@ -1,12 +1,11 @@
 #pragma once
-//#include "utils/function.hpp"
-//#include "game/structs.hpp"
 
 #define RENDERER_BASE			game::shaderapidx9_module
 #define STUDIORENDER_BASE		game::studiorender_module
 #define MATERIALSTYSTEM_BASE	game::materialsystem_module
 #define ENGINE_BASE				game::engine_module
 #define CLIENT_BASE				game::client_module
+#define SERVER_BASE				game::server_module
 
 using namespace components;
 
@@ -18,6 +17,7 @@ namespace game
 	extern DWORD materialsystem_module;
 	extern DWORD engine_module;
 	extern DWORD client_module;
+	extern DWORD server_module;
 
 	extern const D3DXMATRIX IDENTITY;
 	extern const D3DXMATRIX TC_TRANSLATE_TO_CENTER;
