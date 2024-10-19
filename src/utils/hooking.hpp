@@ -77,6 +77,15 @@ namespace utils
 			return set<T>(reinterpret_cast<void*>(place), value);
 		}
 
+		template <std::size_t Index, typename ReturnType, typename... Args>
+		__forceinline static ReturnType call_virtual(void* instance, Args... args)
+		{
+			using Fn = ReturnType(__thiscall*)(void*, Args...);
+
+			auto function = (*static_cast<Fn**>(instance))[Index];
+			return function(instance, args...);
+		}
+
 	private:
 		bool initialized;
 		bool installed;

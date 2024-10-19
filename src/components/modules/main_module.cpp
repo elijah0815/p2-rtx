@@ -25,15 +25,6 @@
 
 namespace components
 {
-	/*template <std::size_t Index, typename ReturnType, typename... Args>
-	__forceinline ReturnType call_virtual(void* instance, Args... args)
-	{
-		using Fn = ReturnType(__thiscall*)(void*, Args...);
-
-		auto function = (*static_cast<Fn**>(instance))[Index];
-		return function(instance, args...);
-	}*/
-
 	int player_current_node = -1;
 	int player_current_leaf = -1;
 
@@ -307,11 +298,95 @@ namespace components
 	}
 
 
-	
+	void* test_ent = nullptr;
 
 	void once_per_frame_cb()
 	{
 		remix_vars::on_client_frame();
+
+
+		// look at Server::CC_Prop_Dynamic_Create
+		if (!test_ent)
+		{
+			void* mdlcache = reinterpret_cast<void*>(*(DWORD*)(SERVER_BASE + 0x8618FC));
+
+			// mdlcache->BeginLock
+			utils::hook::call_virtual<30, void>(mdlcache); 
+
+			// mdlcache->FindMDL
+			const auto mdl_handle = utils::hook::call_virtual<9, std::uint16_t>(mdlcache, "models/props_xo/mapmarker01_10.mdl");
+
+			if (mdl_handle != 0xFFFF)
+			{
+				// save precache state - CBaseEntity::m_bAllowPrecache
+				const bool old_precache_state = *reinterpret_cast<bool*>(SERVER_BASE + 0x7B2C58);
+
+				// allow precaching - CBaseEntity::m_bAllowPrecache
+				*reinterpret_cast<bool*>(SERVER_BASE + 0x7B2C58) = true;
+
+				// CreateEntityByName - CBaseEntity *__cdecl CreateEntityByName(const char *className, int iForceEdictIndex, bool bNotify)
+				test_ent = utils::hook::call<void* (__cdecl)(const char* className, int iForceEdictIndex, bool bNotify)>(SERVER_BASE + 0x19A090)
+					("dynamic_prop", -1, true);
+
+				if (test_ent)
+				{
+					const auto origin_val = utils::va("%.10f %.10f %.10f", 0.0f, 0.0f, 100.0f);
+
+					// ent->KeyValue
+					utils::hook::call_virtual<35, void>(test_ent, "origin", origin_val);
+					utils::hook::call_virtual<35, void>(test_ent, "model", "models/props_xo/mapmarker01_10.mdl");
+					utils::hook::call_virtual<35, void>(test_ent, "solid", "2");
+
+					// ent->Precache
+					utils::hook::call_virtual<25, void>(test_ent);
+
+					// DispatchSpawn
+					utils::hook::call<void(__cdecl)(void* pEntity, bool bRunVScripts)>(SERVER_BASE + 0x279480)
+						(test_ent, true);
+
+					// ent->Activate
+					utils::hook::call_virtual<37, void>(test_ent);
+				}
+
+				// restore precaching state - CBaseEntity::m_bAllowPrecache
+				*reinterpret_cast<bool*>(SERVER_BASE + 0x7B2C58) = old_precache_state;
+			}
+
+			utils::hook::call_virtual<31, void>(mdlcache); // mdlcache->EndLock
+
+			// Teleport(CBaseEntity *this, const Vector *, const QAngle *, const Vector *, bool)
+			//call_virtual<113, void>(test_ent, &test, nullptr, nullptr, true); // ent->Teleport
+
+
+
+#if 0
+			// C_BaseEntity *__cdecl CreateEntityByName(const char *className)
+			test_ent = utils::hook::call<C_BaseEntity* (__cdecl)(const char* className)>(CLIENT_BASE + 0x6AC90)
+				("viewmodel");
+
+			if (test_ent)
+			{
+				// C_BaseEntity::SetModel
+				auto succ = utils::hook::call<bool(__fastcall)(C_BaseEntity* this_ptr, void* null, const char* modelName)>(CLIENT_BASE + 0x745A0)
+					(test_ent, nullptr, "models/props/food_can/food_can_open.mdl");
+
+				Vector org = { -280.0f, 120.0f, 110.0f };
+
+				// C_BaseEntity::SetAbsOrigin
+				utils::hook::call<void(__fastcall)(C_BaseEntity * this_ptr, void* null, const Vector * absOrigin)>(CLIENT_BASE + 0x6EC40)
+					(test_ent, nullptr, &org);
+
+				test_ent->vtbl->InitializeAsClientEntity(test_ent, nullptr, false);
+
+				// C_BaseViewModel::Spawn
+				utils::hook::call<void(__fastcall)(C_BaseEntity* this_ptr, void* null)>(CLIENT_BASE + 0x4DEA0)
+					(test_ent, nullptr);
+
+				//test_ent->InitializeAsClientEntity()
+
+			}
+#endif
+		}
 
 		if (!api::remix_debug_line_materials[0])
 		{
