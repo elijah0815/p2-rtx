@@ -2052,6 +2052,7 @@ namespace components
 				
 				model_render::portal1_is_linked = portal->m_pLinkedPortal ? true : false;
 				model_render::portal1_open_amount = portal->m_fOpenAmount;
+				model_render::portal1_ptr = portal;
 			}
 			else
 			{
@@ -2068,6 +2069,7 @@ namespace components
 #endif
 				model_render::portal2_is_linked = portal->m_pLinkedPortal ? true : false;
 				model_render::portal2_open_amount = portal->m_fOpenAmount;
+				model_render::portal2_ptr = portal;
 			}
 		}
 	}

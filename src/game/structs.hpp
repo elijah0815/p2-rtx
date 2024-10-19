@@ -2526,6 +2526,15 @@ namespace components
 		int tickcount;
 		// ....
 	};
+
+	struct ViewCustomVisibility_t
+	{
+		int m_nNumVisOrigins;
+		Vector m_rgVisOrigins[32] = {};
+		VisOverrideData_t m_VisData = {};
+		int m_iForceViewLeaf = -1;
+	};
+
 }
 
 

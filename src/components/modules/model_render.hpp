@@ -388,7 +388,10 @@ namespace components
 
 		static inline float portal1_open_amount = 0.0f;
 		static inline bool  portal1_is_linked = false;
+		static inline const C_Prop_Portal* portal1_ptr = nullptr;
+
 		static inline float portal2_open_amount = 0.0f;
 		static inline bool  portal2_is_linked = false;
+		static inline const C_Prop_Portal* portal2_ptr = nullptr;
 	};
 }

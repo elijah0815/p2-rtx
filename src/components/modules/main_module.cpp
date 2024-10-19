@@ -1,16 +1,23 @@
 #include "std_include.hpp"
 
+// + dxlevel 100 required
+
 // commandline args:
-// dxlevel 100 required
-// -novid -disable_d3d9_hacks -limitvsconst -softparticlesdefaultoff -disallowhwmorph -no_compressed_verts +sv_cheats 1 +developer 1 +r_ShowViewerArea 1 +cl_showpos 1 +r_PortalTestEnts 0 +portal_ghosts_disable 0 +r_portal_earlyz 0 +r_portal_use_complex_frustums 0 +r_portal_use_pvs_optimization 0 +r_portalstencildisable 0 +r_portal_stencil_depth 1 +portal_draw_ghosting 0 +r_staticprop_lod 0 +r_lod 0 +r_threaded_particles 0 +r_entityclips 0 +cl_brushfastpath 0 +cl_tlucfastpath 0 +cl_modelfastpath 0 +mat_fullbright 1 +mat_queue_mode 0 +mat_softwarelighting 0 +mat_softwareskin 1 +mat_phong 1 +mat_parallaxmap 0 +mat_frame_sync_enable 0 +mat_fastnobump 1 +mat_disable_bloom 1 +mat_dof_enabled 0 +mat_displacementmap 0 +mat_drawflat 1 +mat_normalmaps 0 +mat_normals 0 +sv_lan 1 +map sp_a2_bridge_intro
+// -novid -height 1060 -disable_d3d9_hacks -limitvsconst -softparticlesdefaultoff -disallowhwmorph -no_compressed_verts +sv_cheats 1 +r_PortalTestEnts 0 +portal_ghosts_disable 0 +r_portal_earlyz 0 +r_portal_use_complex_frustums 0 +r_portal_use_pvs_optimization 0 +r_portalstencildisable 0 +r_portal_stencil_depth 0 +portal_draw_ghosting 0 +r_staticprop_lod 0 +r_lod 0 +r_threaded_particles 0 +r_entityclips 0 +cl_brushfastpath 0 +cl_tlucfastpath 0 +cl_modelfastpath 0 +mat_fullbright 1 +mat_queue_mode 0 +mat_softwarelighting 0 +mat_softwareskin 1 +mat_phong 1 +mat_parallaxmap 0 +mat_frame_sync_enable 0 +mat_fastnobump 1 +mat_disable_bloom 1 +mat_dof_enabled 0 +mat_displacementmap 0 +mat_drawflat 0 +mat_normalmaps 0 +mat_normals 0
 
-// r_PortalTestEnts			:: 0 = needed for anti culling of entities
-// portal_ghosts_disable	:: 0 = okay until virtual instances are working (see cportalghost_should_draw)			|| 1 = disable rendering of ghost models
-// r_portal_stencil_depth	:: 0 = okay as long most/all culling is disabled (may still produce missing surfaces)	|| 1 = might lower performance but should fix invisible surfaces
+// *** Required cvars
+// r_PortalTestEnts					:: 0 = needed for anti culling of entities
+// portal_ghosts_disable			:: 0 = okay until virtual instances are working (see cportalghost_should_draw)			|| 1 = disable rendering of ghost models
+// r_portal_stencil_depth			:: 0 = don't let the game render the scene multiple times - portal vis now handled in 'viewdrawscene_custom_portal_vis'
 
-// >> r_novis - like enabling flag 'xo_disable_all_culling'
-// >> mat_leafvis 1 - print current leaf and area index to console
-// >> cl_particles_show_bbox 1 - can be used to see fx names
+// *** Useful cvars
+// mat_leafvis 1					:: print current leaf and area index to console
+// r_ShowViewerArea 1				:: show current area on the HUD
+// xo_debug_toggle_node_vis (cmd)	:: toggle debug vis of the leaf/node the player is currently in
+
+// *** Other cvars
+// r_novis							:: 1 = disable all visleaf/node checks (renders the entire map - same as 'xo_disable_all_culling' cmdline flag)
+// cl_particles_show_bbox 1			:: can be used to see fx names
 
 
 // engine::Shader_WorldEnd interesting for sky
@@ -98,8 +105,8 @@ namespace components
 
 				if (player_current_leaf != -1)
 				{
-					SetRect(&rect, 10, 118, 512, 512);
-					auto text = utils::va("Leaf:  %d", player_current_leaf);
+					SetRect(&rect, 18, 120, 512, 512);
+					auto text = utils::va("Leaf: %d", player_current_leaf);
 					main_module::d3d_font->DrawTextA
 					(
 						nullptr,
@@ -514,6 +521,14 @@ namespace components
 	{
 		remix_vars::on_map_load();
 		map_settings::on_map_load(map_name);
+
+		// reset portal vars
+		model_render::portal1_ptr = nullptr;
+		model_render::portal1_is_linked = false;
+		model_render::portal1_open_amount = 0.0f;
+		model_render::portal2_ptr = nullptr;
+		model_render::portal2_is_linked = false;
+		model_render::portal2_open_amount = 0.0f;
 	}
 
 	HOOK_RETN_PLACE_DEF(on_map_load_stub_retn);
@@ -730,14 +745,13 @@ namespace components
 		player_current_node = -1;
 		player_current_leaf = -1;
 
-		// find the bsp node the player is currently in
-		// + visualize node / leaf using the remix api
-		// TODO: skip if map_settings contains no forced leafs/nodes
-		{
-			int node_index = 0;
-			const auto root_node = &world->nodes[0];
-			int leaf_index = 0;
+		const auto map_settings = map_settings::settings();
 
+		// find the bsp node the player is currently in + visualize node / leaf using the remix api
+		// - skip if map settings contains no overrides for current map and debug vis is not active
+		if (map_settings->area_settings.contains(current_area) || api::remix_debug_node_vis)
+		{
+			int node_index = 0, leaf_index = 0;
 			while (node_index >= 0)
 			{
 				const auto node = &world->nodes[node_index];
@@ -748,7 +762,7 @@ namespace components
 				// if the player is on the front side of the plane
 				if (dist > 0)
 				{
-					auto next_node_index = node->children[0] - root_node;
+					auto next_node_index = node->children[0] - &world->nodes[0]; // minus root node to get the index
 					if (next_node_index < 0)
 					{
 						leaf_index = reinterpret_cast<mleaf_t*>(node->children[0]) - &world->leafs[0];
@@ -758,7 +772,7 @@ namespace components
 				}
 				else
 				{
-					auto next_node_index = node->children[1] - root_node;
+					auto next_node_index = node->children[1] - &world->nodes[0]; // minus root node to get the index
 					if (next_node_index < 0)
 					{
 						leaf_index = reinterpret_cast<mleaf_t*>(node->children[1]) - &world->leafs[0];
@@ -799,7 +813,10 @@ namespace components
 		}
 
 
-		const auto map_settings = map_settings::settings();
+		// We have to set all nodes from the target leaf to the root node or the node the the player is in to the current visframe
+		// Otherwise, 'R_RecursiveWorldNode' will never reach the target leaf
+
+#if 1
 		if (!map_settings->area_settings.empty())
 		{
 			if (map_settings->area_settings.contains(current_area))
@@ -815,24 +832,10 @@ namespace components
 				}
 			}
 		}
-
-		// I think I have to set all nodes from the player to our target visible or else
-		// the recursive function wont ever consider out goal as it never reaches it?
+#endif
 
 		//force_node_vis(1095, &world->nodes[player_node_index], r_visframecount);
-		//force_node_vis(1125, &world->nodes[player_node_index], r_visframecount);
-		//force_node_vis(1124, &world->nodes[player_node_index], r_visframecount);
-		//force_node_vis(1123, &world->nodes[player_node_index], r_visframecount);
-		//force_node_vis(1121, &world->nodes[player_node_index], r_visframecount);
-		//force_node_vis(1012, &world->nodes[player_node_index], r_visframecount);
-		//force_node_vis(977, &world->nodes[player_node_index], r_visframecount);
-		//force_node_vis(945, &world->nodes[player_node_index], r_visframecount);
-		//force_node_vis(799, &world->nodes[player_node_index], r_visframecount);
-
 		//force_leaf_vis(1123, &world->nodes[player_node_index], r_visframecount);
-		//force_leaf_vis(1117, &world->nodes[player_node_index], r_visframecount);
-		//force_leaf_vis(937, &world->nodes[player_node_index], r_visframecount);
-
 
 		// force all nodes in area
 		//for (auto i = 0; i < world->numnodes; i++)
@@ -867,7 +870,7 @@ namespace components
 
 
 
-	// prob. bad to check for vis overrides here as it is also called recursivly?
+	// bad to check for vis overrides here as it is called recursivly!
 	void r_recursiveworldnode_visframecount()
 	{
 #if 0
@@ -944,11 +947,78 @@ namespace components
 		}
 	}
 
+
+	// #
+	// Portal anti cull
+
+	// CViewRender* this
+	void viewdrawscene_custom_portal_vis(void* view_renderer, bool bDrew3dSkybox, int nSkyboxVisible, const CViewSetup* view, int nClearFlags, int viewID, bool bDrawViewModel, int baseDrawFlags, [[maybe_unused]] ViewCustomVisibility_t* pCustomVisibility)
+	{
+		ViewCustomVisibility_t customVisibility = {};
+		customVisibility.m_VisData.m_fDistToAreaPortalTolerance = FLT_MAX;
+
+		bool is_using_custom_vis = false;
+		bool added_player_view_vis = false;
+
+		if (model_render::portal1_ptr && model_render::portal1_ptr->m_pLinkedPortal && model_render::portal1_ptr->m_fOpenAmount != 0.0f)
+		{
+			// add the main scene view first if setting custom portal vis
+			customVisibility.m_rgVisOrigins[0] = view->origin;
+			customVisibility.m_nNumVisOrigins++;
+			added_player_view_vis = true;
+
+			//CPortalRenderable_FlatBasic::AddToVisAsExitPortal(CPortalRenderable_FlatBasic * this, ViewCustomVisibility_t * pCustomVisibility)
+			utils::hook::call<void(__fastcall)(void* this_ptr, void* null, ViewCustomVisibility_t*)>(CLIENT_BASE + 0x2BBDA0)
+				(model_render::portal1_ptr->m_pLinkedPortal, nullptr, &customVisibility);
+
+			is_using_custom_vis = true;
+		}
+
+		if (model_render::portal2_ptr && model_render::portal2_ptr->m_pLinkedPortal && model_render::portal2_ptr->m_fOpenAmount != 0.0f)
+		{
+			// check if player view was added already
+			if (!added_player_view_vis)
+			{
+				// add the main scene view first if setting custom portal vis
+				customVisibility.m_rgVisOrigins[0] = view->origin;
+				customVisibility.m_nNumVisOrigins++;
+				added_player_view_vis = true;
+			}
+
+			//CPortalRenderable_FlatBasic::AddToVisAsExitPortal(CPortalRenderable_FlatBasic * this, ViewCustomVisibility_t * pCustomVisibility)
+			utils::hook::call<void(__fastcall)(void* this_ptr, void* null, ViewCustomVisibility_t*)>(CLIENT_BASE + 0x2BBDA0)
+				(model_render::portal2_ptr->m_pLinkedPortal, nullptr, &customVisibility);
+
+			is_using_custom_vis = true;
+		}
+
+		utils::hook::call<void(__fastcall)(void* this_ptr, void* null, bool, int, const CViewSetup*, int, int, bool, int, ViewCustomVisibility_t*)>(CLIENT_BASE + 0x1E84E0)
+			(view_renderer, nullptr, bDrew3dSkybox, nSkyboxVisible, view, nClearFlags, viewID, bDrawViewModel, baseDrawFlags, is_using_custom_vis ? &customVisibility : nullptr);
+	}
+
+	HOOK_RETN_PLACE_DEF(viewdrawscene_push_args_retn);
+	__declspec(naked) void viewdrawscene_push_args_stub()
+	{
+		__asm
+		{
+			push	ecx; // CViewRender (this)
+			call	viewdrawscene_custom_portal_vis;
+			add		esp, 4;
+
+			jmp		viewdrawscene_push_args_retn;
+		}
+	}
+
+
+	// #
+	// Commands
+
 	ConCommand xo_debug_toggle_node_vis_cmd{};
 	void xo_debug_toggle_node_vis_fn()
 	{
 		api::remix_debug_node_vis = !api::remix_debug_node_vis;
 	}
+
 
 	// #
 	// #
@@ -961,7 +1031,7 @@ namespace components
 		{
 			D3DXFONT_DESC desc =
 			{
-				16,                  // Height
+				18,                  // Height
 				0,                   // Width (0 = default)
 				FW_NORMAL,           // Weight (FW_BOLD, FW_LIGHT, etc.)
 				1,                   // Mip levels
@@ -1077,6 +1147,12 @@ namespace components
 
 		// #
 		// #
+
+		// Fix map visibility when looking through portals when r_portal_stencil_depth == 0
+		// - Map_VisSetup called by CViewRender::ViewDrawScene --> CViewRender::SetupVis :: uses player view and 1 visOrigin if no custom vis is provided
+		// - Add player vis and call 'CPortalRenderable_FlatBasic::AddToVisAsExitPortal' for both active portals before rendering the main scene
+		utils::hook(CLIENT_BASE + 0x1ECF04, viewdrawscene_push_args_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(viewdrawscene_push_args_retn, CLIENT_BASE + 0x1ECF09);
 	}
 
 	main_module::~main_module()
