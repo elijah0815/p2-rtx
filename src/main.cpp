@@ -21,7 +21,7 @@ DWORD WINAPI find_window_loop(LPVOID)
 	{
 		// get main window hwnd
 		if (!main_window) {
-			main_window = FindWindowA(nullptr, "Portal 2");
+			main_window = FindWindowA(nullptr, "Portal 2 - Direct3D 9");
 		}
 
 		Sleep(100); _time += 100;
