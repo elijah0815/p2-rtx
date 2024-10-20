@@ -2206,11 +2206,13 @@ namespace components
 		XASSERT(tbl_hk::model_renderer::table.init(tbl_hk::model_renderer::_interface) == false);
 		XASSERT(tbl_hk::model_renderer::table.hook(&tbl_hk::model_renderer::DrawModelExecute::Detour, tbl_hk::model_renderer::DrawModelExecute::Index) == false);
 
-		utils::hook(RENDERER_BASE + 0xAD23, cmeshdx8_renderpass_pre_draw_stub, HOOK_JUMP).install()->quick();
-		HOOK_RETN_PLACE(cmeshdx8_renderpass_pre_draw_retn_addr, RENDERER_BASE + 0xAD28);
+		// #OFFSET - done
+		utils::hook(RENDERER_BASE + 0xB1B3, cmeshdx8_renderpass_pre_draw_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(cmeshdx8_renderpass_pre_draw_retn_addr, RENDERER_BASE + 0xB1B8);
 
-		utils::hook(RENDERER_BASE + 0xADF5, cmeshdx8_renderpass_post_draw_stub, HOOK_JUMP).install()->quick();
-		HOOK_RETN_PLACE(cmeshdx8_renderpass_post_draw_retn_addr, RENDERER_BASE + 0xADFC);
+		// #OFFSET - done
+		utils::hook(RENDERER_BASE + 0xB285, cmeshdx8_renderpass_post_draw_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(cmeshdx8_renderpass_post_draw_retn_addr, RENDERER_BASE + 0xB28C);
 
 
 		// brushmodels - cubes - etc - CMeshMgr::RenderPassForInstances
@@ -2221,8 +2223,9 @@ namespace components
 		XASSERT(tbl_hk::bmodel_renderer::table.hook(&tbl_hk::bmodel_renderer::DrawBrushModelEx::Detour, tbl_hk::bmodel_renderer::DrawBrushModelEx::Index) == false);
 		XASSERT(tbl_hk::bmodel_renderer::table.hook(&tbl_hk::bmodel_renderer::DrawBrushModelArray::Detour, tbl_hk::bmodel_renderer::DrawBrushModelArray::Index) == false);
 
-		utils::hook(RENDERER_BASE + 0xA56D, cmeshdx8_renderpassforinstances_pre_draw_stub, HOOK_JUMP).install()->quick();
-		HOOK_RETN_PLACE(cmeshdx8_renderpassforinstances_pre_draw_retn_addr, RENDERER_BASE + 0xA581);
+		// #OFFSET - done
+		utils::hook(RENDERER_BASE + 0xA9FD, cmeshdx8_renderpassforinstances_pre_draw_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(cmeshdx8_renderpassforinstances_pre_draw_retn_addr, RENDERER_BASE + 0xAA11);
 
 		// enable mat_wireframe on portals to make them stable?
 		//utils::hook::nop(CLIENT_BASE + 0x2BD41C, 6);
@@ -2232,22 +2235,25 @@ namespace components
 		HOOK_RETN_PLACE(cmeshdx8_renderpasswithvertexindexbuffer_retn_addr, RENDERER_BASE + 0xA68D);
 #endif
 
+		// #OFFSET - done
 		// C_Prop_Portal::ClientThink :: hook to get portal 1/2 m_fOpenAmount member var
-		utils::hook(CLIENT_BASE + 0x280012, prop_portal_client_think_stub, HOOK_JUMP).install()->quick();
+		utils::hook(CLIENT_BASE + 0x285AD2, prop_portal_client_think_stub, HOOK_JUMP).install()->quick();
 
+		// #OFFSET - done
 		// Shader_DrawSurfaceDynamic -> BuildMSurfaceVertexArrays :: change texcoords when building the vertexbuffer
 		// so that we do not need to lock and unlock for each BSP surface when rendering
-		utils::hook(ENGINE_BASE + 0xF7193, BuildMSurfaceVertexArrays_stub, HOOK_JUMP).install()->quick();
-		HOOK_RETN_PLACE(BuildMSurfaceVertexArrays_retn_addr, ENGINE_BASE + 0xF7198);
+		utils::hook(ENGINE_BASE + 0xF7D16, BuildMSurfaceVertexArrays_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(BuildMSurfaceVertexArrays_retn_addr, ENGINE_BASE + 0xF7D1B);
 
-		// 
-		utils::hook(ENGINE_BASE + 0xE8C7D, draw_painted_surfaces_stub, HOOK_JUMP).install()->quick();
-		HOOK_RETN_PLACE(draw_painted_surfaces_retn_addr, ENGINE_BASE + 0xE8C82);
-		HOOK_RETN_PLACE(draw_painted_surfaces_og_func, ENGINE_BASE + 0xE1C20);
+		// #OFFSET - done
+		utils::hook(ENGINE_BASE + 0xE95BD, draw_painted_surfaces_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(draw_painted_surfaces_retn_addr, ENGINE_BASE + 0xE95C2);
+		HOOK_RETN_PLACE(draw_painted_surfaces_og_func, ENGINE_BASE + 0xE2580);
 
+		// #OFFSET - done
 		// CBrushBatchRender::DrawOpaqueBrushModel :: hook around mesh->Draw to detect paint rendering
-		utils::hook(ENGINE_BASE + 0x7231C, draw_painted_bmodel_surfaces_stub, HOOK_JUMP).install()->quick();
-		HOOK_RETN_PLACE(draw_painted_bmodel_surfaces_retn_addr, ENGINE_BASE + 0x72321);
+		utils::hook(ENGINE_BASE + 0x7271C, draw_painted_bmodel_surfaces_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(draw_painted_bmodel_surfaces_retn_addr, ENGINE_BASE + 0x72721);
 	}
 }
 
