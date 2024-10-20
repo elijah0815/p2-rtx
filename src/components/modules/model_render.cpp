@@ -678,10 +678,10 @@ namespace components
 			//}
 		}
 
-		//if (ctx.info.material_name.contains("lab/glassw"))
-		//{
-		//	int break_me = 1;
-		//}
+		/*if (ctx.info.material_name.contains("eye"))
+		{
+			int break_me = 1;
+		}*/
 
 		if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x2480033)
 		{
@@ -710,6 +710,15 @@ namespace components
 					// a prob. because: models/props_destruction/glass_fracture_a_inner
 					ctx.save_texture(dev, 0);
 					dev->SetTexture(0, tex_addons::glass_shards);
+				}
+			}
+			// models/player/chell/gambler_eyeball_ l/r
+			else if (ctx.info.material_name.contains("gambler_eyeball"))
+			{
+				ctx.save_texture(dev, 0);
+
+				if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[1]); basemap2) {
+					dev->SetTexture(0, basemap2);
 				}
 			}
 			/*else if (cname.contains("chell"))
