@@ -14,6 +14,7 @@
 // mat_leafvis 1					:: print current leaf and area index to console
 // r_ShowViewerArea 1				:: show current area on the HUD
 // xo_debug_toggle_node_vis (cmd)	:: toggle debug vis of the leaf/node the player is currently in
+// r_drawmodelstatsoverlay 1		:: show model names
 
 // *** Other cvars
 // r_novis							:: 1 = disable all visleaf/node checks (renders the entire map - same as 'xo_disable_all_culling' cmdline flag)
