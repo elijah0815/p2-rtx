@@ -119,7 +119,6 @@ namespace components
 			if (status == REMIXAPI_ERROR_CODE_SUCCESS)
 			{
 				m_initialized = true;
-
 				remixapi::bridge_setRemixApiCallbacks(endscene_cb, nullptr, on_present_cb);
 			}
 		}
@@ -304,7 +303,10 @@ namespace components
 	{
 		remix_vars::on_client_frame();
 
+		// TODO - find better spot to call this
+		map_settings::spawn_markers_once();
 
+#if 0
 		// look at Server::CC_Prop_Dynamic_Create
 		if (!test_ent)
 		{
@@ -365,9 +367,6 @@ namespace components
 
 			// Teleport(CBaseEntity *this, const Vector *, const QAngle *, const Vector *, bool)
 			//call_virtual<113, void>(test_ent, &test, nullptr, nullptr, true); // ent->Teleport
-
-
-
 #if 0
 			// C_BaseEntity *__cdecl CreateEntityByName(const char *className)
 			test_ent = utils::hook::call<C_BaseEntity* (__cdecl)(const char* className)>(CLIENT_BASE + 0x6AC90)
@@ -392,10 +391,11 @@ namespace components
 					(test_ent, nullptr);
 
 				//test_ent->InitializeAsClientEntity()
-
 			}
 #endif
+
 		}
+#endif
 
 		if (!api::remix_debug_line_materials[0])
 		{
@@ -598,7 +598,7 @@ namespace components
 	// #
 
 	/**
-	 * called from CModelLoader::Map_LoadModel
+	 * Called from CModelLoader::Map_LoadModel
 	 * @param map_name  Name of loading map
 	 */
 	void on_map_load_hk(const char* map_name)
@@ -631,6 +631,32 @@ namespace components
 			xor		edx, edx;
 			jmp		on_map_load_stub_retn;
 
+		}
+	}
+
+
+	/**
+	 * Called from Host_Disconnect
+	 * on: disconnect, restart, killserver, stopdemo ...
+	 */
+	void on_host_disconnect_hk()
+	{
+		map_settings::on_map_exit();
+	}
+
+	HOOK_RETN_PLACE_DEF(on_host_disconnect_retn);
+	__declspec(naked) void on_host_disconnect_stub()
+	{
+		__asm
+		{
+			pushad;
+			call	on_host_disconnect_hk;
+			popad;
+
+			// og
+			mov     ebp, esp;
+			sub     esp, 0x10;
+			jmp		on_host_disconnect_retn;
 		}
 	}
 
@@ -829,7 +855,7 @@ namespace components
 		player_current_node = -1;
 		player_current_leaf = -1;
 
-		const auto map_settings = map_settings::settings();
+		const auto map_settings = map_settings::get_loaded_map_settings();
 
 		// find the bsp node the player is currently in + visualize node / leaf using the remix api
 		// - skip if map settings contains no overrides for current map and debug vis is not active
@@ -1103,7 +1129,6 @@ namespace components
 		api::remix_debug_node_vis = !api::remix_debug_node_vis;
 	}
 
-
 	// #
 	// #
 
@@ -1136,12 +1161,23 @@ namespace components
 		// init addon textures
 		model_render::init_texture_addons();
 
+
 		// #
+		// commands
+
+		game::con_add_command(&xo_debug_toggle_node_vis_cmd, "xo_debug_toggle_node_vis", xo_debug_toggle_node_vis_fn, "Toggle bsp node/leaf debug visualization using the remix api");
+
+
 		// #
+		// events
 
 		// CModelLoader::Map_LoadModel :: event stub
 		utils::hook(ENGINE_BASE + 0xFCD5C, on_map_load_stub).install()->quick();
 		HOOK_RETN_PLACE(on_map_load_stub_retn, ENGINE_BASE + 0xFCD61);
+
+		// Host_Disconnect :: event stub
+		utils::hook(ENGINE_BASE + 0x197DF1, on_host_disconnect_stub).install()->quick();
+		HOOK_RETN_PLACE(on_host_disconnect_retn, ENGINE_BASE + 0x197DF6);
 
 
 		utils::hook::nop(CLIENT_BASE + 0x1ECDC5, 7);
@@ -1151,8 +1187,6 @@ namespace components
 
 		// #
 		// culling
-
-		game::con_add_command(&xo_debug_toggle_node_vis_cmd, "xo_debug_toggle_node_vis", xo_debug_toggle_node_vis_fn, "Toggle bsp node/leaf debug visualization using the remix api");
 
 		// same as r_novis 1
 		// def. needs 'r_portal_stencil_depth 1' if not enabled

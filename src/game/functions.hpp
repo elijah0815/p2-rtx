@@ -26,6 +26,8 @@ namespace game
 	extern void con_add_command(ConCommand* cmd, const char* name, void(__cdecl* callback)(), const char* desc);
 	extern void debug_add_text_overlay(const float* pos, float duration, const char* text);
 
+	extern void cbaseentity_remove(void* cbaseentity_ptr);
+
 	extern const char* get_map_name();
 	extern int get_visframecount();
 

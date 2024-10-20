@@ -24,7 +24,7 @@ namespace components
 		struct marker_settings_s
 		{
 			float origin[3] = {};
-			int handle = 0;
+			void* handle = nullptr;
 			bool active = false;
 		};
 
@@ -42,13 +42,18 @@ namespace components
 			std::vector<std::string> api_var_configs;
 		};
 
-		static inline map_settings_s* settings() { return &m_loaded_map_settings; }
+		static map_settings_s* get_loaded_map_settings() { return m_loaded_map_settings; }
+		static void clear_loaded_map_settings() { m_loaded_map_settings = nullptr; }
 		void set_settings_for_map(const std::string& map_name, bool reload_settings = false);
+		static void spawn_markers_once();
+		static void on_map_exit();
 
 	private:
-		static inline map_settings_s m_loaded_map_settings = {};
+		static inline std::string loaded_map_name;
+		static inline map_settings_s* m_loaded_map_settings = nullptr;
 		static inline std::vector<map_settings_s> m_settings;
 		static inline std::vector<std::string> m_args;
+		static inline bool m_spawned_markers = false;
 
 		bool load_settings();
 		map_settings_s* get_or_create_settings(bool parse_mode = true, const char* map_name = nullptr);

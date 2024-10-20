@@ -54,6 +54,16 @@ namespace game
 			(pos, duration, text);
 	}
 
+	// remove/destroy a given CBaseEntity
+	void cbaseentity_remove(void* cbaseentity_ptr)
+	{
+		if (cbaseentity_ptr)
+		{
+			// UTIL_Remove
+			utils::hook::call<void(__cdecl)(void* cbaseentity)>(SERVER_BASE + 0x27D690)(cbaseentity_ptr);
+		}
+	}
+
 	int get_visframecount() {
 		return *reinterpret_cast<int*>(ENGINE_BASE + 0x6A56B4);
 	}
