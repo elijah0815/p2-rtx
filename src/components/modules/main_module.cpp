@@ -314,7 +314,7 @@ namespace components
 			utils::hook::call_virtual<30, void>(mdlcache); 
 
 			// mdlcache->FindMDL
-			const auto mdl_handle = utils::hook::call_virtual<9, std::uint16_t>(mdlcache, "models/props_xo/mapmarker01_10.mdl");
+			const auto mdl_handle = utils::hook::call_virtual<9, std::uint16_t>(mdlcache, "models/props_xo/mapmarker000.mdl");
 
 			if (mdl_handle != 0xFFFF)
 			{
@@ -334,8 +334,17 @@ namespace components
 
 					// ent->KeyValue
 					utils::hook::call_virtual<35, void>(test_ent, "origin", origin_val);
-					utils::hook::call_virtual<35, void>(test_ent, "model", "models/props_xo/mapmarker01_10.mdl");
+					utils::hook::call_virtual<35, void>(test_ent, "model", "models/props_xo/mapmarker000.mdl");
 					utils::hook::call_virtual<35, void>(test_ent, "solid", "2");
+
+					struct skin_offset
+					{
+						char pad[0x37C];
+						int m_nSkin;
+					}; STATIC_ASSERT_OFFSET(skin_offset, m_nSkin, 0x37C);
+
+					auto skin_val = reinterpret_cast<skin_offset*>(test_ent);
+					skin_val->m_nSkin = 1;
 
 					// ent->Precache
 					utils::hook::call_virtual<25, void>(test_ent);
