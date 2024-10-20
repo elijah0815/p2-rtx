@@ -359,7 +359,9 @@ namespace components
 			}
 		}
 
+		
 		tbl_hk::model_renderer::table.original<FN>(Index)(ecx, edx, oo, state, pInfo, pCustomBoneToWorld);
+
 
 		if (is_portalgun_viewmodel)
 		{
@@ -1310,6 +1312,17 @@ namespace components
 #endif
 
 				lookat_vertex_decl(dev, primlist);
+
+				// scale the projection matrix for viewmodel particles so that they match the scaled remix viewmodel (currently set to a scale of 0.4)
+				if (ctx.info.buffer_state.m_Transform[2].m[3][2] == -1.00003529f)
+				{
+					//ctx.modifiers.do_not_render = true;
+					D3DXMATRIX scaleMatrix = game::IDENTITY;
+					scaleMatrix.m[0][0] = scaleMatrix.m[1][1] = scaleMatrix.m[2][2] = 2.5f;
+					scaleMatrix.m[3][3] = 1.0;
+
+					ctx.info.buffer_state.m_Transform[2] = scaleMatrix * ctx.info.buffer_state.m_Transform[2]; 
+				}
 
 				//ctx.save_vs(dev);
 				//dev->SetVertexShader(nullptr);
