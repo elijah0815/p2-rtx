@@ -72,8 +72,8 @@ namespace components
 
 					const auto model_name = utils::va("models/props_xo/mapmarker%03d.mdl", mdl_num * 10);
 
-					// #OFFSET
-					void* mdlcache = reinterpret_cast<void*>(*(DWORD*)(SERVER_BASE + 0x8618FC));
+					// #OFFSET - done
+					void* mdlcache = reinterpret_cast<void*>(*(DWORD*)(SERVER_BASE + 0x86B07C));
 
 					// mdlcache->BeginLock
 					utils::hook::call_virtual<30, void>(mdlcache);
@@ -82,16 +82,17 @@ namespace components
 					const auto mdl_handle = utils::hook::call_virtual<9, std::uint16_t>(mdlcache, model_name);
 					if (mdl_handle != 0xFFFF)
 					{
-						// #OFFSET
+						// #OFFSET - done
 						// save precache state - CBaseEntity::m_bAllowPrecache
-						const bool old_precache_state = *reinterpret_cast<bool*>(SERVER_BASE + 0x7B2C58);
+						const bool old_precache_state = *reinterpret_cast<bool*>(SERVER_BASE + 0x7BC2B0);
 
-						// #OFFSET
+						// #OFFSET - done
 						// allow precaching - CBaseEntity::m_bAllowPrecache
-						*reinterpret_cast<bool*>(SERVER_BASE + 0x7B2C58) = true;
+						*reinterpret_cast<bool*>(SERVER_BASE + 0x7BC2B0) = true;
 
+						// #OFFSET - done
 						// CreateEntityByName - CBaseEntity *__cdecl CreateEntityByName(const char *className, int iForceEdictIndex, bool bNotify)
-						m.handle = utils::hook::call<void* (__cdecl)(const char* className, int iForceEdictIndex, bool bNotify)>(SERVER_BASE + 0x19A090)
+						m.handle = utils::hook::call<void* (__cdecl)(const char* className, int iForceEdictIndex, bool bNotify)>(SERVER_BASE + 0x19F2C0)
 							("dynamic_prop", -1, true);
 
 						if (m.handle)
@@ -113,8 +114,9 @@ namespace components
 							// ent->Precache
 							utils::hook::call_virtual<25, void>(m.handle);
 
+							// #OFFSET - done
 							// DispatchSpawn
-							utils::hook::call<void(__cdecl)(void* pEntity, bool bRunVScripts)>(SERVER_BASE + 0x279480)
+							utils::hook::call<void(__cdecl)(void* pEntity, bool bRunVScripts)>(SERVER_BASE + 0x27F520)
 								(m.handle, true);
 
 							// ent->Activate
@@ -124,9 +126,9 @@ namespace components
 							m.active = false;
 						}
 
-						// #OFFSET
+						// #OFFSET - done
 						// restore precaching state - CBaseEntity::m_bAllowPrecache
-						*reinterpret_cast<bool*>(SERVER_BASE + 0x7B2C58) = old_precache_state;
+						*reinterpret_cast<bool*>(SERVER_BASE + 0x7BC2B0) = old_precache_state;
 					}
 					else {
 						m.active = false;
