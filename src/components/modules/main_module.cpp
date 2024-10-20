@@ -1218,6 +1218,14 @@ namespace components
 		// - Add player vis and call 'CPortalRenderable_FlatBasic::AddToVisAsExitPortal' for both active portals before rendering the main scene
 		utils::hook(CLIENT_BASE + 0x1ECF04, viewdrawscene_push_args_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(viewdrawscene_push_args_retn, CLIENT_BASE + 0x1ECF09);
+
+
+		// #
+
+		// C_Prop_Portal::CreateAttachedParticles :: disable outer portal particle fx (on high shader/effect settings) (broken anyway)
+		utils::hook::nop(CLIENT_BASE + 0x281FAD, 2);
+		utils::hook::nop(CLIENT_BASE + 0x281FB8 + 5, 1);
+		utils::hook::set<DWORD>(CLIENT_BASE + 0x281FB8, 0x00015CE9); // 0F85 5B01 0000 to E9 5C 01 00 00 + 1 nop
 	}
 
 	main_module::~main_module()
