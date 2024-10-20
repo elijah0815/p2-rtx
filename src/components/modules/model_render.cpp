@@ -1319,9 +1319,9 @@ namespace components
 				//dev->SetVertexShader(nullptr);
 				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX6);
 
-				//dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);  
-				//dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);
-				//dev->SetTransform(D3DTS_PROJECTION, &ctx.info.buffer_state.m_Transform[2]);
+				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);  
+				dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);
+				dev->SetTransform(D3DTS_PROJECTION, &ctx.info.buffer_state.m_Transform[2]);
 			}
 
 			// on portal open - blob in the middle (impact)
