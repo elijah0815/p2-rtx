@@ -64,8 +64,9 @@ namespace game
 		}
 	}
 
+	// #OFFSET - done
 	int get_visframecount() {
-		return *reinterpret_cast<int*>(ENGINE_BASE + 0x6A56B4);
+		return *reinterpret_cast<int*>(ENGINE_BASE + 0x6AAE6C);
 	}
 
 	const char* get_map_name() {
