@@ -503,6 +503,43 @@ namespace components
 	}
 
 
+	void cviewrenderer_drawonemonitor_hk()
+	{
+		auto enginerender = game::get_engine_renderer();
+
+		// old - works
+		//const VMatrix* view = call_virtual<12, const VMatrix*>((void*)enginerender);
+		//const VMatrix* pProjectionMatrix = view + 1; // Increment the pointer to get to the projectionMatrix
+
+		const auto dev = game::get_d3d_device();
+
+		float colView[4][4] = {};
+		utils::row_major_to_column_major(enginerender->m_matrixView.m[0], colView[0]);
+
+		float colProj[4][4] = {};
+		utils::row_major_to_column_major(enginerender->m_matrixProjection.m[0], colProj[0]);
+
+		dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
+		dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(colView));
+		dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(colProj));
+	}
+
+	HOOK_RETN_PLACE_DEF(cviewrenderer_drawonemonitor_retn);
+	__declspec(naked) void cviewrenderer_drawonemonitor_stub()
+	{
+		__asm
+		{
+			pushad;
+			call	cviewrenderer_drawonemonitor_hk;
+			popad;
+
+			// og
+			mov     ebx, [ebp - 0xC];
+			push    0;
+			jmp		cviewrenderer_drawonemonitor_retn;
+		}
+	}
+
 	// #
 	// #
 
@@ -768,7 +805,7 @@ namespace components
 
 		// find the bsp node the player is currently in + visualize node / leaf using the remix api
 		// - skip if map settings contains no overrides for current map and debug vis is not active
-		if (map_settings->area_settings.contains(current_area) || api::remix_debug_node_vis)
+		if ((map_settings && map_settings->area_settings.contains(current_area)) || api::remix_debug_node_vis)
 		{
 			int node_index = 0, leaf_index = 0;
 			while (node_index >= 0)
@@ -836,7 +873,7 @@ namespace components
 		// Otherwise, 'R_RecursiveWorldNode' will never reach the target leaf
 
 #if 1
-		if (!map_settings->area_settings.empty())
+		if (map_settings && !map_settings->area_settings.empty())
 		{
 			if (map_settings->area_settings.contains(current_area))
 			{
@@ -1089,11 +1126,14 @@ namespace components
 		utils::hook(ENGINE_BASE + 0x197DF1, on_host_disconnect_stub).install()->quick();
 		HOOK_RETN_PLACE(on_host_disconnect_retn, ENGINE_BASE + 0x197DF6);
 
-		// CViewRender::RenderView :: "start" of current frame
+		// CViewRender::RenderView :: "start" of current frame (after CViewRender::DrawMonitors)
 		utils::hook::nop(CLIENT_BASE + 0x1ECDC5, 7);
 		utils::hook(CLIENT_BASE + 0x1ECDC5, cviewrenderer_renderview_stub).install()->quick();
 		HOOK_RETN_PLACE(cviewrenderer_renderview_retn, CLIENT_BASE + 0x1ECDCC);
 
+		// CViewRender::DrawOneMonitor
+		utils::hook(CLIENT_BASE + 0x1E92F4, cviewrenderer_drawonemonitor_stub).install()->quick();
+		HOOK_RETN_PLACE(cviewrenderer_drawonemonitor_retn, CLIENT_BASE + 0x1E92F9);
 
 		// #
 		// culling
