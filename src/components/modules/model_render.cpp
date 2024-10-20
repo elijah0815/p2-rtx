@@ -1299,19 +1299,81 @@ namespace components
 #ifdef DEBUG
 				//ctx.modifiers.do_not_render = true;
 				int break_me = 0;
-
-				//dev->SetTexture(0, tex_addons::portal_mask);
-
 				//ctx.save_vs(dev);
 				//dev->SetVertexShader(nullptr);
 				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3); // vertex fmt looks like: pos - normal - 3x texcoord (float2) = 48 byte
-
-				//dev->SetTransform(D3DTS_WORLD, &buffer_state.m_Transform[0]);  
-				//dev->SetTransform(D3DTS_VIEW, &buffer_state.m_Transform[1]);
-				//dev->SetTransform(D3DTS_PROJECTION, &buffer_state.m_Transform[2]);
+				//dev->SetTexture(0, tex_addons::portal_mask);
 #endif
 
-				lookat_vertex_decl(dev, primlist);
+				//lookat_vertex_decl(dev, primlist);
+				if (primlist)
+				{
+					IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
+					dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
+
+					//auto first_vert = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x17547C);
+					//auto num_verts_real = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x1754A0);
+
+					IDirect3DIndexBuffer9* ib = nullptr;
+					if (SUCCEEDED(dev->GetIndices(&ib)))
+					{
+						void* ib_data; // lock index buffer to retrieve the relevant vertex indices
+						if (SUCCEEDED(ib->Lock(0, 0, &ib_data, D3DLOCK_READONLY)))
+						{
+							// add relevant indices without duplicates
+							std::unordered_set<std::uint16_t> indices; indices.reserve(primlist->m_NumIndices);
+
+							for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++) {
+								indices.insert(static_cast<std::uint16_t*>(ib_data)[primlist->m_FirstIndex + i]);
+							}
+
+							ib->Unlock();
+
+							// get the range of vertices that we are going to work with
+							UINT min_vert = 0u, max_vert = 0u;
+							{
+								auto [min_it, max_it] = std::minmax_element(indices.begin(), indices.end());
+								min_vert = *min_it;
+								max_vert = *max_it;
+							}
+
+							void* src_buffer_data;
+
+							// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
+							if (SUCCEEDED(vb->Lock(min_vert * t_stride, max_vert * t_stride, &src_buffer_data, 0)))
+							{
+								struct src_vert
+								{
+									Vector pos;
+									D3DCOLOR color;
+									Vector4D tc0;
+									Vector4D tc1;
+									Vector4D tc2;
+									Vector2D tc3;
+									Vector4D tc4;
+									//Vector4D tc5;			 
+									//Vector4D tc6;
+									//Vector4D tc7;
+								};
+
+								for (auto i : indices)
+								{
+									// we need to subtract min_vert because we locked @ min_vert which is the start of our lock
+									i -= static_cast<std::uint16_t>(min_vert);
+
+									const auto v_pos_in_src_buffer = i * t_stride;
+									const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
+
+									src->tc0.x = std::lerp(src->tc0.z, src->tc0.x, src->tc3.x);
+									src->tc0.y = std::lerp(src->tc0.w, src->tc0.y, src->tc3.y);
+								}
+
+								vb->Unlock();
+							}
+						}
+					}
+				}
+
 
 				// scale the projection matrix for viewmodel particles so that they match the scaled remix viewmodel (currently set to a scale of 0.4)
 				if (ctx.info.buffer_state.m_Transform[2].m[3][2] == -1.00003529f)
