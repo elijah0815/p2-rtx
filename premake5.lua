@@ -336,8 +336,8 @@ workspace "p2-rtx"
 		-- Post-build
 		postbuildcommands {
 			"echo ----------------------------",
-			"echo Rename \"p2-rtx.dll\" to \"_rtx.dll\"",
-			"MOVE /Y \"$(TargetDir)p2-rtx.dll\" \"$(TargetDir)_rtx.dll\"",
+			"echo Rename \"p2-rtx.dll\" to \"_rtx.asi\"",
+			"MOVE /Y \"$(TargetDir)p2-rtx.dll\" \"$(TargetDir)_rtx.asi\"",
 		}
 
 		dependencies.imports()
