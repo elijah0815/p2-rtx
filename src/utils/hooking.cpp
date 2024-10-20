@@ -38,8 +38,7 @@ namespace utils
 	{
 		std::lock_guard<std::mutex> _(this->stateMutex);
 
-		if (!this->initialized || this->installed)
-		{
+		if (!this->initialized || this->installed) {
 			return this;
 		}
 
@@ -63,8 +62,7 @@ namespace utils
 
 	void hook::quick()
 	{
-		if (hook::installed)
-		{
+		if (hook::installed) {
 			hook::installed = false;
 		}
 	}
@@ -73,21 +71,23 @@ namespace utils
 	{
 		std::lock_guard<std::mutex> _(this->stateMutex);
 
-		if (!this->initialized || !this->installed)
-		{
+		if (!this->initialized || !this->installed) {
 			return this;
 		}
 
 		this->installed = false;
 
-		if(unprotect) VirtualProtect(this->place, sizeof(this->buffer), PAGE_EXECUTE_READWRITE, &this->protection);
+		if (unprotect) {
+			VirtualProtect(this->place, sizeof(this->buffer), PAGE_EXECUTE_READWRITE, &this->protection);
+		}
 
 		std::memcpy(this->place, this->buffer, sizeof(this->buffer));
 
-		if (unprotect) VirtualProtect(this->place, sizeof(this->buffer), this->protection, &this->protection);
+		if (unprotect) {
+			VirtualProtect(this->place, sizeof(this->buffer), this->protection, &this->protection);
+		}
 
 		FlushInstructionCache(GetCurrentProcess(), this->place, sizeof(this->buffer));
-
 		return this;
 	}
 
@@ -173,8 +173,7 @@ namespace utils
 	{
 		if (const auto addr = GetProcAddress(hmodule, "CreateInterface"); addr)
 		{
-			if (const auto pfCreateInterface = reinterpret_cast<void* (*)(const char*, int*)>(addr); pfCreateInterface)
-			{
+			if (const auto pfCreateInterface = reinterpret_cast<void* (*)(const char*, int*)>(addr); pfCreateInterface) {
 				return pfCreateInterface(sz_object, nullptr);
 			}
 		}

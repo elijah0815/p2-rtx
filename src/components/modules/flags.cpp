@@ -10,8 +10,7 @@ namespace components
 
 		for (const auto& entry : enabled_flags)
 		{
-			if (utils::str_to_lower(entry) == utils::str_to_lower(flag))
-			{
+			if (utils::str_to_lower(entry) == utils::str_to_lower(flag)) {
 				return true;
 			}
 		}

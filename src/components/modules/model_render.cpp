@@ -102,10 +102,9 @@ namespace components
 	bool has_materialvar(IMaterialInternal* cmat, const char* var_name, IMaterialVar** out_var = nullptr)
 	{
 		bool found = false;
-		auto var = cmat->vftable->FindVar(cmat, nullptr, var_name, &found, false);
+		const auto var = cmat->vftable->FindVar(cmat, nullptr, var_name, &found, false);
 
-		if (out_var)
-		{
+		if (out_var) {
 			*out_var = var;
 		}
 
@@ -166,7 +165,6 @@ namespace components
 			};
 
 			game::get_d3d_device()->SetMaterial(&temp_mat);
-
 			g_light_to_texture_modified = false;
 		}
 	}
@@ -252,8 +250,8 @@ namespace components
 				{
 					// add relevant indices without duplicates
 					std::unordered_set<std::uint16_t> indices; indices.reserve(primlist->m_NumIndices);
-					for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++)
-					{
+
+					for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++) {
 						indices.insert(static_cast<std::uint16_t*>(ib_data)[primlist->m_FirstIndex + i]);
 					}
 
@@ -693,8 +691,7 @@ namespace components
 			dev->SetVertexShader(nullptr);
 
 			// needs mat_forcedynamic 1 because this alters ALL of the world surfaces ...
-			if (is_rendering_bmodel_paint)
-			{
+			if (is_rendering_bmodel_paint) {
 				render_painted_surface(ctx, primlist);
 			}
 		}
@@ -736,7 +733,7 @@ namespace components
 			//ctx.modifiers.do_not_render = true;
 
 			// replace all refract shaders with wireframe
-			if (ctx.info.shader_name.contains("Refract_DX90"))
+			if (ctx.info.shader_name.contains("Refract_DX90")) 
 			{
 				// I think we are simply missing basetex0 here
 				ctx.info.material->vftable->SetShader(ctx.info.material, "Wireframe");
@@ -763,8 +760,7 @@ namespace components
 					dev->SetTexture(0, tex_addons::glass_window_lamps);
 				}
 			}
-			else if (ctx.info.shader_name.contains("Black"))
-			{
+			else if (ctx.info.shader_name.contains("Black")) {
 				dev->SetTexture(0, tex_addons::black_shader);
 			}
 
@@ -980,8 +976,7 @@ namespace components
 				// -> so we need to edit the vertex buffer for each and every surface
 
 				// mat_fullbright 1 does not draw paint
-				if (is_rendering_paint)
-				{
+				if (is_rendering_paint) {
 					render_painted_surface(ctx);
 				}
 			}
@@ -1043,8 +1038,7 @@ namespace components
 					// slightly increase the alpha so that the 'fog' becomes visible
 					ctx.modifiers.as_transport_beam = true;
 				}
-				else
-				{
+				else {
 					ctx.modifiers.do_not_render = true;
 				}
 			}
@@ -1087,28 +1081,23 @@ namespace components
 				{
 					if (ctx.info.material_name.contains("_white"))
 					{
-						if (ctx.info.material_name.contains("eft")) // sky_whiteft
-						{
+						// sky_whiteft
+						if (ctx.info.material_name.contains("eft"))  {
 							dev->SetTexture(0, tex_addons::sky_gray_ft);
 						}
-						else if (ctx.info.material_name.contains("ebk"))
-						{
+						else if (ctx.info.material_name.contains("ebk")) {
 							dev->SetTexture(0, tex_addons::sky_gray_bk);
 						}
-						else if (ctx.info.material_name.contains("elf"))
-						{
+						else if (ctx.info.material_name.contains("elf")) {
 							dev->SetTexture(0, tex_addons::sky_gray_lf);
 						}
-						else if (ctx.info.material_name.contains("ert"))
-						{
+						else if (ctx.info.material_name.contains("ert")) {
 							dev->SetTexture(0, tex_addons::sky_gray_rt);
 						}
-						else if (ctx.info.material_name.contains("eup"))
-						{
+						else if (ctx.info.material_name.contains("eup")) {
 							dev->SetTexture(0, tex_addons::sky_gray_up);
 						}
-						else if (ctx.info.material_name.contains("edn"))
-						{
+						else if (ctx.info.material_name.contains("edn")) {
 							dev->SetTexture(0, tex_addons::sky_gray_dn);
 						}
 
@@ -1178,8 +1167,7 @@ namespace components
 				if (ctx.info.material_name.contains("vgui__fontpage"))
 				{
 					// get rid of all world-rendered text as its using the same glyph as HUD elements?!
-					if (ctx.info.buffer_state.m_Transform[0].m[3][0] != 0.0f)
-					{
+					if (ctx.info.buffer_state.m_Transform[0].m[3][0] != 0.0f) {
 						ctx.modifiers.do_not_render = true;
 					}
 				}
@@ -1238,8 +1226,7 @@ namespace components
 			{
 				//ctx.modifiers.do_not_render = true;
 
-				if (ctx.info.shader_name.contains("WorldVertexTransition_DX9"))
-				{
+				if (ctx.info.shader_name.contains("WorldVertexTransition_DX9")) {
 					ctx.modifiers.dual_render_with_basetexture2 = true;
 				}
 
@@ -1535,7 +1522,6 @@ namespace components
 
 		// 0 = Gamma 1.0 (fixes dark albedo) :: 1 = Gamma 2.2
 		dev->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, ctx.modifiers.with_high_gamma ? 1u : 0u);
-		
 
 		// do not render next surface if set
 		if (!ctx.modifiers.do_not_render)
@@ -2039,13 +2025,11 @@ namespace components
 			if (!portal->m_bIsPortal2)
 			{
 #ifdef DEBUG
-				if (portal->m_pLinkedPortal)
-				{
+				if (portal->m_pLinkedPortal) {
 					int break_me = 1;
 				}
 
-				if (portal->m_bIsMobile)
-				{
+				if (portal->m_bIsMobile) {
 					int break_me = 1;
 				}
 #endif
@@ -2057,13 +2041,11 @@ namespace components
 			else
 			{
 #ifdef DEBUG
-				if (portal->m_pLinkedPortal)
-				{
+				if (portal->m_pLinkedPortal) {
 					int break_me = 1;
 				}
 
-				if (portal->m_bIsMobile)
-				{
+				if (portal->m_bIsMobile) {
 					int break_me = 1;
 				}
 #endif

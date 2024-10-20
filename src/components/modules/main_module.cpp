@@ -306,97 +306,6 @@ namespace components
 		// TODO - find better spot to call this
 		map_settings::spawn_markers_once();
 
-#if 0
-		// look at Server::CC_Prop_Dynamic_Create
-		if (!test_ent)
-		{
-			void* mdlcache = reinterpret_cast<void*>(*(DWORD*)(SERVER_BASE + 0x8618FC));
-
-			// mdlcache->BeginLock
-			utils::hook::call_virtual<30, void>(mdlcache); 
-
-			// mdlcache->FindMDL
-			const auto mdl_handle = utils::hook::call_virtual<9, std::uint16_t>(mdlcache, "models/props_xo/mapmarker000.mdl");
-
-			if (mdl_handle != 0xFFFF)
-			{
-				// save precache state - CBaseEntity::m_bAllowPrecache
-				const bool old_precache_state = *reinterpret_cast<bool*>(SERVER_BASE + 0x7B2C58);
-
-				// allow precaching - CBaseEntity::m_bAllowPrecache
-				*reinterpret_cast<bool*>(SERVER_BASE + 0x7B2C58) = true;
-
-				// CreateEntityByName - CBaseEntity *__cdecl CreateEntityByName(const char *className, int iForceEdictIndex, bool bNotify)
-				test_ent = utils::hook::call<void* (__cdecl)(const char* className, int iForceEdictIndex, bool bNotify)>(SERVER_BASE + 0x19A090)
-					("dynamic_prop", -1, true);
-
-				if (test_ent)
-				{
-					const auto origin_val = utils::va("%.10f %.10f %.10f", 0.0f, 0.0f, 100.0f);
-
-					// ent->KeyValue
-					utils::hook::call_virtual<35, void>(test_ent, "origin", origin_val);
-					utils::hook::call_virtual<35, void>(test_ent, "model", "models/props_xo/mapmarker000.mdl");
-					utils::hook::call_virtual<35, void>(test_ent, "solid", "2");
-
-					struct skin_offset
-					{
-						char pad[0x37C];
-						int m_nSkin;
-					}; STATIC_ASSERT_OFFSET(skin_offset, m_nSkin, 0x37C);
-
-					auto skin_val = reinterpret_cast<skin_offset*>(test_ent);
-					skin_val->m_nSkin = 1;
-
-					// ent->Precache
-					utils::hook::call_virtual<25, void>(test_ent);
-
-					// DispatchSpawn
-					utils::hook::call<void(__cdecl)(void* pEntity, bool bRunVScripts)>(SERVER_BASE + 0x279480)
-						(test_ent, true);
-
-					// ent->Activate
-					utils::hook::call_virtual<37, void>(test_ent);
-				}
-
-				// restore precaching state - CBaseEntity::m_bAllowPrecache
-				*reinterpret_cast<bool*>(SERVER_BASE + 0x7B2C58) = old_precache_state;
-			}
-
-			utils::hook::call_virtual<31, void>(mdlcache); // mdlcache->EndLock
-
-			// Teleport(CBaseEntity *this, const Vector *, const QAngle *, const Vector *, bool)
-			//call_virtual<113, void>(test_ent, &test, nullptr, nullptr, true); // ent->Teleport
-#if 0
-			// C_BaseEntity *__cdecl CreateEntityByName(const char *className)
-			test_ent = utils::hook::call<C_BaseEntity* (__cdecl)(const char* className)>(CLIENT_BASE + 0x6AC90)
-				("viewmodel");
-
-			if (test_ent)
-			{
-				// C_BaseEntity::SetModel
-				auto succ = utils::hook::call<bool(__fastcall)(C_BaseEntity* this_ptr, void* null, const char* modelName)>(CLIENT_BASE + 0x745A0)
-					(test_ent, nullptr, "models/props/food_can/food_can_open.mdl");
-
-				Vector org = { -280.0f, 120.0f, 110.0f };
-
-				// C_BaseEntity::SetAbsOrigin
-				utils::hook::call<void(__fastcall)(C_BaseEntity * this_ptr, void* null, const Vector * absOrigin)>(CLIENT_BASE + 0x6EC40)
-					(test_ent, nullptr, &org);
-
-				test_ent->vtbl->InitializeAsClientEntity(test_ent, nullptr, false);
-
-				// C_BaseViewModel::Spawn
-				utils::hook::call<void(__fastcall)(C_BaseEntity* this_ptr, void* null)>(CLIENT_BASE + 0x4DEA0)
-					(test_ent, nullptr);
-
-				//test_ent->InitializeAsClientEntity()
-			}
-#endif
-
-		}
-#endif
-
 		if (!api::remix_debug_line_materials[0])
 		{
 			remixapi_MaterialInfo info
@@ -674,8 +583,7 @@ namespace components
 		{
 			//const auto mdl_name = std::string_view(ent->model->szPathName);
 			//if (mdl_name.contains("chell") || mdl_name.contains("portalgun"))
-			if (ent->model->radius == 0.0f || ent->model->radius == 24.6587677f)
-			{
+			if (ent->model->radius == 0.0f || ent->model->radius == 24.6587677f) {
 				return nullptr; 
 			}
 		}
@@ -789,8 +697,7 @@ namespace components
 		lines[10][0] = corners[5];	lines[10][1] = corners[7]; // Edge 11
 		lines[11][0] = corners[6];	lines[11][1] = corners[7]; // Edge 12
 
-		for (auto e = 0u; e < 12; e++)
-		{
+		for (auto e = 0u; e < 12; e++) {
 			api::add_debug_line(lines[e][0], lines[e][1], width, color);
 		}
 	}
@@ -814,8 +721,7 @@ namespace components
 			node->visframe = game::get_visframecount();
 
 			// we only need to traverse to the root node or the player node
-			if (node == player_node || node == root_node)
-			{
+			if (node == player_node || node == root_node) {
 				break;
 			}
 
@@ -837,6 +743,7 @@ namespace components
 		// force leaf vis
 		leaf_node->visframe = game::get_visframecount();
 
+		// force nodes
 		force_node_vis(parent_node_index, player_node);
 	}
 
@@ -846,9 +753,11 @@ namespace components
 		const auto world = game::get_hoststate_worldbrush_data();
 		const auto g_CurrentViewOrigin = reinterpret_cast<float*>(ENGINE_BASE + 0x50DB50);
 
+		// #OFFSET
 		// CM_PointLeafnum :: get current leaf
 		const auto current_leaf = utils::hook::call<int(__cdecl)(float*)>(ENGINE_BASE + 0x158540)(g_CurrentViewOrigin);
 
+		// #OFFSET
 		// CM_LeafArea :: get current player area
 		const auto current_area = utils::hook::call<int(__cdecl)(int leafnum)>(ENGINE_BASE + 0x159470)(current_leaf);
 
@@ -934,7 +843,7 @@ namespace components
 				auto tweaks = map_settings->area_settings.find(current_area);
 				for (auto l : tweaks->second)
 				{
-					if (l < static_cast<std::uint32_t>(world->numleafs))
+					if (l < static_cast<std::uint32_t>(world->numleafs)) 
 					{
 						// force leaf to be visible
 						force_leaf_vis(l, &world->nodes[player_current_node]);
@@ -1077,6 +986,7 @@ namespace components
 			customVisibility.m_nNumVisOrigins++;
 			added_player_view_vis = true;
 
+			// #OFFSET
 			//CPortalRenderable_FlatBasic::AddToVisAsExitPortal(CPortalRenderable_FlatBasic * this, ViewCustomVisibility_t * pCustomVisibility)
 			utils::hook::call<void(__fastcall)(void* this_ptr, void* null, ViewCustomVisibility_t*)>(CLIENT_BASE + 0x2BBDA0)
 				(model_render::portal1_ptr->m_pLinkedPortal, nullptr, &customVisibility);
@@ -1095,6 +1005,7 @@ namespace components
 				added_player_view_vis = true;
 			}
 
+			// #OFFSET
 			//CPortalRenderable_FlatBasic::AddToVisAsExitPortal(CPortalRenderable_FlatBasic * this, ViewCustomVisibility_t * pCustomVisibility)
 			utils::hook::call<void(__fastcall)(void* this_ptr, void* null, ViewCustomVisibility_t*)>(CLIENT_BASE + 0x2BBDA0)
 				(model_render::portal2_ptr->m_pLinkedPortal, nullptr, &customVisibility);
@@ -1136,8 +1047,7 @@ namespace components
 	{
 		api::init();
 
-		// init d3d font
-		{
+		{ // init d3d font
 			D3DXFONT_DESC desc =
 			{
 				18,                  // Height
@@ -1171,15 +1081,15 @@ namespace components
 		// #
 		// events
 
-		// CModelLoader::Map_LoadModel :: event stub
+		// CModelLoader::Map_LoadModel :: called on map load
 		utils::hook(ENGINE_BASE + 0xFCD5C, on_map_load_stub).install()->quick();
 		HOOK_RETN_PLACE(on_map_load_stub_retn, ENGINE_BASE + 0xFCD61);
 
-		// Host_Disconnect :: event stub
+		// Host_Disconnect :: called on map unload
 		utils::hook(ENGINE_BASE + 0x197DF1, on_host_disconnect_stub).install()->quick();
 		HOOK_RETN_PLACE(on_host_disconnect_retn, ENGINE_BASE + 0x197DF6);
 
-
+		// CViewRender::RenderView :: "start" of current frame
 		utils::hook::nop(CLIENT_BASE + 0x1ECDC5, 7);
 		utils::hook(CLIENT_BASE + 0x1ECDC5, cviewrenderer_renderview_stub).install()->quick();
 		HOOK_RETN_PLACE(cviewrenderer_renderview_retn, CLIENT_BASE + 0x1ECDCC);
@@ -1262,9 +1172,6 @@ namespace components
 		utils::hook::nop(ENGINE_BASE + 0x7153A, 2);
 		utils::hook::set<BYTE>(ENGINE_BASE + 0x71540, 0xEB);
 
-
-		// #
-		// #
 
 		// Fix map visibility when looking through portals when r_portal_stencil_depth == 0
 		// - Map_VisSetup called by CViewRender::ViewDrawScene --> CViewRender::SetupVis :: uses player view and 1 visOrigin if no custom vis is provided

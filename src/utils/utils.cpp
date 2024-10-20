@@ -9,12 +9,11 @@ namespace utils
 	{
 		int ret = default_return_val;
 
-		try
+		try 
 		{
 			ret = std::stoi(str);
 		}
-		catch (const std::invalid_argument)
-		{ }
+		catch (const std::invalid_argument) { }
 
 		return ret;
 	}
@@ -27,8 +26,7 @@ namespace utils
 		{
 			ret = std::stof(str);
 		}
-		catch (const std::invalid_argument)
-		{ }
+		catch (const std::invalid_argument) { }
 
 		return ret;
 	}
@@ -54,8 +52,8 @@ namespace utils
 	bool string_contains(const std::string_view& s1, const std::string_view s2)
 	{
 		const auto it = s1.find(s2);
-		if (it != std::string::npos)
-		{
+
+		if (it != std::string::npos) {
 			return true;
 		}
 
@@ -68,13 +66,13 @@ namespace utils
 		new_string.reserve(source.length());  // avoids a few memory allocations
 
 		std::string::size_type last_pos = 0;
-		std::string::size_type findPos;
+		std::string::size_type find_pos;
 
-		while (std::string::npos != (findPos = source.find(from, last_pos)))
+		while (std::string::npos != (find_pos = source.find(from, last_pos)))
 		{
-			new_string.append(source, last_pos, findPos - last_pos);
+			new_string.append(source, last_pos, find_pos - last_pos);
 			new_string += to;
-			last_pos = findPos + from.length();
+			last_pos = find_pos + from.length();
 		}
 
 		// Care for the rest after last occurrence
@@ -106,8 +104,7 @@ namespace utils
 		std::string result;
 		result.reserve(wstr.size());
 
-		for (const auto& chr : wstr)
-		{
+		for (const auto& chr : wstr) {
 			result.push_back(static_cast<char>(chr));
 		}
 
@@ -116,8 +113,7 @@ namespace utils
 
 	int is_space(int c)
 	{
-		if (c < -1)
-		{
+		if (c < -1) {
 			return 0;
 		}
 
@@ -159,22 +155,19 @@ namespace utils
 
 		for (char c : str)
 		{
-			if (c == opening_symbol)
-			{
+			if (c == opening_symbol) {
 				count++;
 			}
 			else if (c == closing_symbol)
 			{
 				count--;
 
-				if (count < 0)
-				{
+				if (count < 0) {
 					return false;  // malformed
 				}
 			}
 
-			if (single_only && count > 1)
-			{
+			if (single_only && count > 1) {
 				return false;
 			}
 		}
@@ -242,8 +235,7 @@ namespace utils
 		// transpose the matrix by swapping the rows and columns
 		for (int i = 0; i < 4; ++i)
 		{
-			for (int j = 0; j < 4; ++j)
-			{
+			for (int j = 0; j < 4; ++j) {
 				column_major[j * 4 + i] = row_major[i * 4 + j];
 			}
 		}
@@ -258,8 +250,7 @@ namespace utils
 	float finterp_to(const float current, const float target, const float delta_time, const float interpolation_speed)
 	{
 		// If no interp speed, jump to target value
-		if (interpolation_speed <= 0.0f)
-		{
+		if (interpolation_speed <= 0.0f) {
 			return target;
 		}
 
@@ -267,8 +258,7 @@ namespace utils
 		const float distance = target - current;
 
 		// If distance is too small, just set the desired location
-		if (distance * distance < 1.e-8f)
-		{
+		if (distance * distance < 1.e-8f) {
 			return target;
 		}
 
@@ -295,8 +285,7 @@ namespace utils
 		file_path += sub_dir + "\\" + file_name;
 
 		file.open(file_path);
-		if (!file.is_open())
-		{
+		if (!file.is_open()) {
 			return false;
 		}
 

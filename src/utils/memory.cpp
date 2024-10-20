@@ -9,8 +9,7 @@ namespace utils
 		void* data = _aligned_malloc(length, alignment);
 		assert(data != nullptr);
 
-		if (data)
-		{
+		if (data) {
 			ZeroMemory(data, length);
 		}
 
@@ -27,8 +26,7 @@ namespace utils
 
 	void memory::free_(void* data)
 	{
-		if (data)
-		{
+		if (data) {
 			free(data);
 		}
 	}
@@ -60,8 +58,7 @@ namespace utils
 			bool b = !(mbi.Protect & mask);
 
 			// check the page is not a guard page
-			if (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS))
-			{
+			if (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS)) {
 				b = true;
 			}
 
@@ -80,8 +77,7 @@ namespace utils
 			bool b = !(mbi.Protect & mask);
 
 			// check the page is not a guard page
-			if (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS))
-			{
+			if (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS)) {
 				b = true;
 			}
 

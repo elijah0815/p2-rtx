@@ -7,8 +7,7 @@ namespace components
 	// ignores dot, comma, minus and whitespaces
 	bool is_single_num_or_vector(const std::string& str)
 	{
-		return std::ranges::all_of(str.begin(), str.end(), [](const char c) 
-		{
+		return std::ranges::all_of(str.begin(), str.end(), [](const char c) {
 			return std::isdigit(c) || c == ',' || c == '.' || c == '-' || c == ' ';
 		});
 	}
@@ -17,8 +16,7 @@ namespace components
 	{
 		custom_options[name] = o;
 
-		if (const auto it = custom_options.find(name); it != custom_options.end())
-		{
+		if (const auto it = custom_options.find(name); it != custom_options.end()) {
 			return &*it;
 		}
 
@@ -27,8 +25,7 @@ namespace components
 
 	remix_vars::option_handle remix_vars::get_custom_option(const char* o)
 	{
-		if (const auto it = custom_options.find(o); it != custom_options.end())
-		{
+		if (const auto it = custom_options.find(o); it != custom_options.end()) {
 			return &*it;
 		}
 
@@ -52,8 +49,7 @@ namespace components
 	 */
 	remix_vars::option_handle remix_vars::get_option(const char* o)
 	{
-		if (const auto it = options.find(o); it != options.end())
-		{
+		if (const auto it = options.find(o); it != options.end()) {
 			return &*it;
 		}
 
@@ -67,8 +63,7 @@ namespace components
 	 */
 	remix_vars::option_handle remix_vars::get_option(const std::string& o)
 	{
-		if (const auto it = options.find(o); it != options.end())
-		{
+		if (const auto it = options.find(o); it != options.end()) {
 			return &*it;
 		}
 
@@ -88,8 +83,7 @@ namespace components
 		{
 			o->second.current = v;
 
-			if (is_level_setting)
-			{
+			if (is_level_setting) {
 				o->second.reset_level = v;
 			}
 
@@ -149,8 +143,7 @@ namespace components
 			// should reset modified
 			set_option(o, o->second.current);
 
-			if (!o->second.modified)
-			{
+			if (!o->second.modified) {
 				return true;
 			}
 
@@ -175,8 +168,7 @@ namespace components
 			{
 				if (o.second.modified)
 				{
-					if (reset_option(&o, reset_to_level_state))
-					{
+					if (reset_option(&o, reset_to_level_state)) {
 						count++;
 					}
 				}
@@ -289,21 +281,12 @@ namespace components
 					utils::trim(pair[0]);
 					utils::trim(pair[1]);
 
-					bool is_valid_option = false;
-
 					if (!pair[1].starts_with("0x") && !pair[1].empty())
 					{
-						if (const auto o = string_to_option(pair[1]); o.type != OPTION_TYPE_NONE)
-						{
+						if (const auto o = string_to_option(pair[1]); o.type != OPTION_TYPE_NONE) {
 							options[pair[0]] = o;
-							is_valid_option = true;
 						}
 					}
-
-					/*if (!is_valid_option)
-					{
-						DEBUG_PRINT("[RTX-PARSE-OPTIONS] Ignored: %s \n", pair[0].c_str());
-					}*/
 				}
 			}
 
@@ -325,8 +308,7 @@ namespace components
 			std::string input;
 			while (std::getline(file, input))
 			{
-				if (utils::starts_with(input, "#") || input.empty())
-				{
+				if (utils::starts_with(input, "#") || input.empty()) {
 					continue;
 				}
 
@@ -336,8 +318,7 @@ namespace components
 					utils::trim(pair[0]);
 					utils::trim(pair[1]);
 
-					if (pair[1].starts_with("0x") || pair[1].empty())
-					{
+					if (pair[1].starts_with("0x") || pair[1].empty()) {
 						continue;
 					}
 
@@ -386,8 +367,7 @@ namespace components
 		option_handle h = handle;
 		if (!h)
 		{
-			if (remix_var_name.empty())
-			{
+			if (remix_var_name.empty()) {
 				return false;
 			}
 
@@ -538,13 +518,11 @@ namespace components
 					const auto f = (float)(time - ip.time_start) / (float)ip.duration;
 					float fraction = f;
 
-					if ((f - 1.0f) >= 0.0f)
-					{
+					if ((f - 1.0f) >= 0.0f) {
 						fraction = 1.0f;
 					}
 
-					if ((0.0f - f) >= 0.0f)
-					{
+					if ((0.0f - f) >= 0.0f) {
 						fraction = 0.0f;
 					}
 
@@ -634,8 +612,7 @@ namespace components
 							continue;
 					}
 
-					if (!ip.option->second.not_a_remix_var)
-					{
+					if (!ip.option->second.not_a_remix_var) {
 						remix_vars::get()->set_option(ip.option, ip.option->second.current, false);
 					}
 				}

@@ -341,7 +341,7 @@ public:
 	float Normalize()
 	{
 		float fl_lenght = Lenght();
-		float fl_lenght_normal = 1.f / ((1.19209290E-07F) + fl_lenght); //FLT_EPSILON
+		float fl_lenght_normal = 1.f / ((1.19209290E-07F) + fl_lenght);
 
 		x = x * fl_lenght_normal;
 		y = y * fl_lenght_normal;
@@ -398,8 +398,8 @@ public:
 	bool IsZero(const float flScale = 0.0f) const
 	{
 		return (x > -flScale && x < flScale&&
-			y > -flScale && y < flScale&&
-			z > -flScale && z < flScale);
+				y > -flScale && y < flScale&&
+				z > -flScale && z < flScale);
 	}
 
 	Vector Scale(float fl) {

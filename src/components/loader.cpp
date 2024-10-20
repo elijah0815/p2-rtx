@@ -20,8 +20,7 @@ namespace components
 	void loader::uninitialize()
 	{
 		std::ranges::reverse(components_.begin(), components_.end());
-		for (const auto component : components_)
-		{
+		for (const auto component : components_) {
 			delete component;
 		}
 

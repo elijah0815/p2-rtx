@@ -20,13 +20,14 @@ DWORD WINAPI find_window_loop(LPVOID)
 	while (!main_window)
 	{
 		// get main window hwnd
-		if (!main_window)
-		{
+		if (!main_window) {
 			main_window = FindWindowA(nullptr, "Portal 2");
 		}
 
 		Sleep(100); _time += 100;
-		if (_time >= 30000) { goto INIT_FAIL; }
+		if (_time >= 30000) {
+			goto INIT_FAIL;
+		}
 	}
 
 	GET_MODULE_HANDLE(game::shaderapidx9_module, "shaderapidx9.dll", _time);
@@ -36,8 +37,7 @@ DWORD WINAPI find_window_loop(LPVOID)
 	GET_MODULE_HANDLE(game::client_module, "client.dll", _time);
 	GET_MODULE_HANDLE(game::server_module, "server.dll", _time);
 
-	if (MH_INIT_STATUS = MH_Initialize(); MH_INIT_STATUS != MH_STATUS::MH_OK)
-	{
+	if (MH_INIT_STATUS = MH_Initialize(); MH_INIT_STATUS != MH_STATUS::MH_OK) {
 		goto INIT_FAIL;
 	}
 
@@ -62,12 +62,11 @@ INIT_FAIL:
 
 BOOL APIENTRY DllMain(HMODULE /*hModule*/, DWORD  ul_reason_for_call, LPVOID /*lpReserved*/)
 {
-	if (ul_reason_for_call == DLL_PROCESS_ATTACH)
-	{
+	if (ul_reason_for_call == DLL_PROCESS_ATTACH) {
 		CreateThread(nullptr, 0, find_window_loop, nullptr, 0, nullptr);
 	}
-	else if (ul_reason_for_call == DLL_PROCESS_DETACH)
-	{
+
+	else if (ul_reason_for_call == DLL_PROCESS_DETACH) {
 		components::loader::uninitialize();
 	}
 
