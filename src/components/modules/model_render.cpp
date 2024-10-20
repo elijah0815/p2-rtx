@@ -587,8 +587,9 @@ namespace components
 		UINT ofs = 0, stride = 0;
 		dev->GetStreamSource(0, &b, &ofs, &stride);
 
+		// #OFFSET - done
 		//Vector* model_org = reinterpret_cast<Vector*>(ENGINE_BASE + 0x50DA90);
-		const auto model_to_world_mtx = reinterpret_cast<VMatrix*>(ENGINE_BASE + 0x637158);
+		const auto model_to_world_mtx = reinterpret_cast<VMatrix*>(ENGINE_BASE + 0x63C8C8);
 
 		VMatrix mtx = {};
 		mtx.m[0][0] = model_to_world_mtx->m[0][0];
