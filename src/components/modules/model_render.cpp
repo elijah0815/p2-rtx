@@ -612,10 +612,10 @@ namespace components
 		auto& ctx = model_render::primctx;
 		const auto shaderapi = game::get_shaderapi();
 
-		if (ctx.get_info_for_pass(shaderapi))
+		if (ctx.get_info_for_pass(shaderapi)) 
 		{
 			// added format check
-			if (mesh->m_VertexFormat == 0x2480033 || mesh->m_VertexFormat == 0x80033)
+			if (mesh->m_VertexFormat == 0x2480033 || mesh->m_VertexFormat == 0x80033) 
 			{
 				if (ctx.info.shader_name.contains("Water"))
 				{
@@ -681,10 +681,10 @@ namespace components
 			//}
 		}
 
-		/*if (ctx.info.material_name.contains("eye"))
+		if (ctx.info.material_name.starts_with("glass/contain"))
 		{
 			int break_me = 1;
-		}*/
+		}
 
 		if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x2480033)
 		{
@@ -744,8 +744,8 @@ namespace components
 		{
 			//ctx.modifiers.do_not_render = true;
 
-			// replace all refract shaders with wireframe
-			if (ctx.info.shader_name.contains("Refract_DX90")) 
+			// replace all refract shaders with wireframe (ex. glass/containerwindow_)
+			if (ctx.info.shader_name.contains("Refract_DX90") && !ctx.info.material_name.starts_with("glass/contain"))
 			{
 				// I think we are simply missing basetex0 here
 				ctx.info.material->vftable->SetShader(ctx.info.material, "Wireframe");
@@ -771,6 +771,24 @@ namespace components
 					ctx.save_texture(dev, 0);
 					dev->SetTexture(0, tex_addons::glass_window_lamps);
 				}
+			}
+			// glass/containerwindow_
+			else if (ctx.info.material_name.starts_with("glass/contain"))
+			{
+				ctx.save_texture(dev, 0);
+				if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[2]);
+					basemap2)
+				{
+					dev->SetTexture(0, basemap2);
+				}
+
+				// create a scaling matrix
+				D3DXMATRIX scaleMatrix;
+				D3DXMatrixScaling(&scaleMatrix, 1.0f, 29.0f, 1.0f); 
+
+				ctx.set_texture_transform(dev, &scaleMatrix);
+				ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
+				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
 			}
 			else if (ctx.info.shader_name.contains("Black")) {
 				dev->SetTexture(0, tex_addons::black_shader);
@@ -995,15 +1013,12 @@ namespace components
 
 			// transport tubes
 			// certain sprites and decals
+			// main menu bik background
 			else if (mesh->m_VertexFormat == 0x80005) // stride 0x20
 			{
 				//ctx.modifiers.do_not_render = true;
-
-				ctx.save_vs(dev);
-				dev->SetVertexShader(nullptr);
-				dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX2);
-				dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
-
+				bool mod_shader = false;
+				
 				// transport tubes
 				if (ctx.info.material_name.starts_with("eff")) 
 				{
@@ -1018,7 +1033,28 @@ namespace components
 						ctx.set_texture_transform(dev, &ret);
 						ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
 						dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
+
+						mod_shader = true;
 					}
+				}
+				// render bik using shaders
+				/*else if (ctx.info.material_name.starts_with("videobik"))
+				{
+					ctx.save_texture(dev, 0);
+
+					if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[0]);
+						basemap2)
+					{
+						dev->SetTexture(0, basemap2);
+					}
+				}*/
+
+				if (mod_shader)
+				{
+					ctx.save_vs(dev);
+					dev->SetVertexShader(nullptr);
+					dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX2);
+					dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
 				}
 			}
 
@@ -1051,7 +1087,7 @@ namespace components
 					ctx.modifiers.as_transport_beam = true;
 				}
 				else {
-					ctx.modifiers.do_not_render = true;
+					ctx.modifiers.do_not_render = true; 
 				}
 			}
 
