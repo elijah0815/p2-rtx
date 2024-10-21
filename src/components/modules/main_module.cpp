@@ -28,6 +28,7 @@ namespace components
 {
 	int player_current_node = -1;
 	int player_current_leaf = -1;
+	int player_current_area = -1;
 
 	namespace api
 	{
@@ -80,10 +81,24 @@ namespace components
 			{
 				RECT rect;
 
-				if (player_current_node != -1)
+				if (!map_settings::get_loaded_map_name().empty())
 				{
-					SetRect(&rect, 10, 100, 512, 512);
-					auto text = utils::va("Node: %d", player_current_node);
+					SetRect(&rect, 20, 100, 512, 512);
+					main_module::d3d_font->DrawTextA
+					(
+						nullptr,
+						map_settings::get_loaded_map_name().c_str(),
+						-1,       // text length (-1 = null-terminated)
+						&rect,
+						DT_NOCLIP,
+						D3DCOLOR_XRGB(255, 255, 255)
+					);
+				}
+
+				if (player_current_area != -1)
+				{
+					SetRect(&rect, 20, 125, 512, 512);
+					auto text = utils::va("Area: %d", player_current_area);
 					main_module::d3d_font->DrawTextA
 					(
 						nullptr,
@@ -91,13 +106,13 @@ namespace components
 						-1,       // text length (-1 = null-terminated)
 						&rect,
 						DT_NOCLIP,
-						D3DCOLOR_XRGB(0, 255, 255)
+						D3DCOLOR_XRGB(255, 255, 255)
 					);
 				}
 
 				if (player_current_leaf != -1)
 				{
-					SetRect(&rect, 18, 120, 512, 512);
+					SetRect(&rect, 20, 145, 512, 512);
 					auto text = utils::va("Leaf: %d", player_current_leaf);
 					main_module::d3d_font->DrawTextA
 					(
@@ -106,10 +121,24 @@ namespace components
 						-1,       // text length (-1 = null-terminated)
 						&rect,
 						DT_NOCLIP,
-						D3DCOLOR_XRGB(255, 0, 0)
+						D3DCOLOR_XRGB(50, 255, 20)
 					);
 				}
-				
+
+				//if (player_current_node != -1)
+				//{
+				//	SetRect(&rect, 10, 140, 512, 512);
+				//	auto text = utils::va("Node: %d", player_current_node);
+				//	main_module::d3d_font->DrawTextA
+				//	(
+				//		nullptr,
+				//		text,
+				//		-1,       // text length (-1 = null-terminated)
+				//		&rect,
+				//		DT_NOCLIP,
+				//		D3DCOLOR_XRGB(0, 255, 255)
+				//	);
+				//}
 			}
 		}
 
@@ -799,6 +828,7 @@ namespace components
 		// CM_LeafArea :: get current player area
 		const auto current_area = utils::hook::call<int(__cdecl)(int leafnum)>(ENGINE_BASE + 0x15ACE0)(current_leaf);
 
+		player_current_area = current_area;
 		player_current_node = -1;
 		player_current_leaf = -1;
 
@@ -848,10 +878,11 @@ namespace components
 				{
 					const auto curr_leaf = &world->leafs[leaf_index];
 					game::debug_add_text_overlay(&curr_leaf->m_vecCenter.x, 0.0f, utils::va("Leaf: %i", leaf_index));
-					main_module::debug_draw_box(curr_leaf->m_vecCenter, curr_leaf->m_vecHalfDiagonal, 2.0f, api::DEBUG_REMIX_LINE_COLOR::RED);
+					main_module::debug_draw_box(curr_leaf->m_vecCenter, curr_leaf->m_vecHalfDiagonal, 2.0f, api::DEBUG_REMIX_LINE_COLOR::GREEN);
 				}
 			}
 
+			/* // not that useful
 			// show node index as 3D text
 			if (node_index < world->numnodes)
 			{
@@ -867,6 +898,7 @@ namespace components
 					main_module::debug_draw_box(node->m_vecCenter, node->m_vecHalfDiagonal, 1.0f, api::DEBUG_REMIX_LINE_COLOR::TEAL);
 				}
 			}
+			*/
 		}
 
 

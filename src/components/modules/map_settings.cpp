@@ -8,9 +8,9 @@ namespace components
 			map_settings::load_settings();
 		}
 
-		map_settings::loaded_map_name = !map_name.empty() ? map_name : game::get_map_name();
-		utils::replace_all(map_settings::loaded_map_name, std::string("maps/"), "");		// if sp map
-		utils::replace_all(map_settings::loaded_map_name, std::string(".bsp"), "");
+		map_settings::m_loaded_map_name = !map_name.empty() ? map_name : game::get_map_name();
+		utils::replace_all(map_settings::m_loaded_map_name, std::string("maps/"), "");		// if sp map
+		utils::replace_all(map_settings::m_loaded_map_name, std::string(".bsp"), "");
 
 		if (api::m_initialized)
 		{
@@ -18,13 +18,13 @@ namespace components
 			remix_vars::get()->reset_all_modified();
 
 			// auto apply {map_name}.conf (if it exists)
-			open_and_set_var_config(map_settings::loaded_map_name + ".conf");
+			open_and_set_var_config(map_settings::m_loaded_map_name + ".conf");
 		}
 
 		// get settings for loaded map
 		for (auto& s : m_settings)
 		{
-			if (s.mapname == map_settings::loaded_map_name)
+			if (s.mapname == map_settings::m_loaded_map_name)
 			{
 				// found map settings - 
 				m_loaded_map_settings = &s;
@@ -157,6 +157,7 @@ namespace components
 
 		map_settings::clear_loaded_map_settings();
 		map_settings::m_spawned_markers = false;
+		map_settings::m_loaded_map_name = "";
 	}
 
 	bool map_settings::load_settings()

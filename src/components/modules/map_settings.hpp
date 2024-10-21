@@ -43,13 +43,15 @@ namespace components
 		};
 
 		static map_settings_s* get_loaded_map_settings() { return m_loaded_map_settings; }
+		static const std::string& get_loaded_map_name() { return m_loaded_map_name; }
 		static void clear_loaded_map_settings() { m_loaded_map_settings = nullptr; }
 		void set_settings_for_map(const std::string& map_name, bool reload_settings = false);
 		static void spawn_markers_once();
 		static void on_map_exit();
 
+
 	private:
-		static inline std::string loaded_map_name;
+		static inline std::string m_loaded_map_name;
 		static inline map_settings_s* m_loaded_map_settings = nullptr;
 		static inline std::vector<map_settings_s> m_settings;
 		static inline std::vector<std::string> m_args;
