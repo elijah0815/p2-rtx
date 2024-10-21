@@ -1230,21 +1230,22 @@ namespace components
 					//dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_TEX4); // no need to set fvf here!
 				}
 
+				/* // --- render using shaders
 				// video on intro3
-				else if (ctx.info.material_name.contains("elevator_video_lines"))
+				else if (ctx.info.material_name.contains("elevator_video_"))
 				{
 					//ctx.modifiers.do_not_render = true;
 					ctx.save_vs(dev);
-					dev->SetVertexShader(nullptr);
-					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
+					//dev->SetVertexShader(nullptr);
+					//dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 
-					/*ctx.save_texture(dev, 0);
-					if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[2]);
+					ctx.save_texture(dev, 0);
+					if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[0]);
 						basemap2)
 					{
 						dev->SetTexture(0, basemap2);
-					}*/
-				}
+					}
+				}*/
 			}
 
 			// on portal open - spark fx (center)
