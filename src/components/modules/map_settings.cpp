@@ -12,34 +12,32 @@ namespace components
 		utils::replace_all(map_settings::m_loaded_map_name, std::string("maps/"), "");		// if sp map
 		utils::replace_all(map_settings::m_loaded_map_name, std::string(".bsp"), "");
 
-		if (api::m_initialized)
+		static bool disable_map_configs = flags::has_flag("xo_disable_map_conf");
+		if (api::m_initialized && !disable_map_configs)
 		{
 			// resets all modified variables back to rtx.conf level
 			remix_vars::get()->reset_all_modified();
 
 			// auto apply {map_name}.conf (if it exists)
 			open_and_set_var_config(map_settings::m_loaded_map_name + ".conf");
-		}
 
-		// get settings for loaded map
-		for (auto& s : m_settings)
-		{
-			if (s.mapname == map_settings::m_loaded_map_name)
+			// get settings for loaded map
+			for (auto& s : m_settings)
 			{
-				// found map settings - 
-				m_loaded_map_settings = &s;
-
-				// cannot spawn markers in here - too early
-
-				if (api::m_initialized)
+				if (s.mapname == map_settings::m_loaded_map_name)
 				{
+					// found map settings - 
+					m_loaded_map_settings = &s;
+
+					// cannot spawn markers in here - too early
+
 					// apply other manually defined configs
 					for (const auto& f : s.api_var_configs) {
 						open_and_set_var_config(f);
 					}
-				}
 
-				break;
+					break;
+				}
 			}
 		}
 	}
@@ -419,6 +417,6 @@ namespace components
 
 	map_settings::map_settings()
 	{
-		game::con_add_command(&xo_mapsettings_update, "xo_mapsettings_update", xo_mapsettings_update_fn, "Reloads the map_settings.ini file");
+		game::con_add_command(&xo_mapsettings_update, "xo_mapsettings_update", xo_mapsettings_update_fn, "Reloads the map_settings.ini file + map.conf");
 	}
 }
