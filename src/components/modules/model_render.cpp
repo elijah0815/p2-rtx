@@ -8,6 +8,7 @@ namespace components
 	bool is_portalgun_viewmodel = false;
 	int	 is_rendering_paint = false;
 	int	 is_rendering_bmodel_paint = false;
+	int	 is_rendering_vgui = false;
 	bool render_with_new_stride = false;
 	std::uint32_t new_stride = 0u;
 
@@ -1049,6 +1050,58 @@ namespace components
 					// slightly increase the alpha so that the 'fog' becomes visible
 					ctx.modifiers.as_transport_beam = true;
 				}
+
+				// FIRST "UI/HUD" elem (remix injection triggers here)
+				// -> fullscreen color transitions (damage etc.) and also "enables" the crosshair
+				else if (ctx.info.shader_name.starts_with("Engine_")) // Engine_Post
+				{
+					const auto s_viewFadeColor = reinterpret_cast<Vector4D*>(CLIENT_BASE + 0x9EDAF8);
+
+					ctx.save_vs(dev);
+					dev->SetVertexShader(nullptr);
+					dev->SetPixelShader(nullptr); // needed
+
+					ctx.save_texture(dev, 0);
+					dev->SetTexture(0, nullptr); // disable bound texture
+
+					ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+					dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+
+					ctx.save_rs(dev, D3DRS_ZWRITEENABLE);
+					dev->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+
+					ctx.save_rs(dev, D3DRS_ZENABLE);
+					dev->SetRenderState(D3DRS_ZENABLE, FALSE);
+
+					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
+					dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);
+					dev->SetTransform(D3DTS_PROJECTION, &ctx.info.buffer_state.m_Transform[2]);
+
+					struct CUSTOMVERTEX
+					{
+						float x, y, z, rhw;
+						D3DCOLOR color;
+					};
+
+					auto color = D3DCOLOR_COLORVALUE(s_viewFadeColor->x, s_viewFadeColor->y, s_viewFadeColor->z, s_viewFadeColor->w);
+					const auto w = (float)ctx.info.buffer_state.m_Viewport.Width + 0.5f;
+					const auto h = (float)ctx.info.buffer_state.m_Viewport.Height + 0.5f;
+
+					CUSTOMVERTEX vertices[] =
+					{
+						{ -0.5f, -0.5f, 0.0f, 1.0f, color }, // tl
+						{     w, -0.5f, 0.0f, 1.0f, color }, // tr
+						{ -0.5f,     h, 0.0f, 1.0f, color }, // bl
+						{     w,     h, 0.0f, 1.0f, color }  // br
+					};
+
+					dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
+					dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(CUSTOMVERTEX));
+
+					// do not render the original mesh
+					ctx.modifiers.do_not_render = true;
+
+				}
 				else {
 					ctx.modifiers.do_not_render = true;
 				}
@@ -1171,12 +1224,16 @@ namespace components
 			else if (mesh->m_VertexFormat == 0x80007) 
 			{
 				//ctx.modifiers.do_not_render = true;
-				
+
+				//if (is_rendering_vgui)
+				//{ }
+
 				// always render UI and world ui with high gamma
 				ctx.modifiers.with_high_gamma = true;
 
 				if (ctx.info.material_name.contains("vgui__fontpage"))
 				{
+					// could also check if is_rendering_vgui is false?
 					// get rid of all world-rendered text as its using the same glyph as HUD elements?!
 					if (ctx.info.buffer_state.m_Transform[0].m[3][0] != 0.0f) {
 						ctx.modifiers.do_not_render = true;
@@ -2199,6 +2256,26 @@ namespace components
 	}
 
 
+
+
+	HOOK_RETN_PLACE_DEF(on_vgui_paint_retn_addr);
+	void __declspec(naked) on_vgui_paint_stub()
+	{
+		__asm
+		{
+			mov		is_rendering_vgui, 1;
+
+			// og
+			mov     edx, [eax + 0x98];
+			push    1;
+			call    edx; // render->VGui_Paint()
+
+			mov		is_rendering_vgui, 0;
+			jmp		on_vgui_paint_retn_addr;
+		}
+	}
+
+
 	model_render::model_render()
 	{
 		tbl_hk::model_renderer::_interface = utils::module_interface.get<tbl_hk::model_renderer::IVModelRender*>("engine.dll", "VEngineModel016");
@@ -2248,6 +2325,12 @@ namespace components
 		// CBrushBatchRender::DrawOpaqueBrushModel :: hook around mesh->Draw to detect paint rendering
 		utils::hook(ENGINE_BASE + 0x7231C, draw_painted_bmodel_surfaces_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(draw_painted_bmodel_surfaces_retn_addr, ENGINE_BASE + 0x72321);
+
+
+		// CViewRender::Render :: hook around IVRenderView->VGui_Paint to detect vgui drawing (not used rn)
+		utils::hook::nop(CLIENT_BASE + 0x1D17EE, 6);
+		utils::hook(CLIENT_BASE + 0x1D17EE, on_vgui_paint_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(on_vgui_paint_retn_addr, CLIENT_BASE + 0x1D17F8);
 	}
 }
 
