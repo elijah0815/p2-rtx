@@ -1091,7 +1091,8 @@ namespace components
 				// -> fullscreen color transitions (damage etc.) and also "enables" the crosshair
 				else if (ctx.info.shader_name.starts_with("Engine_")) // Engine_Post
 				{
-					const auto s_viewFadeColor = reinterpret_cast<Vector4D*>(CLIENT_BASE + 0x9EDAF8);
+					// #OFFSET - done
+					const auto s_viewFadeColor = reinterpret_cast<Vector4D*>(CLIENT_BASE + 0x9F7748);
 
 					ctx.save_vs(dev);
 					dev->SetVertexShader(nullptr);
