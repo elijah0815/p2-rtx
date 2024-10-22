@@ -1086,6 +1086,58 @@ namespace components
 					// slightly increase the alpha so that the 'fog' becomes visible
 					ctx.modifiers.as_transport_beam = true;
 				}
+
+				// FIRST "UI/HUD" elem (remix injection triggers here)
+				// -> fullscreen color transitions (damage etc.) and also "enables" the crosshair
+				else if (ctx.info.shader_name.starts_with("Engine_")) // Engine_Post
+				{
+					const auto s_viewFadeColor = reinterpret_cast<Vector4D*>(CLIENT_BASE + 0x9EDAF8);
+
+					ctx.save_vs(dev);
+					dev->SetVertexShader(nullptr);
+					dev->SetPixelShader(nullptr); // needed
+
+					ctx.save_texture(dev, 0);
+					dev->SetTexture(0, nullptr); // disable bound texture
+
+					ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+					dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+
+					ctx.save_rs(dev, D3DRS_ZWRITEENABLE);
+					dev->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+
+					ctx.save_rs(dev, D3DRS_ZENABLE);
+					dev->SetRenderState(D3DRS_ZENABLE, FALSE);
+
+					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
+					dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);
+					dev->SetTransform(D3DTS_PROJECTION, &ctx.info.buffer_state.m_Transform[2]);
+
+					struct CUSTOMVERTEX
+					{
+						float x, y, z, rhw;
+						D3DCOLOR color;
+					};
+
+					auto color = D3DCOLOR_COLORVALUE(s_viewFadeColor->x, s_viewFadeColor->y, s_viewFadeColor->z, s_viewFadeColor->w);
+					const auto w = (float)ctx.info.buffer_state.m_Viewport.Width + 0.5f;
+					const auto h = (float)ctx.info.buffer_state.m_Viewport.Height + 0.5f;
+
+					CUSTOMVERTEX vertices[] =
+					{
+						{ -0.5f, -0.5f, 0.0f, 1.0f, color }, // tl
+						{     w, -0.5f, 0.0f, 1.0f, color }, // tr
+						{ -0.5f,     h, 0.0f, 1.0f, color }, // bl
+						{     w,     h, 0.0f, 1.0f, color }  // br
+					};
+
+					dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_DIFFUSE);
+					dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertices, sizeof(CUSTOMVERTEX));
+
+					// do not render the original mesh
+					ctx.modifiers.do_not_render = true;
+
+				}
 				else {
 					ctx.modifiers.do_not_render = true; 
 				}
