@@ -138,23 +138,30 @@ namespace components
 		}
 	}
 
-	void map_settings::on_map_exit()
+	void map_settings::destroy_markers()
 	{
 		if (auto* s = map_settings::get_loaded_map_settings(); s)
 		{
 			// destroy active markers
 			for (auto& m : s->map_markers)
 			{
-				if (m.handle) 
+				if (m.handle)
 				{
 					game::cbaseentity_remove(m.handle);
 					m.handle = nullptr;
 				}
 			}
+
+			s->map_markers.clear();
 		}
 
-		map_settings::clear_loaded_map_settings();
 		map_settings::m_spawned_markers = false;
+	}
+
+	void map_settings::on_map_exit()
+	{
+		map_settings::destroy_markers();
+		map_settings::clear_loaded_map_settings();
 		map_settings::m_loaded_map_name = "";
 	}
 
@@ -287,17 +294,7 @@ namespace components
 	{
 		if (map_settings_s* s = get_or_create_settings(); s)
 		{
-			// destroy active markers first
-			for (auto& m : s->map_markers)
-			{
-				if (m.handle) 
-				{
-					game::cbaseentity_remove(m.handle);
-					m.handle = nullptr;
-				}
-			}
-
-			s->map_markers.clear();
+			destroy_markers();
 			s->map_markers.resize(100);
 
 			for (auto a = 1u; a < m_args.size(); a++)
@@ -412,6 +409,7 @@ namespace components
 
 	void xo_mapsettings_update_fn()
 	{
+		map_settings::get()->destroy_markers();
 		map_settings::get()->set_settings_for_map("", true);
 	}
 

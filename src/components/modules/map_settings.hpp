@@ -47,6 +47,7 @@ namespace components
 		static void clear_loaded_map_settings() { m_loaded_map_settings = nullptr; }
 		void set_settings_for_map(const std::string& map_name, bool reload_settings = false);
 		static void spawn_markers_once();
+		static void destroy_markers();
 		static void on_map_exit();
 
 
