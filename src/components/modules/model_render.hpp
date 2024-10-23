@@ -381,6 +381,28 @@ namespace components
 
 		static inline prim_fvf_context primctx {};
 
+#if defined(BENCHMARK)
+		struct benchmark_data
+		{
+			bool enabled = false;
+
+			float ms = 0.0f;
+			float ms_total = 0.0f;
+			std::string material_name;
+			std::uint64_t vertex_format = 0u;
+
+			void clear()
+			{
+				ms = 0.0f;
+				ms_total = 0.0f;
+				material_name = "";
+				vertex_format = 0u;
+			}
+		};
+
+		static inline benchmark_data m_benchmark = {};
+#endif
+
 		static inline remixapi_MeshHandle portal0_mdl = nullptr;
 		static inline remixapi_MaterialHandle portal0_mtl = nullptr;
 		static inline remixapi_MeshHandle portal1_mdl = nullptr;

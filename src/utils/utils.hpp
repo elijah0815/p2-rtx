@@ -82,4 +82,77 @@ namespace utils
 	float finterp_to(const float current, const float target, const float delta_time, const float interpolation_speed);
 
 	bool open_file_homepath(const std::string& sub_dir, const std::string& file_name, std::ifstream& file);
+
+
+	class benchmark
+	{
+	public:
+		benchmark() { start(); }
+		~benchmark() {
+#if defined(BENCHMARK)
+			now();
+#endif
+		}
+
+		// returns true if measured ms > arg 1
+		bool now([[maybe_unused]] float* in_out_largest_ms = nullptr)
+		{
+#if defined(BENCHMARK)
+			bool result = false;
+
+			const auto start = std::chrono::time_point_cast<std::chrono::microseconds>(m_start).time_since_epoch().count();
+			const auto end_time = std::chrono::high_resolution_clock::now();
+
+			const auto end = std::chrono::time_point_cast<std::chrono::microseconds>(end_time).time_since_epoch().count();
+			const auto ms = static_cast<float>((end - start)) * 0.001f;
+
+			if (in_out_largest_ms)
+			{
+				if (ms > *in_out_largest_ms) 
+				{
+					*in_out_largest_ms = ms;
+					result = true;
+				}
+			}
+
+			/*
+			const auto last_end = std::chrono::time_point_cast<std::chrono::microseconds>(m_last).time_since_epoch().count();
+			const auto ms_diff = static_cast<float>(end - last_end) * 0.001f;
+
+			const char* op_str = sub_operation_str ? sub_operation_str : m_operation_str ? m_operation_str : nullptr;
+			if (op_str)
+			{
+				game::printf_to_console(">> [ %.3f ms ]\t[ ~ %.3f ms ]\tfor operation [ %s ]\n", ms, ms_diff, op_str);
+			}
+			else
+			{
+				game::printf_to_console(">> [ %.3f ms ]\t[ ~ %.3f ms ]\tbenchmark end\n", ms, ms_diff);
+			}*/
+
+			m_last_ms = ms;
+			m_last = end_time;
+			return result;
+#else
+			return false;
+#endif
+		}
+
+		// returns the last measurement of now()
+		float get_ms() { return m_last_ms; }
+
+	private:
+
+		void start()
+		{
+#if defined(BENCHMARK)
+			m_start = std::chrono::high_resolution_clock::now();
+			m_last = m_start;
+#endif
+		}
+
+		//const char* m_operation_str = nullptr;
+		std::chrono::time_point<std::chrono::high_resolution_clock> m_start;
+		std::chrono::time_point<std::chrono::high_resolution_clock> m_last;
+		float m_last_ms;
+	};
 }

@@ -393,6 +393,21 @@ namespace components
 			api::remix_debug_line_amount = 0;
 		}
 
+#if defined(BENCHMARK)
+		if (model_render::m_benchmark.enabled && !model_render::m_benchmark.material_name.empty())
+		{
+			printf("[ %.3f ms ]\t vertex format [ 0x%llx ] using material [ %s ]\n", 
+				model_render::m_benchmark.ms, model_render::m_benchmark.vertex_format, model_render::m_benchmark.material_name.c_str());
+
+			const auto con = GetStdHandle(STD_OUTPUT_HANDLE);
+			SetConsoleTextAttribute(con, FOREGROUND_RED | FOREGROUND_INTENSITY);
+			printf("[ %.3f ms ]\t frame total \n\n", model_render::m_benchmark.ms_total);
+			SetConsoleTextAttribute(con, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+		}
+
+		model_render::m_benchmark.clear();
+#endif
+
 #if 0
 		{
 			main_module::bridge.DestroyMesh(model_render::portal0_mdl);
@@ -1111,6 +1126,14 @@ namespace components
 		api::remix_debug_node_vis = !api::remix_debug_node_vis;
 	}
 
+#if defined(BENCHMARK)
+	ConCommand xo_debug_toggle_benchmark_cmd{};
+	void xo_debug_toggle_benchmark_fn()
+	{
+		model_render::m_benchmark.enabled = !model_render::m_benchmark.enabled;
+	}
+#endif
+
 	// #
 	// #
 
@@ -1143,11 +1166,26 @@ namespace components
 		model_render::init_texture_addons();
 
 
+#if defined(BENCHMARK)
+		setvbuf(stdout, nullptr, _IONBF, 0);
+		if (AllocConsole())
+		{
+			FILE* file = nullptr;
+			freopen_s(&file, "CONIN$", "r", stdin);
+			freopen_s(&file, "CONOUT$", "w", stdout);
+			freopen_s(&file, "CONOUT$", "w", stderr);
+			SetConsoleTitleA("Benchmark Console");
+		}
+#endif
+
 		// #
 		// commands
 
 		game::con_add_command(&xo_debug_toggle_node_vis_cmd, "xo_debug_toggle_node_vis", xo_debug_toggle_node_vis_fn, "Toggle bsp node/leaf debug visualization using the remix api");
 
+#if defined(BENCHMARK)
+		game::con_add_command(&xo_debug_toggle_benchmark_cmd, "xo_debug_toggle_benchmark", xo_debug_toggle_benchmark_fn, "Toggle benchmark printing");
+#endif
 
 		// #
 		// events

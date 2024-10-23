@@ -581,6 +581,11 @@ namespace components
 
 	void cmeshdx8_renderpass_pre_draw(CMeshDX8* mesh, [[maybe_unused]] CPrimList* primlist)
 	{
+
+#if defined(BENCHMARK)
+		utils::benchmark bench;
+#endif
+
 		const auto dev = game::get_d3d_device();
 
 		IDirect3DVertexBuffer9* b = nullptr;
@@ -617,7 +622,7 @@ namespace components
 			// added format check
 			if (mesh->m_VertexFormat == 0x2480033 || mesh->m_VertexFormat == 0x80033) 
 			{
-				if (ctx.info.shader_name.contains("Water"))
+				if (ctx.info.shader_name.starts_with("Wat") && ctx.info.shader_name.contains("Water"))
 				{
 					IMaterialVar* var = nullptr;
 					if (has_materialvar(ctx.info.material, "$basetexture", &var))
@@ -681,10 +686,10 @@ namespace components
 			//}
 		}
 
-		if (ctx.info.material_name.starts_with("glass/contain"))
+		/*if (ctx.info.material_name.starts_with("glass/contain"))
 		{
 			int break_me = 1;
-		}
+		}*/
 
 		if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x2480033)
 		{
@@ -704,7 +709,7 @@ namespace components
 		{
 			//ctx.modifiers.do_not_render = true;
 		
-			if (ctx.info.material_name.contains("props_destruction/glass_"))
+			if (ctx.info.material_name.contains("models/props_destruction/glass_"))
 			{
 				//ctx.modifiers.do_not_render = true;
 				if (tex_addons::glass_shards)
@@ -716,7 +721,7 @@ namespace components
 				}
 			}
 			// models/player/chell/gambler_eyeball_ l/r
-			else if (ctx.info.material_name.contains("gambler_eyeball"))
+			else if (ctx.info.material_name.contains("models/player/chell/gambler_eyeball"))
 			{
 				ctx.save_texture(dev, 0);
 
@@ -745,14 +750,14 @@ namespace components
 			//ctx.modifiers.do_not_render = true;
 
 			// replace all refract shaders with wireframe (ex. glass/containerwindow_)
-			if (ctx.info.shader_name.contains("Refract_DX90") && !ctx.info.material_name.starts_with("glass/contain"))
+			if (ctx.info.shader_name.starts_with("Re") && ctx.info.shader_name.contains("Refract_DX90") && !ctx.info.material_name.starts_with("glass/contain"))
 			{
 				// I think we are simply missing basetex0 here
 				ctx.info.material->vftable->SetShader(ctx.info.material, "Wireframe");
 			}
 
 			// change observer window texture (models/props_lab/glasswindow_observation)
-			else if (ctx.info.material_name.ends_with("w_observation"))
+			else if (ctx.info.material_name.ends_with("tion") && ctx.info.material_name.ends_with("w_observation"))
 			{
 				if (tex_addons::glass_window_observ)
 				{
@@ -762,35 +767,43 @@ namespace components
 					add_light_to_texture_color_edit(0.9f, 1.3f, 1.5f, 0.05f);
 				}
 			}
-			// glass/glasswindow_ ...
-			else if (ctx.info.material_name.starts_with("glass/glassw"))
+
+			// glass
+			else if (ctx.info.material_name.starts_with("gla"))
 			{
-				if (tex_addons::glass_window_lamps)
+				// glass/glasswindow_ ...
+				if (ctx.info.material_name.starts_with("glass/glassw"))
 				{
-					//dev->GetTexture(0, &ff_model::s_texture);
+					if (tex_addons::glass_window_lamps)
+					{
+						//dev->GetTexture(0, &ff_model::s_texture);
+						ctx.save_texture(dev, 0);
+						dev->SetTexture(0, tex_addons::glass_window_lamps);
+					}
+				}
+				// glass/containerwindow_
+				else if (ctx.info.material_name.starts_with("glass/contain"))
+				{
 					ctx.save_texture(dev, 0);
-					dev->SetTexture(0, tex_addons::glass_window_lamps);
+					if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[2]);
+						basemap2)
+					{
+						dev->SetTexture(0, basemap2);
+					}
+
+					// create a scaling matrix
+					D3DXMATRIX scaleMatrix;
+					D3DXMatrixScaling(&scaleMatrix, 1.0f, 29.0f, 1.0f);
+
+					ctx.set_texture_transform(dev, &scaleMatrix);
+					ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
+					dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
 				}
 			}
-			// glass/containerwindow_
-			else if (ctx.info.material_name.starts_with("glass/contain"))
+
+			else if (ctx.info.material_name.ends_with("01") && ctx.info.material_name == "models/props_hub/glados_chamber_dest01")
 			{
 				ctx.save_texture(dev, 0);
-				if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[2]);
-					basemap2)
-				{
-					dev->SetTexture(0, basemap2);
-				}
-
-				// create a scaling matrix
-				D3DXMATRIX scaleMatrix;
-				D3DXMatrixScaling(&scaleMatrix, 1.0f, 29.0f, 1.0f); 
-
-				ctx.set_texture_transform(dev, &scaleMatrix);
-				ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
-				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
-			}
-			else if (ctx.info.shader_name.contains("Black")) {
 				dev->SetTexture(0, tex_addons::black_shader);
 			}
 
@@ -1087,8 +1100,11 @@ namespace components
 					ctx.modifiers.as_transport_beam = true;
 				}
 
+
 				// FIRST "UI/HUD" elem (remix injection triggers here)
 				// -> fullscreen color transitions (damage etc.) and also "enables" the crosshair
+				// -> takes ~ 0.8ms on a debug build
+#if !defined(BENCHMARK) // do not measure when benchmarking
 				else if (ctx.info.shader_name.starts_with("Engine_")) // Engine_Post
 				{
 					// #OFFSET - done
@@ -1139,6 +1155,7 @@ namespace components
 					ctx.modifiers.do_not_render = true;
 
 				}
+#endif
 				else {
 					ctx.modifiers.do_not_render = true; 
 				}
@@ -1265,40 +1282,44 @@ namespace components
 				// always render UI and world ui with high gamma
 				ctx.modifiers.with_high_gamma = true;
 
-				if (ctx.info.material_name.contains("vgui__fontpage"))
+				// early out if vgui_white
+				if (ctx.info.material_name != "vgui_white")
 				{
-					// get rid of all world-rendered text as its using the same glyph as HUD elements?!
-					if (ctx.info.buffer_state.m_Transform[0].m[3][0] != 0.0f) {
-						ctx.modifiers.do_not_render = true;
-					}
-				}
-				else if (ctx.info.material_name.contains("vgui_coop_progress_board")
-					  || ctx.info.material_name.contains("p2_lightboard_vgui")
-					  || ctx.info.material_name.contains("elevator_video_overlay"))
-				{
-					//ctx.modifiers.do_not_render = true;
-					ctx.save_vs(dev);
-					dev->SetVertexShader(nullptr);
-					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
-					//dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_TEX4); // no need to set fvf here!
-				}
-
-				/* // --- render using shaders
-				// video on intro3
-				else if (ctx.info.material_name.contains("elevator_video_"))
-				{
-					//ctx.modifiers.do_not_render = true;
-					ctx.save_vs(dev);
-					//dev->SetVertexShader(nullptr);
-					//dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
-
-					ctx.save_texture(dev, 0);
-					if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[0]);
-						basemap2)
+					if (ctx.info.material_name == "vgui__fontpage")
 					{
-						dev->SetTexture(0, basemap2);
+						// get rid of all world-rendered text as its using the same glyph as HUD elements?!
+						if (ctx.info.buffer_state.m_Transform[0].m[3][0] != 0.0f) {
+							ctx.modifiers.do_not_render = true;
+						}
 					}
-				}*/
+					else if (ctx.info.material_name.contains("vgui_coop_progress_board")
+						|| ctx.info.material_name.contains("p2_lightboard_vgui")
+						|| ctx.info.material_name.contains("elevator_video_overlay"))
+					{
+						//ctx.modifiers.do_not_render = true;
+						ctx.save_vs(dev);
+						dev->SetVertexShader(nullptr);
+						dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
+						//dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_TEX4); // no need to set fvf here!
+					}
+
+					/* // --- render using shaders
+					// video on intro3
+					else if (ctx.info.material_name.contains("elevator_video_"))
+					{
+						//ctx.modifiers.do_not_render = true;
+						ctx.save_vs(dev);
+						//dev->SetVertexShader(nullptr);
+						//dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
+
+						ctx.save_texture(dev, 0);
+						if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[0]);
+							basemap2)
+						{
+							dev->SetTexture(0, basemap2);
+						}
+					}*/
+				}
 			}
 
 			// on portal open - spark fx (center)
@@ -1307,6 +1328,11 @@ namespace components
 			// can be rendered but also requires vertexshader + position
 			else if (mesh->m_VertexFormat == 0x924900005) // stride 0x70 - 112
 			{
+				// #TODO - remove when floating point perc. gets better with shaders
+				if (map_settings::get_loaded_map_name() == "sp_a1_wakeup") {
+					ctx.modifiers.do_not_render = true;
+				}
+
 				//ctx.modifiers.do_not_render = true;
 
 				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
@@ -1328,7 +1354,7 @@ namespace components
 			{
 				//ctx.modifiers.do_not_render = true;
 
-				if (ctx.info.shader_name.contains("WorldVertexTransition_DX9")) {
+				if (ctx.info.shader_name == "WorldVertexTransition_DX9") {
 					ctx.modifiers.dual_render_with_basetexture2 = true;
 				}
 
@@ -1469,6 +1495,11 @@ namespace components
 				// scale the projection matrix for viewmodel particles so that they match the scaled remix viewmodel (currently set to a scale of 0.4)
 				if (ctx.info.buffer_state.m_Transform[2].m[3][2] == -1.00003529f)
 				{
+					// #TODO - remove when floating point perc. gets better with shaders
+					if (map_settings::get_loaded_map_name() == "sp_a1_wakeup") {
+						ctx.modifiers.do_not_render = true;
+					}
+
 					//ctx.modifiers.do_not_render = true;
 					D3DXMATRIX scaleMatrix = game::IDENTITY;
 					scaleMatrix.m[0][0] = scaleMatrix.m[1][1] = scaleMatrix.m[2][2] = 2.5f;
@@ -1664,6 +1695,16 @@ namespace components
 			int break_me = 1;
 #endif
 		}
+
+#if defined(BENCHMARK)
+		if (bench.now(&model_render::m_benchmark.ms)) 
+		{
+			model_render::m_benchmark.material_name = ctx.info.material_name;
+			model_render::m_benchmark.vertex_format = mesh ? mesh->m_VertexFormat : 0xDEADBEEF;
+		}
+
+		model_render::m_benchmark.ms_total += bench.get_ms();
+#endif
 	}
 
 	HOOK_RETN_PLACE_DEF(cmeshdx8_renderpass_pre_draw_retn_addr);
