@@ -1,0 +1,5 @@
+"UnlitGeneric"
+{
+	"$basetexture" "models/sabotage/glass01_normal"
+    $surfaceprop default
+}
