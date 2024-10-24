@@ -1041,12 +1041,12 @@ namespace components
 			else if (mesh->m_VertexFormat == 0x80005) // stride 0x20
 			{
 				//ctx.modifiers.do_not_render = true;
-				bool mod_shader = false;
+				bool mod_shader = true;
 				
 				// transport tubes
 				if (ctx.info.material_name.starts_with("eff")) 
 				{
-					if (ctx.info.material_name.contains("tractor_beam"))
+					if (ctx.info.material_name.contains("tractor_beam")) 
 					{
 						D3DXMATRIX ret = {};
 						dev->GetTransform(D3DTS_TEXTURE0, &ret);
@@ -1057,21 +1057,12 @@ namespace components
 						ctx.set_texture_transform(dev, &ret);
 						ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
 						dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
-
-						mod_shader = true;
 					}
 				}
 				// render bik using shaders
-				/*else if (ctx.info.material_name.starts_with("videobik"))
-				{
-					ctx.save_texture(dev, 0);
-
-					if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[0]);
-						basemap2)
-					{
-						dev->SetTexture(0, basemap2);
-					}
-				}*/
+				else if (ctx.info.material_name.starts_with("videobik")) {
+					mod_shader = false;
+				}
 
 				if (mod_shader)
 				{
