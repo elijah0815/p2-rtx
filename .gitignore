@@ -57,6 +57,7 @@ Temporary Items
 *.opensdf
 *.pdb
 *.suo
+*.zip
 
 # Additional stuff
 build
