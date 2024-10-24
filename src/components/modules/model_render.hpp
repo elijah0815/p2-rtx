@@ -319,7 +319,7 @@ namespace components
 				do_not_render = false;
 				with_high_gamma = false;
 				as_sky = false;
-				as_water = true;
+				as_water = false;
 				as_transport_beam = false;
 				dual_render_with_basetexture2 = false;
 				dual_render_with_specified_texture = false;

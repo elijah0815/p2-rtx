@@ -1014,6 +1014,17 @@ namespace components
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3); // tc @ 24
 				dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
 
+				// scale water uv's
+				if (ctx.modifiers.as_water)
+				{
+					// create a scaling matrix
+					D3DXMATRIX scaleMatrix;
+					D3DXMatrixScaling(&scaleMatrix, 1.5f, 1.5f, 1.0f);
+
+					ctx.set_texture_transform(dev, &scaleMatrix); 
+					ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
+					dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
+				}
 
 				// painted surfaces use the 2nd and 3rd set of texcoords (lightmap coords)
 				// -> so we need to edit the vertex buffer for each and every surface
