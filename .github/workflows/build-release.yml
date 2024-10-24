@@ -1,4 +1,4 @@
-name: Build-Debug
+name: Build-Release
 
 on:
   workflow_dispatch: {}
@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         configuration:
-          - Debug
+          - Release
 
     steps:
       - name: Wait for previous workflows
@@ -40,13 +40,17 @@ jobs:
       - name: Set up problem matching
         uses: ammaraskar/msvc-problem-matcher@master
 
-      - name: Build ${{matrix.configuration}}-binaries-bf2-rtx
-        run: msbuild /m /v:minimal /p:Configuration=${{matrix.configuration}} /p:Platform=Win32 build/bf2-rtx.sln
+      - name: Build ${{matrix.configuration}}-binaries-p2-rtx
+        run: msbuild /m /v:minimal /p:Configuration=${{matrix.configuration}} /p:Platform=Win32 build/p2-rtx.sln
 
-      - name: Upload ${{matrix.configuration}}-binaries-bf2-rtx
-        uses: actions/upload-artifact@v2
+      - name: Move build files 
+        run: |
+          move build/bin/${{matrix.configuration}}/_rtx.asi ./assets/bin/
+          move build/bin/${{matrix.configuration}}/p2-rtx.pdb ./assets/bin/
+
+      - name: Upload ${{matrix.configuration}}-binaries-p2-rtx
+        uses: actions/upload-artifact@v3
         with:
-          name: ${{matrix.configuration}}-binaries-bf2-rtx
+          name: ${{matrix.configuration}}-binaries-p2-rtx
           path: |
-            build/bin/${{matrix.configuration}}/bf2rtx.asi
-            build/bin/${{matrix.configuration}}/bf2rtx.pdb
+            ./assets/
