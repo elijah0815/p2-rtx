@@ -9,6 +9,7 @@ namespace game
 	DWORD engine_module = 0u;
 	DWORD client_module = 0u;
 	DWORD server_module = 0u;
+	DWORD vstdlib_module = 0u;
 
 	const D3DXMATRIX IDENTITY =
 	{
@@ -77,4 +78,27 @@ namespace game
 		return utils::hook::call<const char*(__cdecl)()>(CLIENT_BASE + 0x1F4040)();
 	}
 
+	void cvar_uncheat_and_set_int(const char* name, const int val)
+	{
+		if (const auto ivar = game::get_icvar(); ivar)
+		{
+			if (auto var = ivar->vftable->FindVar(ivar, name); var)
+			{
+				var->vtbl->SetValue_Int(var, val);
+				var->m_nFlags &= ~0x4000;
+			}
+		}
+	}
+
+	void cvar_uncheat_and_set_float(const char* name, const float val)
+	{
+		if (const auto ivar = game::get_icvar(); ivar)
+		{
+			if (auto var = ivar->vftable->FindVar(ivar, name); var)
+			{
+				var->vtbl->SetValue_Float(var, val);
+				var->m_nFlags &= ~0x4000;
+			}
+		}
+	}
 }

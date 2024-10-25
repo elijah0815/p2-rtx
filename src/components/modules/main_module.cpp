@@ -1199,6 +1199,41 @@ namespace components
 		}
 #endif
 
+
+		// #
+		// force / uncheat cvars
+
+		game::cvar_uncheat_and_set_int("r_PortalTestEnts", 0);
+		game::cvar_uncheat_and_set_int("portal_ghosts_disable", 0);
+		game::cvar_uncheat_and_set_int("r_portal_earlyz", 0);
+		game::cvar_uncheat_and_set_int("r_portal_use_complex_frustums", 0);
+		game::cvar_uncheat_and_set_int("r_portal_use_pvs_optimization", 0);
+		game::cvar_uncheat_and_set_int("r_portalstencildisable", 1);
+		game::cvar_uncheat_and_set_int("r_portal_stencil_depth", 0);
+		game::cvar_uncheat_and_set_int("portal_draw_ghosting", 0);
+		game::cvar_uncheat_and_set_int("r_staticprop_lod", 0);
+		game::cvar_uncheat_and_set_int("r_lod", 0);
+		game::cvar_uncheat_and_set_int("r_threaded_particles", 0);
+		game::cvar_uncheat_and_set_int("r_entityclips", 0);
+		game::cvar_uncheat_and_set_int("cl_brushfastpath", 0);
+		game::cvar_uncheat_and_set_int("cl_tlucfastpath", 0);
+		game::cvar_uncheat_and_set_int("cl_modelfastpath", 0);
+		game::cvar_uncheat_and_set_int("mat_queue_mode", 0);
+		game::cvar_uncheat_and_set_int("mat_softwarelighting", 0);
+		game::cvar_uncheat_and_set_int("mat_parallaxmap", 0);
+		game::cvar_uncheat_and_set_int("mat_frame_sync_enable", 0);
+		game::cvar_uncheat_and_set_int("mat_dof_enabled", 0);
+		game::cvar_uncheat_and_set_int("mat_displacementmap", 0);
+		game::cvar_uncheat_and_set_int("mat_drawflat", 0);
+		game::cvar_uncheat_and_set_int("mat_normalmaps", 0);
+		game::cvar_uncheat_and_set_int("r_3dsky", 0);
+		
+		game::cvar_uncheat_and_set_int("mat_fullbright", 1);
+		game::cvar_uncheat_and_set_int("mat_softwareskin", 1);
+		game::cvar_uncheat_and_set_int("mat_phong", 1);
+		game::cvar_uncheat_and_set_int("mat_fastnobump", 1);
+		game::cvar_uncheat_and_set_int("mat_disable_bloom", 1);
+
 		// #
 		// commands
 
