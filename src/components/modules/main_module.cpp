@@ -1227,12 +1227,39 @@ namespace components
 		game::cvar_uncheat_and_set_int("mat_drawflat", 0);
 		game::cvar_uncheat_and_set_int("mat_normalmaps", 0);
 		game::cvar_uncheat_and_set_int("r_3dsky", 0);
-		
 		game::cvar_uncheat_and_set_int("mat_fullbright", 1);
 		game::cvar_uncheat_and_set_int("mat_softwareskin", 1);
 		game::cvar_uncheat_and_set_int("mat_phong", 1);
 		game::cvar_uncheat_and_set_int("mat_fastnobump", 1);
 		game::cvar_uncheat_and_set_int("mat_disable_bloom", 1);
+
+		// graphic settings
+
+		// lvl 0
+		game::cvar_uncheat_and_set_int("cl_particle_fallback_base", 3); // 0 = render portalgun viewmodel effects
+		game::cvar_uncheat_and_set_int("cl_particle_fallback_multiplier", 2);
+		game::cvar_uncheat_and_set_int("cl_footstep_fx", 0); // ?
+		game::cvar_uncheat_and_set_int("cl_impacteffects_limit_general", 10);
+		game::cvar_uncheat_and_set_int("cl_impacteffects_limit_exit", 3);
+		game::cvar_uncheat_and_set_int("cl_impacteffects_limit_water", 2);
+		game::cvar_uncheat_and_set_int("mat_depthfeather_enable", 0);
+		game::cvar_uncheat_and_set_int("mat_force_vertexfog", 1);
+		game::cvar_uncheat_and_set_int("r_lod_switch_scale", 1);
+		game::cvar_uncheat_and_set_int("cl_detaildist", 1024);
+		game::cvar_uncheat_and_set_int("cl_detailfade", 400);
+		game::cvar_uncheat_and_set_int("r_drawmodeldecals", 1);
+		game::cvar_uncheat_and_set_int("r_decalstaticprops", 1);
+		game::cvar_uncheat_and_set_int("cl_player_max_decal_count", 32);
+		game::cvar_uncheat_and_set_int("r_paintblob_force_single_pass", 1);
+		game::cvar_uncheat_and_set_int("r_paintblob_max_number_of_threads", 1);
+		game::cvar_uncheat_and_set_float("r_paintblob_highres_cube", 1.0);
+
+		// lvl 3
+		game::cvar_uncheat_and_set_int("cl_detaildist", 1024);
+		game::cvar_uncheat_and_set_int("cl_detailfade", 400);
+		game::cvar_uncheat_and_set_int("r_decals", 2048);
+		game::cvar_uncheat_and_set_int("r_decal_overlap_count", 3);
+
 
 		// #
 		// commands
