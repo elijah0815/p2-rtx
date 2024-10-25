@@ -3,7 +3,7 @@
 // + dxlevel 100 required
 
 // commandline args:
-// -novid -height 1060 -disable_d3d9_hacks -limitvsconst -softparticlesdefaultoff -disallowhwmorph -no_compressed_verts +sv_cheats 1 +r_PortalTestEnts 0 +portal_ghosts_disable 0 +r_portal_earlyz 0 +r_portal_use_complex_frustums 0 +r_portal_use_pvs_optimization 0 +r_portalstencildisable 0 +r_portal_stencil_depth 0 +portal_draw_ghosting 0 +r_staticprop_lod 0 +r_lod 0 +r_threaded_particles 0 +r_entityclips 0 +cl_brushfastpath 0 +cl_tlucfastpath 0 +cl_modelfastpath 0 +mat_fullbright 1 +mat_queue_mode 0 +mat_softwarelighting 0 +mat_softwareskin 1 +mat_phong 1 +mat_parallaxmap 0 +mat_frame_sync_enable 0 +mat_fastnobump 1 +mat_disable_bloom 1 +mat_dof_enabled 0 +mat_displacementmap 0 +mat_drawflat 0 +mat_normalmaps 0 +mat_normals 0
+// -novid -height 1060 -disable_d3d9_hacks -limitvsconst -softparticlesdefaultoff -disallowhwmorph -no_compressed_verts +sv_cheats 1 +developer 1 +r_ShowViewerArea 1 +cl_showpos 1 +r_PortalTestEnts 0 +portal_ghosts_disable 0 +r_portal_earlyz 0 +r_portal_use_complex_frustums 0 +r_portal_use_pvs_optimization 0 +r_portalstencildisable 1 +r_portal_stencil_depth 0 +portal_draw_ghosting 0 +r_staticprop_lod 0 +r_lod 0 +r_threaded_particles 0 +r_entityclips 0 +cl_brushfastpath 0 +cl_tlucfastpath 0 +cl_modelfastpath 0 +mat_fullbright 1 +mat_queue_mode 0 +mat_softwarelighting 0 +mat_softwareskin 1 +mat_phong 1 +mat_parallaxmap 0 +mat_frame_sync_enable 0 +mat_fastnobump 1 +mat_disable_bloom 1 +mat_dof_enabled 0 +mat_displacementmap 0 +mat_drawflat 0 +mat_normalmaps 0 +mat_normals 0 +r_3dsky 0 +sv_lan 1 +map sp_a1_wakeup
 
 // *** Required cvars
 // r_PortalTestEnts					:: 0 = needed for anti culling of entities
@@ -1404,6 +1404,17 @@ namespace components
 		utils::hook::nop(CLIENT_BASE + 0x287B1D, 2);
 		utils::hook::nop(CLIENT_BASE + 0x287B28 + 5, 1);
 		utils::hook::set<DWORD>(CLIENT_BASE + 0x287B28, 0x00015CE9); // 0F85 5B01 0000 to E9 5C 01 00 00 + 1 nop
+
+
+		// #
+		// General fixes
+
+		// #OFFSET - done
+		// Fix quicksave crashing - game tries to take a screenshot for the save file but thats not working with remix
+		// - this disables the 'RenderView' call in 'CViewRender::WriteSaveGameScreenshotOfSize'
+		utils::hook::nop(CLIENT_BASE + 0x1D6669, 4);
+		utils::hook::nop(CLIENT_BASE + 0x1D6675, 2);
+		utils::hook::nop(CLIENT_BASE + 0x1D6679, 2);
 	}
 
 	main_module::~main_module()
