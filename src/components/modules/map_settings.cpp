@@ -188,6 +188,12 @@ namespace components
 					continue;
 				}
 
+				if (input.starts_with("#FOG"))
+				{
+					parse_mode = FOG;
+					continue;
+				}
+
 				if (input.starts_with("#CULL"))
 				{
 					parse_mode = CULL;
@@ -211,6 +217,9 @@ namespace components
 
 				switch (parse_mode)
 				{
+				case FOG:
+					parse_fog();
+					break;
 				case CULL:
 					parse_culling();
 					break;
@@ -243,6 +252,20 @@ namespace components
 		// create defaults if not
 		m_settings.push_back(map_settings_s(parse_mode ? m_args[0] : map_name));
 		return &m_settings.back();
+	}
+
+	void map_settings::parse_fog()
+	{
+		if (map_settings_s* s = get_or_create_settings(); s)
+		{
+			s->fog_dist = utils::try_stof(m_args[1], 0.0f);
+			s->fog_color = D3DCOLOR_XRGB
+			(
+				utils::try_stoi(m_args[2], 255),
+				utils::try_stoi(m_args[3], 255),
+				utils::try_stoi(m_args[4], 255)
+			);
+		}
 	}
 
 	void map_settings::parse_culling()

@@ -1109,6 +1109,9 @@ namespace components
 #if !defined(BENCHMARK) // do not measure when benchmarking
 				else if (ctx.info.shader_name.starts_with("Engine_")) // Engine_Post
 				{
+					// do not fog HUD elements :D
+					dev->SetRenderState(D3DRS_FOGENABLE, FALSE);
+
 					// #OFFSET - done
 					const auto s_viewFadeColor = reinterpret_cast<Vector4D*>(CLIENT_BASE + 0x9F7748);
 

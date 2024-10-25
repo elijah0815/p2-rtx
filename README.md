@@ -50,6 +50,7 @@ for GEL rendering (`bin/.trex/d3d9.dll`)
 
 #### ⚠️ Current issues:
 - Most effects are rendered using shaders. Remix has a floating point precision issue when it comes to shaders. Effects get glitchy the further away you are from the map center. Performance is not the best either (as I had do do some dirty hacks to get them to render).
+- ^ Disabled the portal gun viewmodel effects on sp_a1_wakeup because of that
 
 <br>
 
@@ -108,6 +109,16 @@ This will always force __leaf 449 & 452__ to be visible if you are in __area 4__
 - Add `your_mapname.conf` to `root/portal2-rtx/map_configs/` which includes all the remix variables you want to change when loading the map. This file will be loaded automatically if it exists.
 - You can chain additional config files found in the __map_configs__ folder by adding the map name under `#API_CONFIGVARS` followed by a comma + the `NAME.conf`
 - EG: `sp_a1_intro1, chromatic.conf`
+
+<br>
+
+> #### Making changes to the rtx.conf
+- If you intent to tweak remix runtime settings (eg. mark textures) and want to save them afterwards, __make sure__ to use cmd's:
+ `xo_vars_reset_all_options` and `xo_vars_parse_options` to restore all runtime settings  
+(so they match the rtx.conf settings on disk).
+- Why is this important? The map settings logic will tweak remix variables. If you save the runtime settings without resetting them first, you'll overwrite the rtx.conf settings with the per map settings.
+- You might want to start the game with the `-xo_disable_map_conf` commandline argument if you intend to, eg. tag a whole bunch of textures in a single session. This will disable map setting config loading.
+
 
 <br>
 

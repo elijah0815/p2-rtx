@@ -16,6 +16,7 @@ namespace components
 
 		enum PARSE_MODE : std::uint32_t
 		{
+			FOG,
 			CULL,
 			MARKER,
 			API_VARS
@@ -37,6 +38,8 @@ namespace components
 		struct map_settings_s
 		{
 			std::string	mapname;
+			float fog_dist = 0.0f;
+			DWORD fog_color = 0xFFFFFFFF;
 			std::unordered_map<std::uint32_t, std::unordered_set<std::uint32_t>> area_settings;
 			std::vector<marker_settings_s> map_markers;
 			std::vector<std::string> api_var_configs;
@@ -60,6 +63,8 @@ namespace components
 
 		bool load_settings();
 		map_settings_s* get_or_create_settings(bool parse_mode = true, const char* map_name = nullptr);
+
+		void parse_fog();
 		void parse_culling();
 		void parse_markers();
 		void open_and_set_var_config(const std::string& config, bool ignore_hashes = false, const char* custom_path = nullptr);

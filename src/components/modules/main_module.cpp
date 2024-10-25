@@ -331,10 +331,31 @@ namespace components
 
 	void once_per_frame_cb()
 	{
+		const auto dev = game::get_d3d_device();
+
 		remix_vars::on_client_frame();
 
 		// TODO - find better spot to call this
 		map_settings::spawn_markers_once();
+
+		// fog
+		if (static bool allow_fog = !flags::has_flag("no_fog"); allow_fog)
+		{
+			const auto s = map_settings::get_loaded_map_settings();
+			if (s && s->fog_dist > 0.0f)
+			{
+				const float fog_start = 1.0f; // not useful
+				dev->SetRenderState(D3DRS_FOGENABLE, TRUE);
+				dev->SetRenderState(D3DRS_FOGVERTEXMODE, D3DFOG_LINEAR);
+				dev->SetRenderState(D3DRS_FOGSTART, *(DWORD*)&fog_start);
+				dev->SetRenderState(D3DRS_FOGEND, *(DWORD*)&s->fog_dist);
+				dev->SetRenderState(D3DRS_FOGCOLOR, s->fog_color);
+			}
+			else
+			{
+				dev->SetRenderState(D3DRS_FOGENABLE, FALSE);
+			}
+		}
 
 		if (!api::remix_debug_line_materials[0])
 		{
