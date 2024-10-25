@@ -1203,6 +1203,8 @@ namespace components
 		// #
 		// force / uncheat cvars
 
+		// Note: Cvars displayed in the console do not match these for some reason
+
 		game::cvar_uncheat_and_set_int("r_PortalTestEnts", 0);
 		game::cvar_uncheat_and_set_int("portal_ghosts_disable", 0);
 		game::cvar_uncheat_and_set_int("r_portal_earlyz", 0);

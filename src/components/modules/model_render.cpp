@@ -1160,9 +1160,18 @@ namespace components
 					ctx.modifiers.do_not_render = true;
 				}
 #endif
-				else {
-					ctx.modifiers.do_not_render = true; 
-				}
+				//else 
+				//{
+					//ctx.modifiers.do_not_render = true; 
+					// Eye of Glados is rendered here (using shaders) via one of these:
+					// dev/blurfilterx_nohdr
+					// dev/blurfiltery_nohdr
+					// dev/fade_blur
+					// engine/writez
+					// engine/occlusionproxy
+					// dev/lumcompare
+					// dev/downsample
+				//}
 			}
 
 			// lasers - indicator dots - some of the white light stripes
@@ -1510,13 +1519,17 @@ namespace components
 						}
 					}
 
+#if 0				// Disabled as we do not show the portal gun viewmodel effects
+					// - maybe needed when shaders are no longer affected by floating point imprecision
 					//ctx.modifiers.do_not_render = true;
 					D3DXMATRIX scaleMatrix = game::IDENTITY;
 					scaleMatrix.m[0][0] = scaleMatrix.m[1][1] = scaleMatrix.m[2][2] = 2.5f;
 					scaleMatrix.m[3][3] = 1.0;
 
-					ctx.info.buffer_state.m_Transform[2] = scaleMatrix * ctx.info.buffer_state.m_Transform[2]; 
+					ctx.info.buffer_state.m_Transform[2] = scaleMatrix * ctx.info.buffer_state.m_Transform[2];
+#endif
 				}
+
 
 				//ctx.save_vs(dev);
 				//dev->SetVertexShader(nullptr);
