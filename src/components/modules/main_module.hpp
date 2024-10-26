@@ -35,6 +35,7 @@ namespace components
 		static inline LPD3DXFONT d3d_font = nullptr;
 
 		static void debug_draw_box(const VectorAligned& center, const VectorAligned& half_diagonal, const float width, const api::DEBUG_REMIX_LINE_COLOR& color);
+		static void setup_required_cvars();
 
 	private:
 	};

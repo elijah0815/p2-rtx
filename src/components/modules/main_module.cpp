@@ -335,6 +335,9 @@ namespace components
 
 		remix_vars::on_client_frame();
 
+		// force cvars per frame just to make sure
+		main_module::setup_required_cvars();
+
 		// TODO - find better spot to call this
 		map_settings::spawn_markers_once();
 
@@ -606,6 +609,28 @@ namespace components
 		}
 	}
 
+#if 0
+	void on_cl_init_hk()
+	{
+		main_module::setup_required_cvars();
+	}
+
+	__declspec(naked) void on_cl_init_stub()
+	{
+		__asm
+		{
+			pushad;
+			call	on_cl_init_hk;
+			popad;
+
+			// og
+			mov     esp, ebp;
+			pop     ebp;
+			retn;
+		}
+	}
+#endif
+
 	// #
 	// #
 
@@ -617,6 +642,7 @@ namespace components
 	{
 		remix_vars::on_map_load();
 		map_settings::on_map_load(map_name);
+		main_module::setup_required_cvars();
 
 		// reset portal vars
 		model_render::portal1_ptr = nullptr;
@@ -1158,52 +1184,12 @@ namespace components
 	// #
 	// #
 
-	main_module::main_module()
+	void main_module::setup_required_cvars()
 	{
-		api::init();
-
-		{ // init d3d font
-			D3DXFONT_DESC desc =
-			{
-				18,                  // Height
-				0,                   // Width (0 = default)
-				FW_NORMAL,           // Weight (FW_BOLD, FW_LIGHT, etc.)
-				1,                   // Mip levels
-				FALSE,               // Italic
-				DEFAULT_CHARSET,     // Charset
-				OUT_DEFAULT_PRECIS,  // Output Precision
-				CLIP_DEFAULT_PRECIS, // Clipping Precision
-				DEFAULT_PITCH,       // Pitch and Family
-				TEXT("Arial")        // Typeface
-			};
-
-			D3DXCreateFontIndirect(game::get_d3d_device(), &desc, &d3d_font);
-		}
-
-		// parse rtx.conf once
-		remix_vars::parse_rtx_options();
-
-		// init addon textures
-		model_render::init_texture_addons();
-
-
-#if defined(BENCHMARK)
-		setvbuf(stdout, nullptr, _IONBF, 0);
-		if (AllocConsole())
-		{
-			FILE* file = nullptr;
-			freopen_s(&file, "CONIN$", "r", stdin);
-			freopen_s(&file, "CONOUT$", "w", stdout);
-			freopen_s(&file, "CONOUT$", "w", stderr);
-			SetConsoleTitleA("Benchmark Console");
-		}
-#endif
-
-
 		// #
 		// force / uncheat cvars
 
-		// Note: Cvars displayed in the console do not match these for some reason
+		//utils::benchmark bench;
 
 		game::cvar_uncheat_and_set_int("r_PortalTestEnts", 0);
 		game::cvar_uncheat_and_set_int("portal_ghosts_disable", 0);
@@ -1240,12 +1226,12 @@ namespace components
 		// lvl 0
 		game::cvar_uncheat_and_set_int("cl_particle_fallback_base", 3); // 0 = render portalgun viewmodel effects
 		game::cvar_uncheat_and_set_int("cl_particle_fallback_multiplier", 2);
-		game::cvar_uncheat_and_set_int("cl_footstep_fx", 0); // ?
+		//game::cvar_uncheat_and_set_int("cl_footstep_fx", 0); // does not exist
 		game::cvar_uncheat_and_set_int("cl_impacteffects_limit_general", 10);
 		game::cvar_uncheat_and_set_int("cl_impacteffects_limit_exit", 3);
 		game::cvar_uncheat_and_set_int("cl_impacteffects_limit_water", 2);
 		game::cvar_uncheat_and_set_int("mat_depthfeather_enable", 0);
-		game::cvar_uncheat_and_set_int("mat_force_vertexfog", 1);
+		game::cvar_uncheat_and_set_int("mat_force_vertexfog", 1); // does not exist
 		game::cvar_uncheat_and_set_int("r_lod_switch_scale", 1);
 		game::cvar_uncheat_and_set_int("cl_detaildist", 1024);
 		game::cvar_uncheat_and_set_int("cl_detailfade", 400);
@@ -1262,6 +1248,53 @@ namespace components
 		game::cvar_uncheat_and_set_int("r_decals", 2048);
 		game::cvar_uncheat_and_set_int("r_decal_overlap_count", 3);
 
+		//float ms = 0.0f;
+		//bench.now(&ms);
+		//printf("[ %.3f ms ]\n", ms);
+	}
+
+	main_module::main_module()
+	{
+		api::init();
+
+		{ // init d3d font
+			D3DXFONT_DESC desc =
+			{
+				18,                  // Height
+				0,                   // Width (0 = default)
+				FW_NORMAL,           // Weight (FW_BOLD, FW_LIGHT, etc.)
+				1,                   // Mip levels
+				FALSE,               // Italic
+				DEFAULT_CHARSET,     // Charset
+				OUT_DEFAULT_PRECIS,  // Output Precision
+				CLIP_DEFAULT_PRECIS, // Clipping Precision
+				DEFAULT_PITCH,       // Pitch and Family
+				TEXT("Arial")        // Typeface
+			};
+
+			D3DXCreateFontIndirect(game::get_d3d_device(), &desc, &d3d_font);
+		}
+
+		// parse rtx.conf once
+		remix_vars::parse_rtx_options();
+
+		// init addon textures
+		model_render::init_texture_addons();
+
+		// force cvars on init (too late as we init after CL_Init)
+		main_module::setup_required_cvars();
+
+#if defined(BENCHMARK)
+		setvbuf(stdout, nullptr, _IONBF, 0);
+		if (AllocConsole())
+		{
+			FILE* file = nullptr;
+			freopen_s(&file, "CONIN$", "r", stdin);
+			freopen_s(&file, "CONOUT$", "w", stdout);
+			freopen_s(&file, "CONOUT$", "w", stderr);
+			SetConsoleTitleA("Benchmark Console");
+		}
+#endif
 
 		// #
 		// commands
@@ -1295,6 +1328,10 @@ namespace components
 		// CViewRender::DrawOneMonitor
 		utils::hook(CLIENT_BASE + 0x1EE8F4, cviewrenderer_drawonemonitor_stub).install()->quick();
 		HOOK_RETN_PLACE(cviewrenderer_drawonemonitor_retn, CLIENT_BASE + 0x1EE8F9);
+
+		// #OFFSET - done
+		// CL_Init :: Unused as asi injection happens after CL_Init
+		//utils::hook(ENGINE_BASE + 0x975E7, on_cl_init_stub).install()->quick();
 
 		// #
 		// culling

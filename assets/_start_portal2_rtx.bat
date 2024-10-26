@@ -1,1 +1,1 @@
-start /b portal2.exe -novid -disable_d3d9_hacks -limitvsconst -softparticlesdefaultoff -disallowhwmorph -no_compressed_verts
+start /b portal2.exe -novid -disable_d3d9_hacks -limitvsconst -softparticlesdefaultoff -disallowhwmorph -no_compressed_verts +mat_phong 1
