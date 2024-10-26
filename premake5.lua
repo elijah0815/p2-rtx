@@ -221,7 +221,8 @@ workspace "p2-rtx"
 	
     configurations { 
         "Debug", 
-        "Release" 
+        "Release",
+		"Dev" 
     }
 
 	platforms "Win32"
@@ -248,15 +249,24 @@ workspace "p2-rtx"
     }
 
     filter "platforms:Win*"
-		defines {"_WINDOWS", "WIN32"}
+		defines {
+			"_WINDOWS", 
+			"WIN32"
+		}
 	filter {}
 
 	-- Release
 
 	filter "configurations:Release"
 		optimize "Full"
-		buildoptions {"/GL"}
-		defines {"NDEBUG"}
+
+		buildoptions {
+			"/GL"
+		}
+
+		defines {
+			"NDEBUG"
+		}
 		
 		flags { 
             "MultiProcessorCompile", 
@@ -281,6 +291,26 @@ workspace "p2-rtx"
             "No64BitChecks" 
         }
 	filter {}
+
+	local is_dev_build = false
+
+	filter "configurations:Dev"
+		optimize "Debug"
+		
+		is_dev_build = true
+
+		defines { 
+			"DEBUG", 
+			"_DEBUG",
+			"DEV_BUILD"
+		}
+	
+		flags { 
+			"MultiProcessorCompile", 
+			"No64BitChecks" 
+		}
+	filter {}
+
 
 	-- Project
 
@@ -314,18 +344,33 @@ workspace "p2-rtx"
             "/Zm100 -Zm100" 
         }
 
-		if(os.getenv("PORTAL2_ROOT")) then
-			print ("Setup paths using environment variable 'PORTAL2_ROOT' :: '" .. os.getenv("PORTAL2_ROOT") .. "'")
-			targetdir(os.getenv("PORTAL2_ROOT") .. "/" .. "bin")
-			debugdir (os.getenv("PORTAL2_ROOT"))
-			debugcommand (os.getenv("PORTAL2_ROOT") .. "/" .. "portal2.exe")
-		end
+		debugargs { "-novid -disable_d3d9_hacks -limitvsconst -disallowhwmorph -softparticlesdefaultoff -no_compressed_verts +mat_phong 1" }
 
+		filter "configurations:Debug or configurations:Release"
+			if(os.getenv("PORTAL2_ROOT")) then
+				print ("Setup paths using environment variable 'PORTAL2_ROOT' :: '" .. os.getenv("PORTAL2_ROOT") .. "'")
+				targetdir(os.getenv("PORTAL2_ROOT") .. "/" .. "bin")
+				debugdir (os.getenv("PORTAL2_ROOT"))
+				debugcommand (os.getenv("PORTAL2_ROOT") .. "/" .. "portal2.exe")
+			end
+		filter {}
+
+		filter "configurations:Dev"
+			if(os.getenv("PORTAL2_SEC_ROOT")) then
+				print ("Setup paths using environment variable 'PORTAL2_SEC_ROOT' :: '" .. os.getenv("PORTAL2_SEC_ROOT") .. "'")
+				targetdir(os.getenv("PORTAL2_SEC_ROOT") .. "/" .. "bin")
+				debugdir (os.getenv("PORTAL2_SEC_ROOT"))
+				debugcommand (os.getenv("PORTAL2_SEC_ROOT") .. "/" .. "portal2.exe")
+			end
+		filter {}
+		
         -- Specific configurations
-		flags { "UndefinedIdentifiers" }
+		flags { 
+			"UndefinedIdentifiers" 
+		}
+
 		warnings "Extra"
 
-		
 		-- Pre-build
 		prebuildcommands {
 			"pushd %{_MAIN_SCRIPT_DIR}",
@@ -344,4 +389,5 @@ workspace "p2-rtx"
 
         group "Dependencies"
             dependencies.projects()
+		group ""
 

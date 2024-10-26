@@ -7,6 +7,15 @@
 // enable/disable benchmark logic
 //#define BENCHMARK
 
+#if defined(DEV_BUILD)
+	inline constexpr bool IS_LATEST_BUILD = false;
+#else
+	inline constexpr bool IS_LATEST_BUILD = true;
+#endif
+
+#define USE_OFFSET(LATEST, OTHER) \
+	(IS_LATEST_BUILD ? (LATEST) : (OTHER))
+
 // Version number
 #include <version.hpp>
 

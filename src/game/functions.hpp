@@ -37,13 +37,12 @@ namespace game
 	extern void cvar_uncheat_and_set_float(const char* name, const float val);
 
 	// CRender gRender
-	inline components::CRender* get_engine_renderer() { return reinterpret_cast<components::CRender*>(ENGINE_BASE + 0x615100); } // #OFFSET - done
-	inline IDirect3DDevice9* get_d3d_device() { return reinterpret_cast<IDirect3DDevice9*>(*(DWORD*)(RENDERER_BASE + 0xDA5D8)); } // #OFFSET - done
-	inline components::IShaderAPIDX8* get_shaderapi() { return reinterpret_cast<components::IShaderAPIDX8*>(*(DWORD*)(RENDERER_BASE + 0xD0C74)); } // #OFFSET - done
-	inline components::CShaderAPIDx8* get_cshaderapi() { return reinterpret_cast<components::CShaderAPIDx8*>((RENDERER_BASE + 0xD7040)); } // #OFFSET - done
-	inline components::worldbrushdata_t* get_hoststate_worldbrush_data() { return reinterpret_cast<components::CCommonHostState*>(ENGINE_BASE + 0x43F028)->worldbrush; } // #OFFSET - done
-	inline components::CGlobalVarsBase* get_global_vars() { return reinterpret_cast<components::CGlobalVarsBase*>(*(DWORD*)(CLIENT_BASE + 0x92A37C)); } // #OFFSET - done
-	//inline components::CAutoInitBasicPropPortalDrawingMaterials* base_portal_mats() { return reinterpret_cast<components::CAutoInitBasicPropPortalDrawingMaterials*>(CLIENT_BASE + 0x9FE710); } // #OFFSET - UNUSED
-	inline components::CCvar* get_icvar() { return reinterpret_cast<components::CCvar*>((VSTDLIB_BASE + 0x315B0)); } // #OFFSET - done 
+	inline components::CRender* get_engine_renderer() { return reinterpret_cast<components::CRender*>(ENGINE_BASE + USE_OFFSET(0x615100, 0x60F880)); }
+	inline IDirect3DDevice9* get_d3d_device() { return reinterpret_cast<IDirect3DDevice9*>(*(DWORD*)(RENDERER_BASE + USE_OFFSET(0xDA5D8, 0x179F38))); }
+	inline components::IShaderAPIDX8* get_shaderapi() { return reinterpret_cast<components::IShaderAPIDX8*>(*(DWORD*)(RENDERER_BASE + USE_OFFSET(0xD0C74, 0x164C48))); }
+	inline components::CShaderAPIDx8* get_cshaderapi() { return reinterpret_cast<components::CShaderAPIDx8*>((RENDERER_BASE + USE_OFFSET(0xD7040, 0x1769A0))); }
+	inline components::worldbrushdata_t* get_hoststate_worldbrush_data() { return reinterpret_cast<components::CCommonHostState*>(ENGINE_BASE + USE_OFFSET(0x43F028, 0x439C1C))->worldbrush; }
+	inline components::CGlobalVarsBase* get_global_vars() { return reinterpret_cast<components::CGlobalVarsBase*>(*(DWORD*)(CLIENT_BASE + USE_OFFSET(0x92A37C, 0x9220BC))); }
+	inline components::CCvar* get_icvar() { return reinterpret_cast<components::CCvar*>((VSTDLIB_BASE + USE_OFFSET(0x315B0, 0x31550))); }
 
 }

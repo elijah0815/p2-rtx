@@ -38,9 +38,8 @@ namespace game
 	// adds a simple console command
 	void con_add_command(ConCommand* cmd, const char* name, void(__cdecl* callback)(), const char* desc)
 	{
-		// #OFFSET - done
 		// ConCommand *this, const char *pName, void (__cdecl *callback)(), const char *pHelpString, int flags, int (__cdecl *completionFunc)(const char *, char (*)[64]
-		utils::hook::call<void(__fastcall)(ConCommand* this_ptr, void* null, const char*, void(__cdecl*)(), const char*, int, int(__cdecl*)(const char*, char(*)[64]))>(CLIENT_BASE + 0x631F00)
+		utils::hook::call<void(__fastcall)(ConCommand* this_ptr, void* null, const char*, void(__cdecl*)(), const char*, int, int(__cdecl*)(const char*, char(*)[64]))>(CLIENT_BASE + USE_OFFSET(0x631F00, 0x6298D0))
 			(cmd, nullptr, name, callback, desc, 0x20000, nullptr);
 	}
 
@@ -52,8 +51,7 @@ namespace game
 	 */
 	void debug_add_text_overlay(const float* pos, float duration, const char* text)
 	{
-		// #OFFSET - done
-		utils::hook::call<void(__cdecl)(const float*, float, const char*)>(ENGINE_BASE + 0xC4640)
+		utils::hook::call<void(__cdecl)(const float*, float, const char*)>(ENGINE_BASE + USE_OFFSET(0xC4640, 0xC3FE0))
 			(pos, duration, text);
 	}
 
@@ -62,20 +60,17 @@ namespace game
 	{
 		if (cbaseentity_ptr)
 		{
-			// #OFFSET - done
 			// UTIL_Remove
-			utils::hook::call<void(__cdecl)(void* cbaseentity)>(SERVER_BASE + 0x283770)(cbaseentity_ptr);
+			utils::hook::call<void(__cdecl)(void* cbaseentity)>(SERVER_BASE + USE_OFFSET(0x283770, 0x27D690))(cbaseentity_ptr);
 		}
 	}
 
-	// #OFFSET - done
 	int get_visframecount() {
-		return *reinterpret_cast<int*>(ENGINE_BASE + 0x6AAE6C);
+		return *reinterpret_cast<int*>(ENGINE_BASE + USE_OFFSET(0x6AAE6C, 0x6AAE6C));
 	}
 
-	// #OFFSET - done
 	const char* get_map_name() {
-		return utils::hook::call<const char*(__cdecl)()>(CLIENT_BASE + 0x1F4040)();
+		return utils::hook::call<const char*(__cdecl)()>(CLIENT_BASE + USE_OFFSET(0x1F4040, 0x1EEEE0))();
 	}
 
 	void cvar_uncheat_and_set_int(const char* name, const int val)

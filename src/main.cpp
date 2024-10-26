@@ -21,7 +21,7 @@ DWORD WINAPI find_window_loop(LPVOID)
 	{
 		// get main window hwnd
 		if (!main_window) {
-			main_window = FindWindowA(nullptr, "Portal 2 - Direct3D 9");
+			main_window = FindWindowA(nullptr, IS_LATEST_BUILD ? "Portal 2 - Direct3D 9" : "PORTAL 2");
 		}
 
 		Sleep(100); _time += 100;
@@ -47,7 +47,7 @@ DWORD WINAPI find_window_loop(LPVOID)
 #endif
 		
 #ifdef GIT_DESCRIBE
-	SetWindowTextA(main_window, utils::va("Portal 2 - RTX - %s", GIT_DESCRIBE));
+	SetWindowTextA(main_window, IS_LATEST_BUILD ? utils::va("Portal 2 - RTX - %s", GIT_DESCRIBE) : utils::va("Portal 2 - RTX - %s - DEV", GIT_DESCRIBE));
 #else
 	SetWindowTextA(main_window, "Portal 2 - RTX");
 #endif

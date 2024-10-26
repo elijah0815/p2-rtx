@@ -592,9 +592,8 @@ namespace components
 		UINT ofs = 0, stride = 0;
 		dev->GetStreamSource(0, &b, &ofs, &stride);
 
-		// #OFFSET - done
 		//Vector* model_org = reinterpret_cast<Vector*>(ENGINE_BASE + 0x50DA90);
-		const auto model_to_world_mtx = reinterpret_cast<VMatrix*>(ENGINE_BASE + 0x63C8C8);
+		const auto model_to_world_mtx = reinterpret_cast<VMatrix*>(ENGINE_BASE + USE_OFFSET(0x63C8C8, 0x637158));
 
 		VMatrix mtx = {};
 		mtx.m[0][0] = model_to_world_mtx->m[0][0];
@@ -1112,8 +1111,7 @@ namespace components
 					// do not fog HUD elements :D
 					dev->SetRenderState(D3DRS_FOGENABLE, FALSE);
 
-					// #OFFSET - done
-					const auto s_viewFadeColor = reinterpret_cast<Vector4D*>(CLIENT_BASE + 0x9F7748);
+					const auto s_viewFadeColor = reinterpret_cast<Vector4D*>(CLIENT_BASE + USE_OFFSET(0x9F7748, 0x9EDAF8));
 
 					ctx.save_vs(dev);
 					dev->SetVertexShader(nullptr);
@@ -2361,13 +2359,11 @@ namespace components
 		XASSERT(tbl_hk::model_renderer::table.init(tbl_hk::model_renderer::_interface) == false);
 		XASSERT(tbl_hk::model_renderer::table.hook(&tbl_hk::model_renderer::DrawModelExecute::Detour, tbl_hk::model_renderer::DrawModelExecute::Index) == false);
 
-		// #OFFSET - done
-		utils::hook(RENDERER_BASE + 0xB1B3, cmeshdx8_renderpass_pre_draw_stub, HOOK_JUMP).install()->quick();
-		HOOK_RETN_PLACE(cmeshdx8_renderpass_pre_draw_retn_addr, RENDERER_BASE + 0xB1B8);
+		utils::hook(RENDERER_BASE + USE_OFFSET(0xB1B3, 0xAD23), cmeshdx8_renderpass_pre_draw_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(cmeshdx8_renderpass_pre_draw_retn_addr, RENDERER_BASE + USE_OFFSET(0xB1B8, 0xAD28));
 
-		// #OFFSET - done
-		utils::hook(RENDERER_BASE + 0xB285, cmeshdx8_renderpass_post_draw_stub, HOOK_JUMP).install()->quick();
-		HOOK_RETN_PLACE(cmeshdx8_renderpass_post_draw_retn_addr, RENDERER_BASE + 0xB28C);
+		utils::hook(RENDERER_BASE + USE_OFFSET(0xB285, 0xADF5), cmeshdx8_renderpass_post_draw_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(cmeshdx8_renderpass_post_draw_retn_addr, RENDERER_BASE + USE_OFFSET(0xB28C, 0xADFC));
 
 
 		// brushmodels - cubes - etc - CMeshMgr::RenderPassForInstances
@@ -2378,9 +2374,8 @@ namespace components
 		XASSERT(tbl_hk::bmodel_renderer::table.hook(&tbl_hk::bmodel_renderer::DrawBrushModelEx::Detour, tbl_hk::bmodel_renderer::DrawBrushModelEx::Index) == false);
 		XASSERT(tbl_hk::bmodel_renderer::table.hook(&tbl_hk::bmodel_renderer::DrawBrushModelArray::Detour, tbl_hk::bmodel_renderer::DrawBrushModelArray::Index) == false);
 
-		// #OFFSET - done
-		utils::hook(RENDERER_BASE + 0xA9FD, cmeshdx8_renderpassforinstances_pre_draw_stub, HOOK_JUMP).install()->quick();
-		HOOK_RETN_PLACE(cmeshdx8_renderpassforinstances_pre_draw_retn_addr, RENDERER_BASE + 0xAA11);
+		utils::hook(RENDERER_BASE + USE_OFFSET(0xA9FD, 0xA56D), cmeshdx8_renderpassforinstances_pre_draw_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(cmeshdx8_renderpassforinstances_pre_draw_retn_addr, RENDERER_BASE + USE_OFFSET(0xAA11, 0xA581));
 
 		// enable mat_wireframe on portals to make them stable?
 		//utils::hook::nop(CLIENT_BASE + 0x2BD41C, 6);
@@ -2390,25 +2385,21 @@ namespace components
 		HOOK_RETN_PLACE(cmeshdx8_renderpasswithvertexindexbuffer_retn_addr, RENDERER_BASE + 0xA68D);
 #endif
 
-		// #OFFSET - done
 		// C_Prop_Portal::ClientThink :: hook to get portal 1/2 m_fOpenAmount member var
-		utils::hook(CLIENT_BASE + 0x285AD2, prop_portal_client_think_stub, HOOK_JUMP).install()->quick();
+		utils::hook(CLIENT_BASE + USE_OFFSET(0x285AD2, 0x280012), prop_portal_client_think_stub, HOOK_JUMP).install()->quick();
 
-		// #OFFSET - done
 		// Shader_DrawSurfaceDynamic -> BuildMSurfaceVertexArrays :: change texcoords when building the vertexbuffer
 		// so that we do not need to lock and unlock for each BSP surface when rendering
-		utils::hook(ENGINE_BASE + 0xF7D16, BuildMSurfaceVertexArrays_stub, HOOK_JUMP).install()->quick();
-		HOOK_RETN_PLACE(BuildMSurfaceVertexArrays_retn_addr, ENGINE_BASE + 0xF7D1B);
+		utils::hook(ENGINE_BASE + USE_OFFSET(0xF7D16, 0xF7193), BuildMSurfaceVertexArrays_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(BuildMSurfaceVertexArrays_retn_addr, ENGINE_BASE + USE_OFFSET(0xF7D1B, 0xF7198));
 
-		// #OFFSET - done
-		utils::hook(ENGINE_BASE + 0xE95BD, draw_painted_surfaces_stub, HOOK_JUMP).install()->quick();
-		HOOK_RETN_PLACE(draw_painted_surfaces_retn_addr, ENGINE_BASE + 0xE95C2);
-		HOOK_RETN_PLACE(draw_painted_surfaces_og_func, ENGINE_BASE + 0xE2580);
+		utils::hook(ENGINE_BASE + USE_OFFSET(0xE95BD, 0xE8C7D), draw_painted_surfaces_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(draw_painted_surfaces_retn_addr, ENGINE_BASE + USE_OFFSET(0xE95C2, 0xE8C82));
+		HOOK_RETN_PLACE(draw_painted_surfaces_og_func, ENGINE_BASE + USE_OFFSET(0xE2580, 0xE1C20));
 
-		// #OFFSET - done
 		// CBrushBatchRender::DrawOpaqueBrushModel :: hook around mesh->Draw to detect paint rendering
-		utils::hook(ENGINE_BASE + 0x7271C, draw_painted_bmodel_surfaces_stub, HOOK_JUMP).install()->quick();
-		HOOK_RETN_PLACE(draw_painted_bmodel_surfaces_retn_addr, ENGINE_BASE + 0x72721);
+		utils::hook(ENGINE_BASE + USE_OFFSET(0x7271C, 0x7231C), draw_painted_bmodel_surfaces_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(draw_painted_bmodel_surfaces_retn_addr, ENGINE_BASE + USE_OFFSET(0x72721, 0x72321));
 	}
 }
 
