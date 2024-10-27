@@ -5,12 +5,19 @@
 
 namespace utils
 {
+	float rad_to_deg(const float radians) {
+		return radians * (180.0f / M_PI);
+	}
+
+	float deg_to_rad(const float degrees) {
+		return degrees * M_PI / 180.0f;
+	}
+
 	int try_stoi(const std::string& str, const int& default_return_val)
 	{
 		int ret = default_return_val;
 
-		try 
-		{
+		try {
 			ret = std::stoi(str);
 		}
 		catch (const std::invalid_argument) { }
@@ -22,8 +29,7 @@ namespace utils
 	{
 		float ret = default_return_val;
 
-		try
-		{
+		try {
 			ret = std::stof(str);
 		}
 		catch (const std::invalid_argument) { }

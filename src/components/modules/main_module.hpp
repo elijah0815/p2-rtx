@@ -12,7 +12,6 @@ namespace components
 		extern std::uint32_t remix_debug_line_amount;
 		extern std::uint64_t remix_debug_last_line_hash;
 
-
 		enum DEBUG_REMIX_LINE_COLOR
 		{
 			RED = 0u,

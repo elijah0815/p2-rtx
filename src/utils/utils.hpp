@@ -5,6 +5,9 @@ namespace utils
 	#define VECTOR_SUBTRACT(a,b,c)	((c)[0]=(a)[0]-(b)[0],(c)[1]=(a)[1]-(b)[1],(c)[2]=(a)[2]-(b)[2])
 	#define DotProduct(x,y)			((x)[0]*(y)[0]+(x)[1]*(y)[1]+(x)[2]*(y)[2])
 
+	float rad_to_deg(float radians);
+	float deg_to_rad(float degrees);
+
 	int try_stoi(const std::string& str, const int& default_return_val = 0);
 	float try_stof(const std::string& str, const float& default_return_val = 0.0f);
 	std::string split_string_between_delims(const std::string& str, const char delim_start, const char delim_end);

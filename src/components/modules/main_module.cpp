@@ -43,37 +43,16 @@ namespace components
 		std::uint64_t remix_debug_last_line_hash = 0u;
 		bool remix_debug_node_vis = false; // show/hide debug vis of bsp nodes/leafs
 
+		remixapi_MeshHandle portal0_mesh = nullptr;
+		remixapi_MaterialHandle portal0_material = nullptr;
+		remixapi_MeshHandle portal1_mesh = nullptr;
+		remixapi_MaterialHandle portal1_material = nullptr;
+		bool allow_api_portals = false;
+		bool disabled_portal_fade = false;
+
 		remixapi_LightHandle light_handle = nullptr;
 
-		// called on device->EndScene
-		void endscene_cb()
-		{
-			if (remix_debug_line_amount)
-			{
-				for (auto l = 1u; l < remix_debug_line_amount + 1; l++)
-				{
-					if (remix_debug_line_list[l])
-					{
-						remixapi_Transform t0 = {};
-						t0.matrix[0][0] = 1.0f;
-						t0.matrix[1][1] = 1.0f;
-						t0.matrix[2][2] = 1.0f;
-
-						const remixapi_InstanceInfo inst =
-						{
-							.sType = REMIXAPI_STRUCT_TYPE_INSTANCE_INFO,
-							.pNext = nullptr,
-							.categoryFlags = 0,
-							.mesh = remix_debug_line_list[l],
-							.transform = t0,
-							.doubleSided = true
-						};
-
-						api::bridge.DrawInstance(&inst);
-					}
-				}
-			}
-		}
+		void endscene_cb();
 
 		// called on device->Present
 		void on_present_cb()
@@ -263,7 +242,7 @@ namespace components
 			}
 		}
 
-		void create_portal(std::uint8_t index, remixapi_MeshHandle mesh_handle, remixapi_MaterialHandle material_handle)
+		void create_portal(std::uint8_t index, remixapi_MeshHandle& mesh_handle, remixapi_MaterialHandle& material_handle)
 		{
 			if (!material_handle)
 			{
@@ -271,9 +250,9 @@ namespace components
 				remixapi_MaterialInfo info = {};
 				{
 					info.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO;
-					info.hash = 10;
+					info.hash = 10 + (uint64_t)index;
 					info.emissiveIntensity = 0.0f;
-					info.emissiveColorConstant = { 1.0f, 0.0f, 0.0f };
+					info.emissiveColorConstant = { 0.0f, 0.0f, 0.0f };
 					info.albedoTexture = L"";
 					info.normalTexture = L"";
 					info.tangentTexture = L"";
@@ -318,7 +297,7 @@ namespace components
 			remixapi_MeshInfo i =
 			{
 			  .sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
-			  .hash = 20,
+			  .hash = 20 + (uint64_t)index,
 			  .surfaces_values = &triangles,
 			  .surfaces_count = 1,
 			};
@@ -326,10 +305,39 @@ namespace components
 			//main_module::bridge.DestroyMesh(mesh_handle);
 			api::bridge.CreateMesh(&i, &mesh_handle);
 		}
+
+		// called on device->EndScene
+		void endscene_cb()
+		{
+			if (api::remix_debug_line_amount)
+			{
+				for (auto l = 1u; l < api::remix_debug_line_amount + 1; l++)
+				{
+					if (api::remix_debug_line_list[l])
+					{
+						remixapi_Transform t0 = {};
+						t0.matrix[0][0] = 1.0f;
+						t0.matrix[1][1] = 1.0f;
+						t0.matrix[2][2] = 1.0f;
+
+						const remixapi_InstanceInfo inst =
+						{
+							.sType = REMIXAPI_STRUCT_TYPE_INSTANCE_INFO,
+							.pNext = nullptr,
+							.categoryFlags = 0,
+							.mesh = api::remix_debug_line_list[l],
+							.transform = t0,
+							.doubleSided = true
+						};
+
+						api::bridge.DrawInstance(&inst);
+					}
+				}
+			}
+		}
 	}
 
-
-	void* test_ent = nullptr;
+	
 
 	void once_per_frame_cb()
 	{
@@ -434,65 +442,75 @@ namespace components
 		model_render::m_benchmark.clear();
 #endif
 
-#if 0
+#if 1
+
+		// #
+		const auto draw_api_portal = [](const bool index, const Vector& pos, const Vector& rot, const Vector& scale)
 		{
-			main_module::bridge.DestroyMesh(model_render::portal0_mdl);
-			create_portal(0, model_render::portal0_mdl, model_render::portal0_mtl);
-		}
-
-		{
-			main_module::bridge.DestroyMesh(model_render::portal1_mdl);
-			create_portal(1, model_render::portal1_mdl, model_render::portal1_mtl);
-		}
-
-		if (model_render::portal0_mdl)
-		{
-			//remixapi_Transform t0 = {};
-			main_module::portal0.matrix[0][0] = 1.0f;
-			main_module::portal0.matrix[1][1] = 1.0f;
-			main_module::portal0.matrix[2][2] = 1.0f;
-
-			//main_module::portal0.matrix[0][3] = -1550.0f;
-			//main_module::portal0.matrix[1][3] = 1715.0f;
-			//main_module::portal0.matrix[2][3] = -255.0f;
-
-			const remixapi_InstanceInfo info =
+			if (const auto mesh = !index ? api::portal0_mesh : api::portal1_mesh; mesh)
 			{
-				.sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
-				.pNext = nullptr,
-				.categoryFlags = 0,
-				.mesh = model_render::portal0_mdl,
-				.transform = main_module::portal0,
-				.doubleSided = false
-			};
-			main_module::bridge.DrawInstance(&info);
+				utils::vector::matrix3x3 mtx;
+				mtx.scale(scale.x, scale.y, scale.z);
+				mtx.rotate_x(utils::deg_to_rad(rot.x));
+				mtx.rotate_y(utils::deg_to_rad(rot.y));
+				mtx.rotate_z(utils::deg_to_rad(rot.z));
+
+				auto t0 = mtx.to_remixapi_transform();
+				t0.matrix[0][3] = pos.x;
+				t0.matrix[1][3] = pos.y;
+				t0.matrix[2][3] = pos.z;
+
+				const remixapi_InstanceInfo info =
+				{
+					.sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
+					.pNext = nullptr,
+					.categoryFlags = 0,
+					.mesh = mesh,
+					.transform = t0,
+					.doubleSided = false
+				};
+				api::bridge.DrawInstance(&info);
+			}
+		};
+
+		if (api::portal0_mesh) {
+			api::bridge.DestroyMesh(api::portal0_mesh); api::portal0_mesh = nullptr;
 		}
 
-		if (model_render::portal1_mdl)
+		if (api::portal1_mesh) {
+			api::bridge.DestroyMesh(api::portal1_mesh); api::portal1_mesh = nullptr;
+		}
+
+		if (api::allow_api_portals)
 		{
-			//remixapi_Transform t0 = {};
-			main_module::portal1.matrix[0][0] = 1.0f;
-			main_module::portal1.matrix[1][1] = 1.0f;
-			main_module::portal1.matrix[2][2] = 1.0f;
-
-			//main_module::portal1.matrix[0][3] = -1550.0f;
-			//main_module::portal1.matrix[1][3] = 1590.0f;
-			//main_module::portal1.matrix[2][3] = -255.0f;
-
-			const remixapi_InstanceInfo info =
+			if (const auto& n = map_settings::get_loaded_map_name();
+				!n.empty() && n == "sp_a1_wakeup")
 			{
-				.sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
-				.pNext = nullptr,
-				.categoryFlags = 0,
-				.mesh = model_render::portal1_mdl,
-				.transform = main_module::portal1,
-				.doubleSided = false
-			};
-			main_module::bridge.DrawInstance(&info);
+				remix_vars::set_option(remix_vars::get_option("rtx.enablePortalFadeInEffect"), { false });
+				api::disabled_portal_fade = true;
+
+				api::create_portal(0, api::portal0_mesh, api::portal0_material);
+				api::create_portal(1, api::portal1_mesh, api::portal1_material);
+
+				draw_api_portal(0,	{ 6144.0, 3456.0f, 1662.0f },
+									{ 90.0f, 0.0f, 0.0f }, 
+									{ 1.5f, 1.5f, 1.0f });
+
+				draw_api_portal(1,	{ 10375.0f, 1216.0f, 290.0f },
+									{ -90.0f, 0.0f, 0.0f },
+									{ 1.4f, 1.4f, 1.0f });
+			}
+		}
+		else
+		{
+			if (api::disabled_portal_fade)
+			{
+				remix_vars::set_option(remix_vars::get_option("rtx.enablePortalFadeInEffect"), { false });
+				api::disabled_portal_fade = false;
+			}
 		}
 
-
-		if (!light_handle)
+		/*if (!api::light_handle)
 		{
 			auto ext = remixapi_LightInfoSphereEXT
 			{
@@ -511,12 +529,12 @@ namespace components
 				.hash = 1234,
 				.radiance = remixapi_Float3D {100, 20, 20},
 			};
-			main_module::bridge.CreateLight(&info, &light_handle);
+			api::bridge.CreateLight(&info, &api::light_handle);
 		}
 		else
 		{
-			main_module::bridge.DrawLightInstance(light_handle);
-		}
+			api::bridge.DrawLightInstance(api::light_handle);
+		}*/
 #endif
 	}
 
@@ -1054,12 +1072,50 @@ namespace components
 				// add the main scene view first if setting custom portal vis
 				customVisibility.m_rgVisOrigins[0] = view->origin;
 				customVisibility.m_nNumVisOrigins++;
-				//added_player_view_vis = true;
+				added_player_view_vis = true;
 			}
 
 			//CPortalRenderable_FlatBasic::AddToVisAsExitPortal(CPortalRenderable_FlatBasic * this, ViewCustomVisibility_t * pCustomVisibility)
 			utils::hook::call<void(__fastcall)(void* this_ptr, void* null, ViewCustomVisibility_t*)>(CLIENT_BASE + USE_OFFSET(0x2C2830, 0x2BBDA0))
 				(model_render::portal2_ptr->m_pLinkedPortal, nullptr, &customVisibility);
+
+			is_using_custom_vis = true;
+		}
+
+		// do not allow api portals if the game has already spawned portals
+		api::allow_api_portals = !is_using_custom_vis;
+
+		if (api::allow_api_portals && api::portal0_mesh && api::portal1_mesh)
+		{
+			auto& vis = customVisibility;
+
+			// add the main scene view first if setting custom portal vis
+			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = view->origin;
+			
+			//portal0 corners?
+			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6110.87109f, 3518.96875f, 1667.12109f };	// 1
+			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6174.87109f, 3518.96875f, 1667.12109f };	// 2
+			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6174.87109f, 3518.96875f, 1555.12109f };	// 3
+			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6110.87109f, 3518.96875f, 1555.12109f };	// 4
+			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6142.87109f, 3518.96875f, 1611.12109f };	// 5
+			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 10460.3789f, 1225.95068f, 344.843750f };	// 6
+			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 10451.3281f, 1162.59399f, 344.843750f };	// 7
+			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 10451.3281f, 1162.59399f, 232.843750f };	// 8
+			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 10460.3789f, 1225.95068f, 232.843750f };	// 9
+			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 10455.8535f, 1194.27234f, 288.843750f };	// 10
+
+			// last portal data
+			vis.m_iForceViewLeaf = 107;
+			vis.m_VisData.m_vecVisOrigin = { 10455.8535f, 1194.27234f, 288.843750f }; // last m_rgVisOrigin
+			vis.m_VisData.m_fDistToAreaPortalTolerance = 64.0f;
+			vis.m_VisData.m_bTrimFrustumToPortalCorners = true;
+			vis.m_VisData.m_vPortalOrigin = { 10456.8438f, 1194.13086f, 288.843750f }; // vis org 10 : z -= 1
+			vis.m_VisData.m_vPortalForward = { -0.989949524f, 0.141421184f, 0.00000000f };
+			vis.m_VisData.m_flPortalRadius = 64.4980621f;
+			vis.m_VisData.m_vPortalCorners[0] = { 10460.3789f, 1225.95068f, 344.843750 }; // vis org 6
+			vis.m_VisData.m_vPortalCorners[1] = { 10451.3281f, 1162.59399f, 344.843750 }; // 7
+			vis.m_VisData.m_vPortalCorners[2] = { 10451.3281f, 1162.59399f, 232.843750 }; // 8
+			vis.m_VisData.m_vPortalCorners[3] = { 10460.3789f, 1225.95068f, 232.843750 }; // 9
 
 			is_using_custom_vis = true;
 		}

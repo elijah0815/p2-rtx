@@ -402,12 +402,6 @@ namespace components
 
 		static inline benchmark_data m_benchmark = {};
 #endif
-
-		static inline remixapi_MeshHandle portal0_mdl = nullptr;
-		static inline remixapi_MaterialHandle portal0_mtl = nullptr;
-		static inline remixapi_MeshHandle portal1_mdl = nullptr;
-		static inline remixapi_MaterialHandle portal1_mtl = nullptr;
-
 		static inline float portal1_open_amount = 0.0f;
 		static inline bool  portal1_is_linked = false;
 		static inline const C_Prop_Portal* portal1_ptr = nullptr;

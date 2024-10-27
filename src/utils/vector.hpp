@@ -482,4 +482,100 @@ namespace utils::vector
 			vForward->z = -sp;
 		}
 	}
+
+	struct matrix3x3
+	{
+		float m[3][3];
+
+		// identity
+		matrix3x3()
+		{
+			m[0][0] = 1.0f; m[0][1] = 0.0f; m[0][2] = 0.0f;
+			m[1][0] = 0.0f; m[1][1] = 1.0f; m[1][2] = 0.0f;
+			m[2][0] = 0.0f; m[2][1] = 0.0f; m[2][2] = 1.0f;
+		}
+
+		void scale(float x, float y, float z)
+		{
+			m[0][0] *= x;
+			m[1][1] *= y;
+			m[2][2] *= z;
+		}
+
+		void rotate_x(float radians)
+		{
+			matrix3x3 rotation;
+			float cos_theta = cos(radians);
+			float sin_theta = sin(radians);
+
+			rotation.m[0][0] = 1.0f;
+			rotation.m[1][1] = cos_theta;
+			rotation.m[1][2] = -sin_theta;
+			rotation.m[2][1] = sin_theta;
+			rotation.m[2][2] = cos_theta;
+
+			*this = multiply(rotation);
+		}
+
+		void rotate_y(float radians)
+		{
+			matrix3x3 rotation;
+			float cos_theta = cos(radians);
+			float sin_theta = sin(radians);
+
+			rotation.m[0][0] = cos_theta;
+			rotation.m[0][2] = sin_theta;
+			rotation.m[1][1] = 1.0f;
+			rotation.m[2][0] = -sin_theta;
+			rotation.m[2][2] = cos_theta;
+
+			*this = multiply(rotation);
+		}
+
+		void rotate_z(float radians)
+		{
+			matrix3x3 rotation;
+			float cos_theta = cos(radians);
+			float sin_theta = sin(radians);
+
+			rotation.m[0][0] = cos_theta;
+			rotation.m[0][1] = -sin_theta;
+			rotation.m[1][0] = sin_theta;
+			rotation.m[1][1] = cos_theta;
+			rotation.m[2][2] = 1.0f;
+
+			*this = multiply(rotation);
+		}
+
+		matrix3x3 multiply(const matrix3x3& other) const
+		{
+			matrix3x3 result;
+			for (int i = 0; i < 3; ++i)
+			{
+				for (int j = 0; j < 3; ++j)
+				{
+					result.m[i][j] =
+						m[i][0] * other.m[0][j] +
+						m[i][1] * other.m[1][j] +
+						m[i][2] * other.m[2][j];
+				}
+			}
+			return result;
+		}
+
+		remixapi_Transform to_remixapi_transform()
+		{
+			remixapi_Transform result = {};
+			result.matrix[0][0] = m[0][0];
+			result.matrix[0][1] = m[0][1];
+			result.matrix[0][2] = m[0][2];
+			result.matrix[1][0] = m[1][0];
+			result.matrix[1][1] = m[1][1];
+			result.matrix[1][2] = m[1][2];
+			result.matrix[2][0] = m[2][0];
+			result.matrix[2][1] = m[2][1];
+			result.matrix[2][2] = m[2][2];
+			return result;
+		}
+	};
 }

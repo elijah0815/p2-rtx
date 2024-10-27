@@ -685,7 +685,7 @@ namespace components
 			//}
 		}
 
-		/*if (ctx.info.material_name.contains("glados_eye"))
+		/*if (ctx.info.material_name.contains("project"))
 		{
 			int break_me = 1;
 		}*/
