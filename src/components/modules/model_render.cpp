@@ -1068,6 +1068,17 @@ namespace components
 					// set custom remix hash
 					ctx.save_rs(dev, (D3DRENDERSTATETYPE)150);
 					dev->SetRenderState((D3DRENDERSTATETYPE)150, utils::string_hash32(ctx.info.material_name));
+
+					// works but not of much use if we cant use the albedo as emissive
+					//ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+					//ctx.save_tss(dev, D3DTSS_COLORARG1);
+					//ctx.save_tss(dev, D3DTSS_COLORARG2);
+					//ctx.save_tss(dev, D3DTSS_COLOROP);
+					//dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(255, 255, 255, 255));
+					//dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TFACTOR);
+					//dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TEXTURE);
+					//dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+
 					mod_shader = false; 
 				}
 
