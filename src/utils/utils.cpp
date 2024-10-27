@@ -37,8 +37,6 @@ namespace utils
 		return ret;
 	}
 
-	
-
 	std::string split_string_between_delims(const std::string& str, const char delim_start, const char delim_end)
 	{
 		const auto first = str.find_last_of(delim_start);
@@ -296,5 +294,37 @@ namespace utils
 		}
 
 		return true;
+	}
+
+	//fnv1a
+	std::uint64_t string_hash64(const std::string_view& str)
+	{
+		const uint64_t FNV_prime = 1099511628211u;
+		const uint64_t offset_basis = 14695981039346656037u;
+		uint64_t hash = offset_basis;
+
+		for (const char c : str)
+		{
+			hash ^= static_cast<uint64_t>(c);
+			hash *= FNV_prime;
+		}
+
+		return hash;
+	}
+
+	//fnv1a
+	std::uint64_t string_hash32(const std::string_view& str)
+	{
+		const uint32_t FNV_prime = 16777619u;
+		const uint32_t offset_basis = 2166136261u;
+		uint32_t hash = offset_basis;
+
+		for (const char c : str)
+		{
+			hash ^= static_cast<uint64_t>(c);
+			hash *= FNV_prime;
+		}
+
+		return hash;
 	}
 }

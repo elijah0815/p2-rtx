@@ -1059,8 +1059,16 @@ namespace components
 					}
 				}
 				// render bik using shaders
-				else if (ctx.info.material_name.starts_with("videobik")) {
-					mod_shader = false;
+				else if (ctx.info.material_name.starts_with("videobik") || ctx.info.material_name.starts_with("media/"))
+				{
+					// set remix texture categories
+					ctx.save_rs(dev, (D3DRENDERSTATETYPE)42);
+					dev->SetRenderState((D3DRENDERSTATETYPE)42, DecalStatic);
+
+					// set custom remix hash
+					ctx.save_rs(dev, (D3DRENDERSTATETYPE)150);
+					dev->SetRenderState((D3DRENDERSTATETYPE)150, utils::string_hash32(ctx.info.material_name));
+					mod_shader = false; 
 				}
 
 				if (mod_shader)
@@ -1305,7 +1313,7 @@ namespace components
 					}
 					else if (ctx.info.material_name.contains("vgui_coop_progress_board")
 						|| ctx.info.material_name.contains("p2_lightboard_vgui")
-						|| ctx.info.material_name.contains("elevator_video_overlay"))
+						|| ctx.info.material_name.contains("elevator_video_")) 
 					{
 						//ctx.modifiers.do_not_render = true;
 						ctx.save_vs(dev);
