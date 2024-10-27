@@ -313,7 +313,7 @@ namespace utils
 	}
 
 	//fnv1a
-	std::uint64_t string_hash32(const std::string_view& str)
+	std::uint32_t string_hash32(const std::string_view& str)
 	{
 		const uint32_t FNV_prime = 16777619u;
 		const uint32_t offset_basis = 2166136261u;

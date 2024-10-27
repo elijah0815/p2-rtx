@@ -86,7 +86,7 @@ namespace utils
 
 	bool open_file_homepath(const std::string& sub_dir, const std::string& file_name, std::ifstream& file);
 	std::uint64_t string_hash64(const std::string_view& str);
-	std::uint64_t string_hash32(const std::string_view& str);
+	std::uint32_t string_hash32(const std::string_view& str);
 
 	class benchmark
 	{
