@@ -55,6 +55,8 @@ namespace components
 		remixapi_MeshHandle portal3_mesh = nullptr;
 		remixapi_MaterialHandle portal3_material = nullptr;
 
+		rayportal_context rayportal_ctx {};
+
 		remixapi_LightHandle light_handle = nullptr;
 
 		void endscene_cb();
@@ -345,7 +347,8 @@ namespace components
 		}
 	}
 
-	
+
+
 
 	void once_per_frame_cb()
 	{
@@ -492,53 +495,59 @@ namespace components
 			}
 		};
 
-		if (api::portal0_mesh) {
+		/*if (api::portal0_mesh) {
 			api::bridge.DestroyMesh(api::portal0_mesh); api::portal0_mesh = nullptr;
 		}
 
 		if (api::portal1_mesh) {
 			api::bridge.DestroyMesh(api::portal1_mesh); api::portal1_mesh = nullptr;
-		}
+		}*/
 
-		if (api::allow_api_portals)
-		{
+		//if (api::allow_api_portals)
+		//{
 			if (const auto& n = map_settings::get_loaded_map_name();
 				!n.empty() && n == "sp_a1_wakeup")
 			{
 				remix_vars::set_option(remix_vars::get_option("rtx.enablePortalFadeInEffect"), { false });
 				api::disabled_portal_fade = true;
 
-				api::create_portal(0, api::portal0_mesh, api::portal0_material);
-				api::create_portal(1, api::portal1_mesh, api::portal1_material);
+				/*
+				api::create_portal(2, api::portal0_mesh, api::portal0_material, true);
+				api::create_portal(3, api::portal1_mesh, api::portal1_material);
 
-				draw_api_portal(0,	{ 6144.0, 3456.0f, 1662.0f },
+				draw_api_portal(2,	{ 6144.0, 3456.0f, 1662.0f },
 									{ 90.0f, 0.0f, 0.0f }, 
-									{ 1.5f, 1.5f, 1.0f });
+									{ 1.27f, 1.27f, 1.0f });
 
-				draw_api_portal(1,	{ 10375.0f, 1216.0f, 290.0f },
+				draw_api_portal(3,	{ 10375.0f, 1216.0f, 290.0f },
 									{ -90.0f, 0.0f, 0.0f },
 									{ 1.4f, 1.4f, 1.0f });
 
-				api::create_portal(2, api::portal2_mesh, api::portal2_material, true);
-				api::create_portal(3, api::portal3_mesh, api::portal3_material, true);
+				api::create_portal(4, api::portal2_mesh, api::portal2_material, true);
+				api::create_portal(5, api::portal3_mesh, api::portal3_material, true);
 
-				draw_api_portal(2,	{ 6980.0f, 550.0f, 440.0f },
+				draw_api_portal(4,	{ 6980.0f, 550.0f, 440.0f },
 									{ 0.0f, 0.0f, -180.0f },
 									{ 1.0f, 1.0f, 1.0f });
 
-				draw_api_portal(3,	{ 6980.0f, 965.0f, 440.0f },
+				draw_api_portal(5,	{ 6980.0f, 965.0f, 440.0f },
 									{ 0.0f, 0.0f, 0.0f },
 									{ 1.0f, 1.0f, 1.0f });
+				*/
+
+				for (auto& pair : api::rayportal_ctx.pairs) {
+					pair.draw_pair();
+				}
 			}
-		}
-		else
-		{
-			if (api::disabled_portal_fade)
+		//}
+			else
 			{
-				remix_vars::set_option(remix_vars::get_option("rtx.enablePortalFadeInEffect"), { false });
-				api::disabled_portal_fade = false;
+				if (api::disabled_portal_fade)
+				{
+					remix_vars::set_option(remix_vars::get_option("rtx.enablePortalFadeInEffect"), { false });
+					api::disabled_portal_fade = false;
+				}
 			}
-		}
 
 		/*if (!api::light_handle)
 		{
@@ -694,6 +703,50 @@ namespace components
 		map_settings::on_map_load(map_name);
 		main_module::setup_required_cvars();
 
+		Vector pos1 = { 6144.0, 3456.0f, 1662.0f };
+		Vector rot1 = { 90.0f, 0.0f, 0.0f };
+		Vector scale1 = { 63.5f * 5.0f, 63.5f * 2.0f, 1.0f };
+
+		Vector pos2 = { 10375.0f, 1216.0f, 290.0f };
+		Vector rot2 = { -90.0f, 0.0f, 0.0f };
+		Vector scale2 = { 70.0f * 5.0f, 70.0f * 2.0f, 1.0f };
+
+		/*api::rayportal_ctx.pairs.push_back({ api::PORTAL_PAIR::PORTAL_PAIR_1,
+			{ 6144.0, 3456.0f, 1662.0f },  { 90.0f, 0.0f, 0.0f },  { 1.27f, 1.27f, 1.0f }, true,
+			{ 10375.0f, 1216.0f, 290.0f }, { -90.0f, 0.0f, 0.0f }, { 1.4f, 1.4f, 1.0f },   false });*/
+
+		api::rayportal_ctx.pairs.emplace_back( api::PORTAL_PAIR::PORTAL_PAIR_1,
+			pos1, rot1, scale1, true,
+			pos2, rot2, scale2, false );
+
+		api::rayportal_ctx.pairs.push_back({ api::PORTAL_PAIR::PORTAL_PAIR_2,
+			{ 6980.0f, 550.0f, 440.0f }, { 0.0f, 0.0f, -180.0f }, { 1.0f, 1.0f, 1.0f }, true,
+			{ 6980.0f, 965.0f, 440.0f }, { 0.0f, 0.0f, 0.0f },    { 1.0f, 1.0f, 1.0f }, true });
+
+		/*
+		 api::create_portal(2, api::portal0_mesh, api::portal0_material, true);
+				api::create_portal(3, api::portal1_mesh, api::portal1_material);
+
+				draw_api_portal(2,	{ 6144.0, 3456.0f, 1662.0f },
+									{ 90.0f, 0.0f, 0.0f }, 
+									{ 1.27f, 1.27f, 1.0f });
+
+				draw_api_portal(3,	{ 10375.0f, 1216.0f, 290.0f },
+									{ -90.0f, 0.0f, 0.0f },
+									{ 1.4f, 1.4f, 1.0f });
+
+				api::create_portal(4, api::portal2_mesh, api::portal2_material, true);
+				api::create_portal(5, api::portal3_mesh, api::portal3_material, true);
+
+				draw_api_portal(4,	{ 6980.0f, 550.0f, 440.0f },
+									{ 0.0f, 0.0f, -180.0f },
+									{ 1.0f, 1.0f, 1.0f });
+
+				draw_api_portal(5,	{ 6980.0f, 965.0f, 440.0f },
+									{ 0.0f, 0.0f, 0.0f },
+									{ 1.0f, 1.0f, 1.0f });
+		 */
+
 		// reset portal vars
 		model_render::portal1_ptr = nullptr;
 		model_render::portal1_is_linked = false;
@@ -729,7 +782,11 @@ namespace components
 	 */
 	void on_host_disconnect_hk()
 	{
-		map_settings::on_map_exit();
+		map_settings::on_map_exit(); 
+
+		for (auto& pair : api::rayportal_ctx.pairs) {
+			pair.destroy_pair();
+		} api::rayportal_ctx.pairs.clear();
 	}
 
 	HOOK_RETN_PLACE_DEF(on_host_disconnect_retn);
@@ -1097,8 +1154,7 @@ namespace components
 		if (model_render::portal1_ptr && model_render::portal1_ptr->m_pLinkedPortal && model_render::portal1_ptr->m_fOpenAmount != 0.0f)
 		{
 			// add the main scene view first if setting custom portal vis
-			customVisibility.m_rgVisOrigins[0] = view->origin;
-			customVisibility.m_nNumVisOrigins++;
+			customVisibility.m_rgVisOrigins[customVisibility.m_nNumVisOrigins++] = view->origin;
 			added_player_view_vis = true;
 
 			//CPortalRenderable_FlatBasic::AddToVisAsExitPortal(CPortalRenderable_FlatBasic * this, ViewCustomVisibility_t * pCustomVisibility)
@@ -1114,8 +1170,7 @@ namespace components
 			if (!added_player_view_vis)
 			{
 				// add the main scene view first if setting custom portal vis
-				customVisibility.m_rgVisOrigins[0] = view->origin;
-				customVisibility.m_nNumVisOrigins++;
+				customVisibility.m_rgVisOrigins[customVisibility.m_nNumVisOrigins++] = view->origin;
 				added_player_view_vis = true;
 			}
 
@@ -1127,15 +1182,20 @@ namespace components
 		}
 
 		// do not allow api portals if the game has already spawned portals
-		api::allow_api_portals = !is_using_custom_vis;
+		//api::allow_api_portals = !is_using_custom_vis;
 
-		if (api::allow_api_portals && api::portal0_mesh && api::portal1_mesh)
+		if (/*api::allow_api_portals &&*/ api::portal0_mesh && api::portal1_mesh)
 		{
 			auto& vis = customVisibility;
 
-			// add the main scene view first if setting custom portal vis
-			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = view->origin;
-			
+			// check if player view was added already
+			if (!added_player_view_vis)
+			{
+				// add the main scene view first if setting custom portal vis
+				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = view->origin;
+				added_player_view_vis = true;
+			}
+
 			//portal0 corners?
 			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6110.87109f, 3518.96875f, 1667.12109f };	// 1
 			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6174.87109f, 3518.96875f, 1667.12109f };	// 2

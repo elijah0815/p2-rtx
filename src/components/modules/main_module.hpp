@@ -4,14 +4,6 @@ namespace components
 {
 	namespace api
 	{
-		extern bool m_initialized;
-		extern remixapi_Interface bridge;
-
-		extern remixapi_MaterialHandle remix_debug_line_materials[3];
-		extern remixapi_MeshHandle remix_debug_line_list[128];
-		extern std::uint32_t remix_debug_line_amount;
-		extern std::uint64_t remix_debug_last_line_hash;
-
 		enum DEBUG_REMIX_LINE_COLOR
 		{
 			RED = 0u,
@@ -20,7 +12,286 @@ namespace components
 		};
 
 		extern void init();
+		extern void create_quad(remixapi_HardcodedVertex* v_out, uint32_t* i_out, const float scale);
 		extern void add_debug_line(const Vector& p1, const Vector& p2, const float width, DEBUG_REMIX_LINE_COLOR color);
+
+		extern bool m_initialized;
+		extern remixapi_Interface bridge;
+
+		extern remixapi_MaterialHandle remix_debug_line_materials[3];
+		extern remixapi_MeshHandle remix_debug_line_list[128];
+		extern std::uint32_t remix_debug_line_amount;
+		extern std::uint64_t remix_debug_last_line_hash;
+
+		enum PORTAL_PAIR : std::uint8_t
+		{
+			PORTAL_PAIR_1 = 0,
+			PORTAL_PAIR_2 = 1,
+		};
+
+		class rayportal_context
+		{
+		public:
+			class portal_single
+			{
+			public:
+				portal_single() = default;
+				portal_single(const Vector& pos, const Vector& rot, const Vector& scale, bool square_mask)
+					: m_pos(pos), m_rot(rot), m_scale(scale), m_square_mask(square_mask) {}
+
+				/**
+				 * Initiates a full rayportal via the api (material and mesh) (1x1 Unit)
+				 * @param index	The actual rayportal index (0/1 are reserverd for player/level portals)
+				 * @return		Returns true if successful
+				 */
+				bool init(uint8_t index)
+				{
+					this->assign_index(index);
+
+					bool result;
+					result = this->create_material() == REMIXAPI_ERROR_CODE_SUCCESS;
+					result = this->create_mesh() == REMIXAPI_ERROR_CODE_SUCCESS ? result : false;
+					return result;
+				}
+
+				void assign_index(uint8_t index) {
+					m_index = index;
+				}
+
+				uint8_t get_index() const {
+					return m_index;
+				}
+
+				remixapi_MeshHandle get_mesh() const {
+					return m_hmesh;
+				}
+
+				remixapi_ErrorCode create_mesh()
+				{
+					if (!m_hmaterial) {
+						this->create_material();
+					}
+
+					if (m_hmesh) {
+						this->destroy_mesh();
+					}
+
+					remixapi_HardcodedVertex verts[4] = {};
+					uint32_t indices[6] = {};
+					api::create_quad(verts, indices, 0.5f);
+
+					remixapi_MeshInfoSurfaceTriangles triangles =
+					{
+					  .vertices_values = verts,
+					  .vertices_count = ARRAYSIZE(verts),
+					  .indices_values = indices,
+					  .indices_count = 6,
+					  .skinning_hasvalue = FALSE,
+					  .skinning_value = {},
+					  .material = m_hmaterial,
+					};
+
+					remixapi_MeshInfo i =
+					{
+					  .sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
+					  .hash = 20 + (uint64_t)m_index,
+					  .surfaces_values = &triangles,
+					  .surfaces_count = 1,
+					};
+
+					return api::bridge.CreateMesh(&i, &m_hmesh);
+				}
+
+				remixapi_ErrorCode destroy_mesh()
+				{
+					const auto res = api::bridge.DestroyMesh(m_hmesh);
+					m_hmesh = nullptr;
+					return res;
+				}
+
+				remixapi_MaterialHandle get_material() const {
+					return m_hmaterial;
+				}
+
+				remixapi_ErrorCode create_material()
+				{
+					if (m_hmaterial) {
+						this->destroy_material();
+					}
+
+					std::wstring mask_path;
+					if (m_square_mask)
+					{
+						mask_path = std::wstring(game::root_path.begin(), game::root_path.end());
+						mask_path += L"portal2-rtx\\textures\\white.dds";
+					}
+
+					remixapi_MaterialInfo info = {};
+					info.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO;
+					info.hash = 10 + (uint64_t)m_index;
+					info.emissiveIntensity = 0.0f;
+					info.emissiveColorConstant = { 0.0f, 0.0f, 0.0f };
+					info.albedoTexture = !m_square_mask ? L"" : mask_path.data(); // requires changes to dxvk-remix (PR#80)
+					info.normalTexture = L"";
+					info.tangentTexture = L"";
+					info.emissiveTexture = L"";
+					info.spriteSheetFps = 1;
+					info.spriteSheetCol = 1;
+					info.spriteSheetRow = 1;
+					info.filterMode = 1u;
+					info.wrapModeU = 1u;
+					info.wrapModeV = 1u;
+
+					remixapi_MaterialInfoPortalEXT ext = {};
+					ext.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO_PORTAL_EXT;
+					ext.rayPortalIndex = m_index;
+					ext.rotationSpeed = 1.0f;
+
+					info.pNext = &ext;
+					return api::bridge.CreateMaterial(&info, &m_hmaterial);
+				}
+
+				remixapi_ErrorCode destroy_material()
+				{
+					const auto res = api::bridge.DestroyMaterial(m_hmaterial);
+					m_hmaterial = nullptr;
+					return res;
+				}
+
+				Vector m_pos = {};
+				Vector m_rot = {};
+				Vector m_scale = {};
+				bool m_square_mask = false;
+
+			private:
+				uint8_t m_index = 0u;
+				remixapi_MeshHandle m_hmesh = nullptr;
+				remixapi_MaterialHandle m_hmaterial = nullptr;
+			};
+
+			class portal_pair
+			{
+			public:
+				portal_pair(const PORTAL_PAIR& pair) : m_pair(pair)
+				{
+					switch (pair)
+					{
+					case PORTAL_PAIR_1:
+						m_portal0.init(2);
+						m_portal1.init(3);
+						break;
+					case PORTAL_PAIR_2:
+						m_portal0.init(4);
+						m_portal1.init(5);
+						break;
+					}
+				}
+
+				portal_pair(const PORTAL_PAIR& pair,
+					const Vector& pos1, const Vector& rot1, const Vector& scale1, bool square_mask1,
+					const Vector& pos2, const Vector& rot2, const Vector& scale2, bool square_mask2)
+					: m_pair(pair)
+					, m_portal0(pos1, rot1, scale1, square_mask1)
+					, m_portal1(pos2, rot2, scale2, square_mask2)
+				{
+					switch (pair)
+					{
+					case PORTAL_PAIR_1:
+						m_portal0.init(2);
+						m_portal1.init(3);
+						break;
+					case PORTAL_PAIR_2:
+						m_portal0.init(4);
+						m_portal1.init(5);
+						break;
+					}
+				}
+
+				//// del copy and copy assignment operator
+				//portal_pair(const portal_pair&) = delete;
+				//portal_pair& operator=(const portal_pair&) = delete;
+
+				//// del move and move assignment operator
+				//portal_pair(portal_pair&&) = delete;
+				//portal_pair& operator=(portal_pair&&) = delete;
+
+				/**
+				 * This destroys all remixAPI objects associated with the pair
+				 */
+				void destroy_pair()
+				{
+					m_portal0.destroy_mesh();
+					m_portal0.destroy_material();
+					m_portal1.destroy_mesh();
+					m_portal1.destroy_material();
+				}
+
+				portal_single& get_portal(uint8_t index)
+				{
+					switch (index)
+					{
+						default:
+						case 0: return m_portal0;
+						case 1: return m_portal1;
+					}
+					
+				}
+				portal_single& get_portal0() { return m_portal0; }
+				portal_single& get_portal1() { return m_portal1; }
+
+				PORTAL_PAIR get_pair_num() const { return m_pair; }
+
+				/**
+				 * Draws the rayportal pair
+				 * @return True if no errors occured
+				 */
+				bool draw_pair()
+				{
+					bool res = true;
+					for (uint8_t i = 0u; i < 2; i++)
+					{
+						const auto& p = get_portal(i);
+						if (p.get_mesh())
+						{
+							utils::vector::matrix3x3 mtx;
+							mtx.scale(p.m_scale.x, p.m_scale.y, p.m_scale.z);
+							mtx.rotate_x(utils::deg_to_rad(p.m_rot.x));
+							mtx.rotate_y(utils::deg_to_rad(p.m_rot.y));
+							mtx.rotate_z(utils::deg_to_rad(p.m_rot.z));
+
+							auto t0 = mtx.to_remixapi_transform();
+							t0.matrix[0][3] = p.m_pos.x;
+							t0.matrix[1][3] = p.m_pos.y;
+							t0.matrix[2][3] = p.m_pos.z;
+
+							const remixapi_InstanceInfo info =
+							{
+								.sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
+								.pNext = nullptr,
+								.categoryFlags = 0,
+								.mesh = p.get_mesh(),
+								.transform = t0,
+								.doubleSided = false
+							};
+							res = api::bridge.DrawInstance(&info) == REMIXAPI_ERROR_CODE_SUCCESS ? res : false;
+						}
+					}
+
+					return res;
+				}
+
+			private:
+				PORTAL_PAIR m_pair;
+				portal_single m_portal0;
+				portal_single m_portal1;
+			};
+
+			// constructor for singleton
+			rayportal_context() = default;
+			std::vector<portal_pair> pairs;
+		};
+
+		extern rayportal_context rayportal_ctx;
 	}
 
 	class main_module : public component
