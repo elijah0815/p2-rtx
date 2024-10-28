@@ -66,7 +66,7 @@ namespace game
 	}
 
 	int get_visframecount() {
-		return *reinterpret_cast<int*>(ENGINE_BASE + USE_OFFSET(0x6AAE6C, 0x6AAE6C));
+		return *reinterpret_cast<int*>(ENGINE_BASE + USE_OFFSET(0x6AAE6C, 0x6A56B4));
 	}
 
 	const char* get_map_name() {
