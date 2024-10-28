@@ -370,6 +370,26 @@ namespace components
 		std::unordered_map<D3DTEXTURESTAGESTATETYPE, DWORD> saved_texture_stage_state_;
 	};
 
+	namespace tex_addons
+	{
+		extern LPDIRECT3DTEXTURE9 portal_mask;
+		extern LPDIRECT3DTEXTURE9 portal_blue;
+		extern LPDIRECT3DTEXTURE9 portal_blue_closed;
+		extern LPDIRECT3DTEXTURE9 portal_orange;
+		extern LPDIRECT3DTEXTURE9 portal_orange_closed;
+		extern LPDIRECT3DTEXTURE9 glass_shards;
+		extern LPDIRECT3DTEXTURE9 glass_window_lamps;
+		extern LPDIRECT3DTEXTURE9 glass_window_observ;
+		extern LPDIRECT3DTEXTURE9 black_shader;
+		extern LPDIRECT3DTEXTURE9 blue_laser_dualrender;
+		extern LPDIRECT3DTEXTURE9 sky_gray_ft;
+		extern LPDIRECT3DTEXTURE9 sky_gray_bk;
+		extern LPDIRECT3DTEXTURE9 sky_gray_lf;
+		extern LPDIRECT3DTEXTURE9 sky_gray_rt;
+		extern LPDIRECT3DTEXTURE9 sky_gray_up;
+		extern LPDIRECT3DTEXTURE9 sky_gray_dn;
+	}
+
 	class model_render : public component
 	{
 	public:

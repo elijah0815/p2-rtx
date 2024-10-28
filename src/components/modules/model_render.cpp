@@ -52,6 +52,7 @@ namespace components
 		LPDIRECT3DTEXTURE9 sky_gray_rt;
 		LPDIRECT3DTEXTURE9 sky_gray_up;
 		LPDIRECT3DTEXTURE9 sky_gray_dn;
+		LPDIRECT3DTEXTURE9 white;
 	}
 
 	// #TODO call from somewhere appropriate
@@ -75,6 +76,7 @@ namespace components
 			if (tex_addons::sky_gray_rt) tex_addons::sky_gray_rt->Release();
 			if (tex_addons::sky_gray_up) tex_addons::sky_gray_up->Release();
 			if (tex_addons::sky_gray_dn) tex_addons::sky_gray_dn->Release();
+			if (tex_addons::white) tex_addons::white->Release();
 			return;
 		}
 
@@ -96,6 +98,7 @@ namespace components
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_rt.jpg", &tex_addons::sky_gray_rt);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_up.jpg", &tex_addons::sky_gray_up);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_dn.jpg", &tex_addons::sky_gray_dn);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\white.dds", &tex_addons::white);
 	}
 
 	// check for specific material var and return it in 'out_var'

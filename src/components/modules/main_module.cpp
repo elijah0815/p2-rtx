@@ -247,36 +247,39 @@ namespace components
 			}
 		}
 
-		void create_portal(std::uint8_t index, remixapi_MeshHandle& mesh_handle, remixapi_MaterialHandle& material_handle)
+		void create_portal(std::uint8_t index, remixapi_MeshHandle& mesh_handle, remixapi_MaterialHandle& material_handle, bool square_shaped = false)
 		{
 			if (!material_handle)
 			{
+				std::wstring mask_path;
+				if (square_shaped) 
+				{
+					mask_path = std::wstring(game::root_path.begin(), game::root_path.end());
+					mask_path += L"portal2-rtx\\textures\\white.dds";
+				}
+
 				//main_module::bridge.DestroyMaterial(material_handle);
 				remixapi_MaterialInfo info = {};
-				{
-					info.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO;
-					info.hash = 10 + (uint64_t)index;
-					info.emissiveIntensity = 0.0f;
-					info.emissiveColorConstant = { 0.0f, 0.0f, 0.0f };
-					info.albedoTexture = L"";
-					info.normalTexture = L"";
-					info.tangentTexture = L"";
-					info.emissiveTexture = L"";
-
-					info.spriteSheetFps = 5;
-					info.spriteSheetCol = 1;
-					info.spriteSheetRow = 1;
-					info.filterMode = 1u;
-					info.wrapModeU = 1u;
-					info.wrapModeV = 1u;
-				}
+				info.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO;
+				info.hash = 10 + (uint64_t)index;
+				info.emissiveIntensity = 0.0f;
+				info.emissiveColorConstant = { 0.0f, 0.0f, 0.0f };
+				info.albedoTexture = !square_shaped ? L"" : mask_path.data(); // requires changes to dxvk-remix (PR#80)
+				info.normalTexture = L"";
+				info.tangentTexture = L"";
+				info.emissiveTexture = L"";
+				info.spriteSheetFps = 5;
+				info.spriteSheetCol = 1;
+				info.spriteSheetRow = 1;
+				info.filterMode = 1u;
+				info.wrapModeU = 1u;
+				info.wrapModeV = 1u;
+				
 
 				remixapi_MaterialInfoPortalEXT ext = {};
-				{
-					ext.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO_PORTAL_EXT;
-					ext.rayPortalIndex = index;
-					ext.rotationSpeed = 1.0f;
-				}
+				ext.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO_PORTAL_EXT;
+				ext.rayPortalIndex = index;
+				ext.rotationSpeed = 1.0f;
 
 				info.pNext = &ext;
 				api::bridge.CreateMaterial(&info, &material_handle);
@@ -516,8 +519,8 @@ namespace components
 									{ -90.0f, 0.0f, 0.0f },
 									{ 1.4f, 1.4f, 1.0f });
 
-				api::create_portal(2, api::portal2_mesh, api::portal2_material);
-				api::create_portal(3, api::portal3_mesh, api::portal3_material);
+				api::create_portal(2, api::portal2_mesh, api::portal2_material, true);
+				api::create_portal(3, api::portal3_mesh, api::portal3_material, true);
 
 				draw_api_portal(2,	{ 6980.0f, 550.0f, 440.0f },
 									{ 0.0f, 0.0f, -180.0f },
@@ -1270,6 +1273,12 @@ namespace components
 
 	main_module::main_module()
 	{
+		{ // init filepath var
+			char path[MAX_PATH]; GetModuleFileNameA(nullptr, path, MAX_PATH);
+			game::root_path = path; utils::erase_substring(game::root_path, "portal2.exe");
+		}
+		
+		// init remixAPI
 		api::init();
 
 		{ // init d3d font

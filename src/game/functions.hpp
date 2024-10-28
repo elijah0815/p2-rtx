@@ -13,6 +13,7 @@ using namespace components;
 namespace game
 {
 	extern std::vector<std::string> loaded_modules;
+	extern std::string root_path;
 	extern DWORD shaderapidx9_module;
 	extern DWORD studiorender_module;
 	extern DWORD materialsystem_module;

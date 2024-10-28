@@ -3,6 +3,7 @@
 namespace game
 {
 	std::vector<std::string> loaded_modules;
+	std::string root_path;
 	DWORD shaderapidx9_module = 0u;
 	DWORD studiorender_module = 0u;
 	DWORD materialsystem_module = 0u;
