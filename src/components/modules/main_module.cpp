@@ -50,6 +50,11 @@ namespace components
 		bool allow_api_portals = false;
 		bool disabled_portal_fade = false;
 
+		remixapi_MeshHandle portal2_mesh = nullptr;
+		remixapi_MaterialHandle portal2_material = nullptr;
+		remixapi_MeshHandle portal3_mesh = nullptr;
+		remixapi_MaterialHandle portal3_material = nullptr;
+
 		remixapi_LightHandle light_handle = nullptr;
 
 		void endscene_cb();
@@ -445,9 +450,20 @@ namespace components
 #if 1
 
 		// #
-		const auto draw_api_portal = [](const bool index, const Vector& pos, const Vector& rot, const Vector& scale)
+		const auto draw_api_portal = [](const std::uint8_t index, const Vector& pos, const Vector& rot, const Vector& scale)
 		{
-			if (const auto mesh = !index ? api::portal0_mesh : api::portal1_mesh; mesh)
+			remixapi_MeshHandle mesh = nullptr;
+
+			switch (index)
+			{
+				default:
+				case 0: mesh = api::portal0_mesh; break;
+				case 1: mesh = api::portal1_mesh; break;
+				case 2: mesh = api::portal2_mesh; break;
+				case 3: mesh = api::portal3_mesh; break;
+			}
+
+			if (mesh)
 			{
 				utils::vector::matrix3x3 mtx;
 				mtx.scale(scale.x, scale.y, scale.z);
@@ -499,6 +515,17 @@ namespace components
 				draw_api_portal(1,	{ 10375.0f, 1216.0f, 290.0f },
 									{ -90.0f, 0.0f, 0.0f },
 									{ 1.4f, 1.4f, 1.0f });
+
+				api::create_portal(2, api::portal2_mesh, api::portal2_material);
+				api::create_portal(3, api::portal3_mesh, api::portal3_material);
+
+				draw_api_portal(2,	{ 6980.0f, 550.0f, 440.0f },
+									{ 0.0f, 0.0f, -180.0f },
+									{ 1.0f, 1.0f, 1.0f });
+
+				draw_api_portal(3,	{ 6980.0f, 965.0f, 440.0f },
+									{ 0.0f, 0.0f, 0.0f },
+									{ 1.0f, 1.0f, 1.0f });
 			}
 		}
 		else
@@ -916,6 +943,7 @@ namespace components
 
 		// find the bsp node the player is currently in + visualize node / leaf using the remix api
 		// - skip if map settings contains no overrides for current map and debug vis is not active
+#if 0
 		if ((map_settings && map_settings->area_settings.contains(current_area)) || api::remix_debug_node_vis)
 		{
 			int node_index = 0, leaf_index = 0;
@@ -979,6 +1007,19 @@ namespace components
 				}
 			}
 			*/
+		}
+#endif
+		// show leaf index as 3D text
+		if (current_leaf < world->numleafs)
+		{
+			player_current_leaf = current_leaf;
+
+			if (api::remix_debug_node_vis)
+			{
+				const auto curr_leaf = &world->leafs[current_leaf];
+				game::debug_add_text_overlay(&curr_leaf->m_vecCenter.x, 0.0f, utils::va("Leaf: %i", current_leaf));
+				main_module::debug_draw_box(curr_leaf->m_vecCenter, curr_leaf->m_vecHalfDiagonal, 2.0f, api::DEBUG_REMIX_LINE_COLOR::GREEN);
+			}
 		}
 
 
