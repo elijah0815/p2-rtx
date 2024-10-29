@@ -701,11 +701,11 @@ namespace components
 
 		Vector pos1 = { 6144.0, 3456.0f, 1662.0f };
 		Vector rot1 = { -90.0f, 0.0f, 0.0f };
-		Vector scale1 = { 127.0f, 1.0f, 127.0f };
+		Vector2D scale1 = { 127.0f, 127.0f };
 
 		Vector pos2 = { 10375.0f, 1216.0f, 290.0f };
 		Vector rot2 = { 90.0f, 0.0f, 0.0f };
-		Vector scale2 = { 350.0f, 1.0f, 350.0f };
+		Vector2D scale2 = { 350.0f, 350.0f };
 
 		api::rayportal_ctx.add_pair(api::PORTAL_PAIR::PORTAL_PAIR_1,
 			pos1, rot1, scale1, true,
@@ -715,11 +715,11 @@ namespace components
 
 		pos1 = { 6980.0f, 550.0f, 440.0f };
 		rot1 = { 0.0f, 0.0f, 0.0f };
-		scale1 = { 100.0f, 1.0f, 100.0f };
+		scale1 = { 100.0f, 100.0f };
 
 		pos2 = { 6980.0f, 965.0f, 440.0f };
 		rot2 = { 0.0f, 0.0f, 0.0f };
-		scale2 = { 100.0f, 1.0f, 100.0f };
+		scale2 = { 100.0f, 100.0f };
 
 		api::rayportal_ctx.add_pair(api::PORTAL_PAIR::PORTAL_PAIR_2,
 			pos1, rot1, scale1, true,

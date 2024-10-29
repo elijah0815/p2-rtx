@@ -44,8 +44,13 @@ namespace components
 			{
 			public:
 				portal_single() = default;
-				portal_single(const Vector& pos, const Vector& rot, const Vector& scale, bool square_mask, const portal_pair* parent)
-					: m_pos(pos), m_rot(rot), m_scale(scale), m_square_mask(square_mask), m_parent(parent) {}
+				portal_single(const Vector& pos, const Vector& rot, const Vector2D& scale, bool square_mask, const portal_pair* parent)
+					: m_pos(pos), m_rot(rot), m_square_mask(square_mask), m_parent(parent)
+				{
+					m_scale.x = scale.x;
+					m_scale.y = 1.0f;
+					m_scale.z = scale.y;
+				}
 
 				/**
 				 * Initiates a full rayportal via the api (material and mesh) (1x1 Unit)
@@ -301,8 +306,8 @@ namespace components
 				} 
 
 				portal_pair(const PORTAL_PAIR& pair,
-					const Vector& pos1, const Vector& rot1, const Vector& scale1, bool square_mask1,
-					const Vector& pos2, const Vector& rot2, const Vector& scale2, bool square_mask2)
+					const Vector& pos1, const Vector& rot1, const Vector2D& scale1, bool square_mask1,
+					const Vector& pos2, const Vector& rot2, const Vector2D& scale2, bool square_mask2)
 					: m_pair(pair)
 					, m_portal0(pos1, rot1, scale1, square_mask1, this)
 					, m_portal1(pos2, rot2, scale2, square_mask2, this)
@@ -472,8 +477,8 @@ namespace components
 			 * @param square_mask2	Square portal or circle
 			 */
 			void add_pair(const PORTAL_PAIR& pair,
-			              const Vector& pos1, const Vector& rot1, const Vector& scale1, bool square_mask1,
-			              const Vector& pos2, const Vector& rot2, const Vector& scale2, bool square_mask2)
+			              const Vector& pos1, const Vector& rot1, const Vector2D& scale1, bool square_mask1,
+			              const Vector& pos2, const Vector& rot2, const Vector2D& scale2, bool square_mask2)
 			{
 				if (pairs.size() < 2)
 				{
