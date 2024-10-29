@@ -253,17 +253,45 @@ namespace components
 						const auto& p = get_portal(i);
 						if (p.get_mesh())
 						{
+							/*D3DXMATRIX scale;
+							D3DXMatrixScaling(&scale, p.m_scale.x, p.m_scale.y, p.m_scale.z);
+
+							D3DXMATRIX rot_x, rot_y, rot_z;
+							D3DXMatrixRotationX(&rot_x, utils::deg_to_rad(p.m_rot.x));
+							D3DXMatrixRotationY(&rot_y, utils::deg_to_rad(p.m_rot.y));
+							D3DXMatrixRotationZ(&rot_z, utils::deg_to_rad(p.m_rot.z));
+
+							D3DXMATRIX translation = {};
+							D3DXMatrixTranslation(&translation, p.m_pos.x, p.m_pos.y, p.m_pos.z);
+
+							D3DXMATRIX final;
+							final = scale * rot_z * rot_y * rot_x * translation;
+
+							D3DXMATRIX transp;
+							D3DXMatrixTranspose(&transp, &final);
+
+							remixapi_Transform t0 = {};
+							t0.matrix[0][0] = transp.m[0][0];
+							t0.matrix[0][1] = transp.m[0][1];
+							t0.matrix[0][2] = transp.m[0][2];
+							t0.matrix[1][0] = transp.m[1][0];
+							t0.matrix[1][1] = transp.m[1][1];
+							t0.matrix[1][2] = transp.m[1][2];
+							t0.matrix[2][0] = transp.m[2][0];
+							t0.matrix[2][1] = transp.m[2][1];
+							t0.matrix[2][2] = transp.m[2][2];
+							t0.matrix[0][3] = transp.m[0][3];
+							t0.matrix[1][3] = transp.m[1][3];
+							t0.matrix[2][3] = transp.m[2][3];*/
+
 							utils::vector::matrix3x3 mtx;
 							mtx.scale(p.m_scale.x, p.m_scale.y, p.m_scale.z);
-							mtx.rotate_x(utils::deg_to_rad(p.m_rot.x));
-							mtx.rotate_y(utils::deg_to_rad(p.m_rot.y));
 							mtx.rotate_z(utils::deg_to_rad(p.m_rot.z));
+							mtx.rotate_y(utils::deg_to_rad(p.m_rot.y));
+							mtx.rotate_x(utils::deg_to_rad(p.m_rot.x));
+							mtx.transpose();
 
-							auto t0 = mtx.to_remixapi_transform();
-							t0.matrix[0][3] = p.m_pos.x;
-							t0.matrix[1][3] = p.m_pos.y;
-							t0.matrix[2][3] = p.m_pos.z;
-
+							const auto t0 = mtx.to_remixapi_transform(p.m_pos);
 							const remixapi_InstanceInfo info =
 							{
 								.sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
@@ -288,7 +316,97 @@ namespace components
 
 			// constructor for singleton
 			rayportal_context() = default;
-			std::vector<portal_pair> pairs;
+
+			/**
+			 * Constructs a portal pair that is ready to be drawn. Only adds the pair if it not already exists.\n
+			 * A maximum of two pairs is currently supported.
+			 * @param pair			Portalpair num
+			 * @param pos1			Position of the first portal
+			 * @param rot1			Rotation of the first portal
+			 * @param scale1		Scale of the first portal
+			 * @param square_mask1	Square portal or circle
+			 * @param pos2			Position of the second portal
+			 * @param rot2			Rotation of the second portal
+			 * @param scale2		Scale of the second portal
+			 * @param square_mask2	Square portal or circle
+			 */
+			void add_pair(const PORTAL_PAIR& pair,
+			              const Vector& pos1, const Vector& rot1, const Vector& scale1, bool square_mask1,
+			              const Vector& pos2, const Vector& rot2, const Vector& scale2, bool square_mask2)
+			{
+				if (pairs.size() < 2)
+				{
+					if (!pairs.contains(pair))
+					{
+						pairs.emplace(pair, portal_pair(pair, 
+							pos1, rot1, scale1, square_mask1,
+							pos2, rot2, scale2, square_mask2));
+					}
+				}
+			}
+
+			/**
+			 * Fully destroy all portal pairs
+			 */
+			void destroy_all_pairs()
+			{
+
+				for (auto& p : pairs) {
+					p.second.destroy_pair();
+				}
+
+				pairs.clear();
+			}
+
+			/**
+			 * Fully destroy a specific pair
+			 * @param pair The pair destroy
+			 */
+			void destroy_pair(const PORTAL_PAIR& pair)
+			{
+				for (auto it = pairs.begin(); it != pairs.end(); ++it)
+				{
+					if (it->second.get_pair_num() == pair)
+					{
+						pairs.erase(it);
+						break;
+					}
+				}
+			}
+
+			/**
+			 * Draws the specified pair if it exists
+			 * @param pair	The pair to draw
+			 * @return		True if successful
+			 */
+			bool draw_pair(const PORTAL_PAIR& pair)
+			{
+				if (pairs.contains(pair))
+				{
+					return pairs.at(pair).draw_pair();
+				}
+
+				return false;
+			}
+
+			/**
+			 * Draws all portal pairs
+			 * @return True if successful
+			 */
+			bool draw_all_pairs()
+			{
+				bool res = true;
+				for (auto it = pairs.begin(); it != pairs.end(); ++it)
+				{
+					res = it->second.draw_pair() == REMIXAPI_ERROR_CODE_SUCCESS ? res : false;
+				}
+
+				return res;
+			}
+
+		private:
+			std::map<PORTAL_PAIR, portal_pair> pairs;
+			//std::vector<portal_pair> pairs;
 		};
 
 		extern rayportal_context rayportal_ctx;

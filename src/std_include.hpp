@@ -29,6 +29,7 @@
 #include <mutex>
 #include <filesystem>
 #include <cassert>
+#include <map>
 #include <unordered_set>
 #include <fstream>
 

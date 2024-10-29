@@ -477,11 +477,7 @@ namespace components
 				mtx.rotate_y(utils::deg_to_rad(rot.y));
 				mtx.rotate_z(utils::deg_to_rad(rot.z));
 
-				auto t0 = mtx.to_remixapi_transform();
-				t0.matrix[0][3] = pos.x;
-				t0.matrix[1][3] = pos.y;
-				t0.matrix[2][3] = pos.z;
-
+				const auto t0 = mtx.to_remixapi_transform(pos);
 				const remixapi_InstanceInfo info =
 				{
 					.sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
@@ -535,9 +531,8 @@ namespace components
 									{ 1.0f, 1.0f, 1.0f });
 				*/
 
-				for (auto& pair : api::rayportal_ctx.pairs) {
-					pair.draw_pair();
-				}
+				api::rayportal_ctx.draw_all_pairs();
+
 			}
 		//}
 			else
@@ -705,23 +700,29 @@ namespace components
 
 		Vector pos1 = { 6144.0, 3456.0f, 1662.0f };
 		Vector rot1 = { 90.0f, 0.0f, 0.0f };
-		Vector scale1 = { 63.5f * 5.0f, 63.5f * 2.0f, 1.0f };
+		Vector scale1 = { 127.0f, 127.0f, 127.0f };
 
 		Vector pos2 = { 10375.0f, 1216.0f, 290.0f };
 		Vector rot2 = { -90.0f, 0.0f, 0.0f };
-		Vector scale2 = { 70.0f * 5.0f, 70.0f * 2.0f, 1.0f };
+		Vector scale2 = { 350.0f, 350.0f, 350.0f };
 
-		/*api::rayportal_ctx.pairs.push_back({ api::PORTAL_PAIR::PORTAL_PAIR_1,
-			{ 6144.0, 3456.0f, 1662.0f },  { 90.0f, 0.0f, 0.0f },  { 1.27f, 1.27f, 1.0f }, true,
-			{ 10375.0f, 1216.0f, 290.0f }, { -90.0f, 0.0f, 0.0f }, { 1.4f, 1.4f, 1.0f },   false });*/
-
-		api::rayportal_ctx.pairs.emplace_back( api::PORTAL_PAIR::PORTAL_PAIR_1,
+		api::rayportal_ctx.add_pair(api::PORTAL_PAIR::PORTAL_PAIR_1,
 			pos1, rot1, scale1, true,
-			pos2, rot2, scale2, false );
+			pos2, rot2, scale2, false);
 
-		api::rayportal_ctx.pairs.push_back({ api::PORTAL_PAIR::PORTAL_PAIR_2,
-			{ 6980.0f, 550.0f, 440.0f }, { 0.0f, 0.0f, -180.0f }, { 1.0f, 1.0f, 1.0f }, true,
-			{ 6980.0f, 965.0f, 440.0f }, { 0.0f, 0.0f, 0.0f },    { 1.0f, 1.0f, 1.0f }, true });
+
+
+		pos1 = { 6980.0f, 550.0f, 440.0f };
+		rot1 = { 45.0f, 0.0f, -180.0f };
+		scale1 = { 100.0f, 1.0f, 100.0f };
+
+		pos2 = { 6980.0f, 965.0f, 440.0f };
+		rot2 = { 0.0f, 45.0f, -90.0f };
+		scale2 = { 100.0f, 1.0f, 50.0f };
+
+		api::rayportal_ctx.add_pair(api::PORTAL_PAIR::PORTAL_PAIR_2,
+			pos1, rot1, scale1, true,
+			pos2, rot2, scale2, true);
 
 		/*
 		 api::create_portal(2, api::portal0_mesh, api::portal0_material, true);
@@ -784,9 +785,7 @@ namespace components
 	{
 		map_settings::on_map_exit(); 
 
-		for (auto& pair : api::rayportal_ctx.pairs) {
-			pair.destroy_pair();
-		} api::rayportal_ctx.pairs.clear();
+		api::rayportal_ctx.destroy_all_pairs();
 	}
 
 	HOOK_RETN_PLACE_DEF(on_host_disconnect_retn);
