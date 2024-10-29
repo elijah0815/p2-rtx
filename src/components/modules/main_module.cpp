@@ -240,7 +240,7 @@ namespace components
 				remixapi_MeshInfo info
 				{
 					.sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
-					.hash = remix_debug_last_line_hash ? remix_debug_last_line_hash : 1,
+					.hash = utils::string_hash64(utils::va("line%d", remix_debug_last_line_hash ? remix_debug_last_line_hash : 1)),
 					.surfaces_values = &triangles,
 					.surfaces_count = 1,
 				};
@@ -1231,7 +1231,7 @@ namespace components
 			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6174.87109f, 3518.96875f, 1667.12109f };	// 2
 			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6174.87109f, 3518.96875f, 1555.12109f };	// 3
 			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6110.87109f, 3518.96875f, 1555.12109f };	// 4
-			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6142.87109f, 3518.96875f, 1611.12109f };	// 5
+			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6142.87109f, 3518.96875f, 1611.12109f };	// 5 -- center
 			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 10460.3789f, 1225.95068f, 344.843750f };	// 6
 			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 10451.3281f, 1162.59399f, 344.843750f };	// 7
 			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 10451.3281f, 1162.59399f, 232.843750f };	// 8

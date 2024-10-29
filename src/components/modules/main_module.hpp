@@ -37,12 +37,15 @@ namespace components
 		class rayportal_context
 		{
 		public:
+			class portal_pair;
+
+		public:
 			class portal_single
 			{
 			public:
 				portal_single() = default;
-				portal_single(const Vector& pos, const Vector& rot, const Vector& scale, bool square_mask)
-					: m_pos(pos), m_rot(rot), m_scale(scale), m_square_mask(square_mask) {}
+				portal_single(const Vector& pos, const Vector& rot, const Vector& scale, bool square_mask, const portal_pair* parent)
+					: m_pos(pos), m_rot(rot), m_scale(scale), m_square_mask(square_mask), m_parent(parent) {}
 
 				/**
 				 * Initiates a full rayportal via the api (material and mesh) (1x1 Unit)
@@ -65,6 +68,10 @@ namespace components
 
 				uint8_t get_index() const {
 					return m_index;
+				}
+
+				const portal_pair* get_parent_pair() {
+					return m_parent;
 				}
 
 				remixapi_MeshHandle get_mesh() const {
@@ -99,7 +106,7 @@ namespace components
 					remixapi_MeshInfo i =
 					{
 					  .sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
-					  .hash = 20 + (uint64_t)m_index,
+					  .hash = utils::string_hash64(utils::va("pmesh%d", m_index)),
 					  .surfaces_values = &triangles,
 					  .surfaces_count = 1,
 					};
@@ -133,7 +140,7 @@ namespace components
 
 					remixapi_MaterialInfo info = {};
 					info.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO;
-					info.hash = 10 + (uint64_t)m_index;
+					info.hash = utils::string_hash64(utils::va("pmat%d", m_index));
 					info.emissiveIntensity = 0.0f;
 					info.emissiveColorConstant = { 0.0f, 0.0f, 0.0f };
 					info.albedoTexture = !m_square_mask ? L"" : mask_path.data(); // requires changes to dxvk-remix (PR#80)
@@ -171,7 +178,8 @@ namespace components
 				 */
 				const Vector& calculate_normal(const utils::vector::matrix3x3& matrix)
 				{
-					Vector initial_normal = { 0.0f, -1.0f, 0.0f };
+					// local space normal of the portal quad
+					const Vector initial_normal = { 0.0f, -1.0f, 0.0f };
 
 					Vector new_normal;
 					new_normal[0] = matrix.m[0][0] * initial_normal.x + matrix.m[1][0] * initial_normal.y + matrix.m[2][0] * initial_normal.z;
@@ -188,6 +196,51 @@ namespace components
 
 				const remixapi_Transform& get_remix_transform() const {
 					return m_transform;
+				}
+
+				/**
+				 * Calculates corner points of the portal using the portal normal, its position and the scale it was created with
+				 * @return pointer to Vector[4]
+				 */
+				const Vector* calculate_corners()
+				{
+					Vector right, up;
+					const auto& plane_normal = get_normal();
+
+					// find an arbitrary vector not parallel to the normal
+					if (fabs(plane_normal.z) < 0.99f) 
+					{
+						right = Vector(0.0f, 0.0f, 1.0f).Cross(plane_normal);
+						right.Normalize();
+					}
+					else 
+					{
+						right = Vector(1.0f, 0.0f, 0.0f).Cross(plane_normal);
+						right.Normalize();
+					}
+
+					// calc the up vector perpendicular to both the normal and right vec
+					up = plane_normal.Cross(right);
+					up.Normalize();
+
+					// scale the vectors to half the rectangle's width and height
+					right *= m_scale.x * 0.5f;
+					up *= m_scale.z * 0.5f;
+
+					m_corner_points[0] = m_pos + right + up; // top right
+					m_corner_points[1] = m_pos - right + up; // top left
+					m_corner_points[2] = m_pos - right - up; // bottom left
+					m_corner_points[3] = m_pos + right - up; // bottom right
+
+					return m_corner_points;
+				}
+
+				/**
+				 * Get the corner points of the portal. Needs to be calculated before
+				 * @return pointer to Vector[4]
+				 */
+				const Vector* get_corner_points() {
+					return m_corner_points;
 				}
 
 				/**
@@ -218,10 +271,12 @@ namespace components
 
 			private:
 				uint8_t m_index = 0u;
+				const portal_pair* m_parent = nullptr;
 
-				bool m_cached = false; // is transform/normal cached
+				bool m_cached = false; // is transform / normal cached
 				Vector m_normal = { 0.0f, -1.0f, 0.0f };
 				remixapi_Transform m_transform = {};
+				Vector m_corner_points[4] = {};
 
 				remixapi_MeshHandle m_hmesh = nullptr;
 				remixapi_MaterialHandle m_hmaterial = nullptr;
@@ -243,14 +298,14 @@ namespace components
 						m_portal1.init(5);
 						break;
 					}
-				}
+				} 
 
 				portal_pair(const PORTAL_PAIR& pair,
 					const Vector& pos1, const Vector& rot1, const Vector& scale1, bool square_mask1,
 					const Vector& pos2, const Vector& rot2, const Vector& scale2, bool square_mask2)
 					: m_pair(pair)
-					, m_portal0(pos1, rot1, scale1, square_mask1)
-					, m_portal1(pos2, rot2, scale2, square_mask2)
+					, m_portal0(pos1, rot1, scale1, square_mask1, this)
+					, m_portal1(pos2, rot2, scale2, square_mask2, this)
 				{
 					switch (pair)
 					{
@@ -348,8 +403,12 @@ namespace components
 							mtx.rotate_y(utils::deg_to_rad(p.m_rot.y));
 							mtx.rotate_x(utils::deg_to_rad(p.m_rot.x));
 
-							// update portal normal
-							const auto& normal = p.calculate_normal(mtx);
+							// calculate portal normal if not cached
+							Vector normal = {};
+
+							if (!p.is_cached()) {
+								normal = p.calculate_normal(mtx);
+							}
 
 							// transpose because remix transforms are column major
 							mtx.transpose();
@@ -366,6 +425,12 @@ namespace components
 								game::debug_add_text_overlay(&debug_pos.x, 0.0f, utils::va("Pair: %d --- Rayportal Index: %d\n", this->get_pair_num(), p.get_index())); debug_pos.z -= scaled_offset;
 								game::debug_add_text_overlay(&debug_pos.x, 0.0f, utils::va("Position: %.2f %.2f %.2f", p.m_pos.x, p.m_pos.y, p.m_pos.z)); debug_pos.z -= scaled_offset;
 								game::debug_add_text_overlay(&debug_pos.x, 0.0f, utils::va("Normal: %.2f %.2f %.2f", normal.x, normal.y, normal.z));
+
+								const auto corner_points = p.calculate_corners();
+								api::add_debug_line(corner_points[0], corner_points[1], 1.0f, api::DEBUG_REMIX_LINE_COLOR::RED);
+								api::add_debug_line(corner_points[1], corner_points[2], 1.0f, api::DEBUG_REMIX_LINE_COLOR::RED);
+								api::add_debug_line(corner_points[2], corner_points[3], 1.0f, api::DEBUG_REMIX_LINE_COLOR::RED);
+								api::add_debug_line(corner_points[3], corner_points[0], 1.0f, api::DEBUG_REMIX_LINE_COLOR::RED);
 							}
 
 							const remixapi_InstanceInfo info =
