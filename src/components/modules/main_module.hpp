@@ -23,11 +23,16 @@ namespace components
 		extern std::uint32_t remix_debug_line_amount;
 		extern std::uint64_t remix_debug_last_line_hash;
 
+		
+
 		enum PORTAL_PAIR : std::uint8_t
 		{
 			PORTAL_PAIR_1 = 0,
 			PORTAL_PAIR_2 = 1,
 		};
+
+		// variables directly influencing the class below 
+		extern bool rayportal_show_debug_info;
 
 		class rayportal_context
 		{
@@ -158,6 +163,54 @@ namespace components
 					return res;
 				}
 
+
+				/**
+				 * Calculates the surface normal of the portal
+				 * @param matrix	row-major transform matrix
+				 * @return			the new normal
+				 */
+				const Vector& calculate_normal(const utils::vector::matrix3x3& matrix)
+				{
+					Vector initial_normal = { 0.0f, -1.0f, 0.0f };
+
+					Vector new_normal;
+					new_normal[0] = matrix.m[0][0] * initial_normal.x + matrix.m[1][0] * initial_normal.y + matrix.m[2][0] * initial_normal.z;
+					new_normal[1] = matrix.m[0][1] * initial_normal.x + matrix.m[1][1] * initial_normal.y + matrix.m[2][1] * initial_normal.z;
+					new_normal[2] = matrix.m[0][2] * initial_normal.x + matrix.m[1][2] * initial_normal.y + matrix.m[2][2] * initial_normal.z;
+					new_normal.NormalizeChecked();
+					m_normal = new_normal;
+					return m_normal;
+				}
+
+				const Vector& get_normal() const {
+					return m_normal;
+				}
+
+				const remixapi_Transform& get_remix_transform() const {
+					return m_transform;
+				}
+
+				/**
+				 * Caches the portal transform and normal
+				 * @param transform the remixapi_Transform for the portal 
+				 * @param normal	normal of the portal
+				 */
+				void cache(const remixapi_Transform& transform, const Vector& normal)
+				{
+					m_transform = transform;
+					m_normal = normal;
+					m_cached = true;
+				}
+
+				void uncache() {
+					m_cached = false;
+				}
+
+				bool is_cached() const  {
+					return m_cached;
+				}
+
+
 				Vector m_pos = {};
 				Vector m_rot = {};
 				Vector m_scale = {};
@@ -165,6 +218,11 @@ namespace components
 
 			private:
 				uint8_t m_index = 0u;
+
+				bool m_cached = false; // is transform/normal cached
+				Vector m_normal = { 0.0f, -1.0f, 0.0f };
+				remixapi_Transform m_transform = {};
+
 				remixapi_MeshHandle m_hmesh = nullptr;
 				remixapi_MaterialHandle m_hmaterial = nullptr;
 			};
@@ -250,7 +308,7 @@ namespace components
 					bool res = true;
 					for (uint8_t i = 0u; i < 2; i++)
 					{
-						const auto& p = get_portal(i);
+						auto& p = get_portal(i);
 						if (p.get_mesh())
 						{
 							/*D3DXMATRIX scale;
@@ -289,16 +347,34 @@ namespace components
 							mtx.rotate_z(utils::deg_to_rad(p.m_rot.z));
 							mtx.rotate_y(utils::deg_to_rad(p.m_rot.y));
 							mtx.rotate_x(utils::deg_to_rad(p.m_rot.x));
+
+							// update portal normal
+							const auto& normal = p.calculate_normal(mtx);
+
+							// transpose because remix transforms are column major
 							mtx.transpose();
 
-							const auto t0 = mtx.to_remixapi_transform(p.m_pos);
+							// cache transform so it's not recalculated every frame
+							if (!p.is_cached()) {
+								p.cache(mtx.to_remixapi_transform(p.m_pos), normal);
+							}
+
+							if (api::rayportal_show_debug_info)
+							{
+								Vector debug_pos = p.m_pos;
+								float scaled_offset = debug_pos.DistTo(game::get_current_view_origin_as_vector()) * 0.025f;
+								game::debug_add_text_overlay(&debug_pos.x, 0.0f, utils::va("Pair: %d --- Rayportal Index: %d\n", this->get_pair_num(), p.get_index())); debug_pos.z -= scaled_offset;
+								game::debug_add_text_overlay(&debug_pos.x, 0.0f, utils::va("Position: %.2f %.2f %.2f", p.m_pos.x, p.m_pos.y, p.m_pos.z)); debug_pos.z -= scaled_offset;
+								game::debug_add_text_overlay(&debug_pos.x, 0.0f, utils::va("Normal: %.2f %.2f %.2f", normal.x, normal.y, normal.z));
+							}
+
 							const remixapi_InstanceInfo info =
 							{
 								.sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
 								.pNext = nullptr,
 								.categoryFlags = 0,
 								.mesh = p.get_mesh(),
-								.transform = t0,
+								.transform = p.get_remix_transform(),
 								.doubleSided = false
 							};
 							res = api::bridge.DrawInstance(&info) == REMIXAPI_ERROR_CODE_SUCCESS ? res : false;
@@ -404,9 +480,15 @@ namespace components
 				return res;
 			}
 
+			struct settings_s
+			{
+				bool show_debug_information = false;
+			};
+
+			settings_s settings = {};
+
 		private:
 			std::map<PORTAL_PAIR, portal_pair> pairs;
-			//std::vector<portal_pair> pairs;
 		};
 
 		extern rayportal_context rayportal_ctx;

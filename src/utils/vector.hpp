@@ -350,6 +350,20 @@ public:
 		return fl_lenght;
 	}
 
+	float NormalizeChecked()
+	{
+		const float fl_lenght = Lenght();
+		if (fl_lenght != 0.0f)
+		{
+			const float ilength = 1.0f / fl_lenght;
+			x *= ilength;
+			y *= ilength;
+			z *= ilength;
+		}
+
+		return fl_lenght;
+	}
+
 	void Rotate(const float flYaw)
 	{
 		const float r = DEG2RAD(flYaw);

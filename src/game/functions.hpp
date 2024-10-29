@@ -46,4 +46,6 @@ namespace game
 	inline components::CGlobalVarsBase* get_global_vars() { return reinterpret_cast<components::CGlobalVarsBase*>(*(DWORD*)(CLIENT_BASE + USE_OFFSET(0x92A37C, 0x9220BC))); }
 	inline components::CCvar* get_icvar() { return reinterpret_cast<components::CCvar*>((VSTDLIB_BASE + USE_OFFSET(0x315B0, 0x31550))); }
 
+	inline const float* get_current_view_origin() { return reinterpret_cast<float*>(ENGINE_BASE + USE_OFFSET(0x513380, 0x50DB50)); }
+	inline Vector get_current_view_origin_as_vector() { return get_current_view_origin(); }
 }

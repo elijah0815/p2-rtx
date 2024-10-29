@@ -55,6 +55,7 @@ namespace components
 		remixapi_MeshHandle portal3_mesh = nullptr;
 		remixapi_MaterialHandle portal3_material = nullptr;
 
+		bool rayportal_show_debug_info = false;
 		rayportal_context rayportal_ctx {};
 
 		remixapi_LightHandle light_handle = nullptr;
@@ -699,12 +700,12 @@ namespace components
 		main_module::setup_required_cvars();
 
 		Vector pos1 = { 6144.0, 3456.0f, 1662.0f };
-		Vector rot1 = { 90.0f, 0.0f, 0.0f };
-		Vector scale1 = { 127.0f, 127.0f, 127.0f };
+		Vector rot1 = { -90.0f, 0.0f, 0.0f };
+		Vector scale1 = { 127.0f, 1.0f, 127.0f };
 
 		Vector pos2 = { 10375.0f, 1216.0f, 290.0f };
-		Vector rot2 = { -90.0f, 0.0f, 0.0f };
-		Vector scale2 = { 350.0f, 350.0f, 350.0f };
+		Vector rot2 = { 90.0f, 0.0f, 0.0f };
+		Vector scale2 = { 350.0f, 1.0f, 350.0f };
 
 		api::rayportal_ctx.add_pair(api::PORTAL_PAIR::PORTAL_PAIR_1,
 			pos1, rot1, scale1, true,
@@ -713,12 +714,12 @@ namespace components
 
 
 		pos1 = { 6980.0f, 550.0f, 440.0f };
-		rot1 = { 45.0f, 0.0f, -180.0f };
+		rot1 = { 0.0f, 0.0f, 0.0f };
 		scale1 = { 100.0f, 1.0f, 100.0f };
 
 		pos2 = { 6980.0f, 965.0f, 440.0f };
-		rot2 = { 0.0f, 45.0f, -90.0f };
-		scale2 = { 100.0f, 1.0f, 50.0f };
+		rot2 = { 0.0f, 0.0f, 0.0f };
+		scale2 = { 100.0f, 1.0f, 100.0f };
 
 		api::rayportal_ctx.add_pair(api::PORTAL_PAIR::PORTAL_PAIR_2,
 			pos1, rot1, scale1, true,
@@ -986,10 +987,10 @@ namespace components
 	void pre_recursive_world_node()
 	{
 		const auto world = game::get_hoststate_worldbrush_data();
-		const auto g_CurrentViewOrigin = reinterpret_cast<float*>(ENGINE_BASE + USE_OFFSET(0x513380, 0x50DB50));
+		//const auto g_CurrentViewOrigin = reinterpret_cast<float*>(ENGINE_BASE + USE_OFFSET(0x513380, 0x50DB50));
 
 		// CM_PointLeafnum :: get current leaf
-		const auto current_leaf = utils::hook::call<int(__cdecl)(float*)>(ENGINE_BASE + USE_OFFSET(0x159C80, 0x158540))(g_CurrentViewOrigin);
+		const auto current_leaf = utils::hook::call<int(__cdecl)(const float*)>(ENGINE_BASE + USE_OFFSET(0x159C80, 0x158540))(game::get_current_view_origin());
 
 		// CM_LeafArea :: get current player area
 		const auto current_area = utils::hook::call<int(__cdecl)(int leafnum)>(ENGINE_BASE + USE_OFFSET(0x15ACE0, 0x159470))(current_leaf);
@@ -1195,6 +1196,36 @@ namespace components
 				added_player_view_vis = true;
 			}
 
+
+
+			/*
+				Vector pos1 = { 6144.0, 3456.0f, 1662.0f };
+				Vector rot1 = { 90.0f, 0.0f, 0.0f };
+				Vector scale1 = { 127.0f, 127.0f, 127.0f };
+
+				Vector pos2 = { 10375.0f, 1216.0f, 290.0f };
+				Vector rot2 = { -90.0f, 0.0f, 0.0f };
+				Vector scale2 = { 350.0f, 350.0f, 350.0f };
+
+				api::rayportal_ctx.add_pair(api::PORTAL_PAIR::PORTAL_PAIR_1,
+					pos1, rot1, scale1, true,
+					pos2, rot2, scale2, false);
+
+
+
+				pos1 = { 6980.0f, 550.0f, 440.0f };
+				rot1 = { 45.0f, 0.0f, -180.0f };
+				scale1 = { 100.0f, 1.0f, 100.0f };
+
+				pos2 = { 6980.0f, 965.0f, 440.0f };
+				rot2 = { 0.0f, 45.0f, -90.0f };
+				scale2 = { 100.0f, 1.0f, 50.0f };
+
+				api::rayportal_ctx.add_pair(api::PORTAL_PAIR::PORTAL_PAIR_2,
+					pos1, rot1, scale1, true,
+					pos2, rot2, scale2, true);
+			 */
+
 			//portal0 corners?
 			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6110.87109f, 3518.96875f, 1667.12109f };	// 1
 			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6174.87109f, 3518.96875f, 1667.12109f };	// 2
@@ -1248,6 +1279,12 @@ namespace components
 	void xo_debug_toggle_node_vis_fn()
 	{
 		api::remix_debug_node_vis = !api::remix_debug_node_vis;
+	}
+
+	ConCommand xo_debug_toggle_rayportal_info_cmd {};
+	void xo_debug_toggle_rayportal_info_fn()
+	{
+		api::rayportal_show_debug_info = !api::rayportal_show_debug_info;
 	}
 
 #if defined(BENCHMARK)
@@ -1383,6 +1420,7 @@ namespace components
 		// commands
 
 		game::con_add_command(&xo_debug_toggle_node_vis_cmd, "xo_debug_toggle_node_vis", xo_debug_toggle_node_vis_fn, "Toggle bsp node/leaf debug visualization using the remix api");
+		game::con_add_command(&xo_debug_toggle_rayportal_info_cmd, "xo_debug_toggle_rayportal_info", xo_debug_toggle_rayportal_info_fn, "Toggle debug information for rayportals spawned via the remix api");
 
 #if defined(BENCHMARK)
 		game::con_add_command(&xo_debug_toggle_benchmark_cmd, "xo_debug_toggle_benchmark", xo_debug_toggle_benchmark_fn, "Toggle benchmark printing");
