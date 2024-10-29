@@ -43,23 +43,18 @@ namespace components
 		std::uint64_t remix_debug_last_line_hash = 0u;
 		bool remix_debug_node_vis = false; // show/hide debug vis of bsp nodes/leafs
 
-		remixapi_MeshHandle portal0_mesh = nullptr;
-		remixapi_MaterialHandle portal0_material = nullptr;
-		remixapi_MeshHandle portal1_mesh = nullptr;
-		remixapi_MaterialHandle portal1_material = nullptr;
 		bool allow_api_portals = false;
 		bool disabled_portal_fade = false;
 
-		remixapi_MeshHandle portal2_mesh = nullptr;
-		remixapi_MaterialHandle portal2_material = nullptr;
-		remixapi_MeshHandle portal3_mesh = nullptr;
-		remixapi_MaterialHandle portal3_material = nullptr;
+		remixapi_LightHandle light_handle = nullptr;
 
+
+		// rayportal context
 		bool rayportal_show_debug_info = false;
 		rayportal_context rayportal_ctx {};
 
-		remixapi_LightHandle light_handle = nullptr;
 
+		// forward declaration
 		void endscene_cb();
 
 		// called on device->Present
@@ -250,73 +245,6 @@ namespace components
 			}
 		}
 
-		void create_portal(std::uint8_t index, remixapi_MeshHandle& mesh_handle, remixapi_MaterialHandle& material_handle, bool square_shaped = false)
-		{
-			if (!material_handle)
-			{
-				std::wstring mask_path;
-				if (square_shaped) 
-				{
-					mask_path = std::wstring(game::root_path.begin(), game::root_path.end());
-					mask_path += L"portal2-rtx\\textures\\white.dds";
-				}
-
-				//main_module::bridge.DestroyMaterial(material_handle);
-				remixapi_MaterialInfo info = {};
-				info.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO;
-				info.hash = 10 + (uint64_t)index;
-				info.emissiveIntensity = 0.0f;
-				info.emissiveColorConstant = { 0.0f, 0.0f, 0.0f };
-				info.albedoTexture = !square_shaped ? L"" : mask_path.data(); // requires changes to dxvk-remix (PR#80)
-				info.normalTexture = L"";
-				info.tangentTexture = L"";
-				info.emissiveTexture = L"";
-				info.spriteSheetFps = 5;
-				info.spriteSheetCol = 1;
-				info.spriteSheetRow = 1;
-				info.filterMode = 1u;
-				info.wrapModeU = 1u;
-				info.wrapModeV = 1u;
-				
-
-				remixapi_MaterialInfoPortalEXT ext = {};
-				ext.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO_PORTAL_EXT;
-				ext.rayPortalIndex = index;
-				ext.rotationSpeed = 1.0f;
-
-				info.pNext = &ext;
-				api::bridge.CreateMaterial(&info, &material_handle);
-			}
-
-			// mesh
-
-			remixapi_HardcodedVertex verts[4] = {};
-			uint32_t indices[6] = {};
-			create_quad(verts, indices, 50.0f);
-
-			remixapi_MeshInfoSurfaceTriangles triangles =
-			{
-			  .vertices_values = verts,
-			  .vertices_count = ARRAYSIZE(verts),
-			  .indices_values = indices,
-			  .indices_count = 6,
-			  .skinning_hasvalue = FALSE,
-			  .skinning_value = {},
-			  .material = material_handle,
-			};
-
-			remixapi_MeshInfo i =
-			{
-			  .sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
-			  .hash = 20 + (uint64_t)index,
-			  .surfaces_values = &triangles,
-			  .surfaces_count = 1,
-			};
-
-			//main_module::bridge.DestroyMesh(mesh_handle);
-			api::bridge.CreateMesh(&i, &mesh_handle);
-		}
-
 		// called on device->EndScene
 		void endscene_cb()
 		{
@@ -382,12 +310,13 @@ namespace components
 			}
 		}
 
+		// api debug lines
 		if (!api::remix_debug_line_materials[0])
 		{
 			remixapi_MaterialInfo info
 			{
 				.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO,
-				.hash = 1,
+				.hash = utils::string_hash64("linemat0"),
 				.albedoTexture = L"",
 				.normalTexture = L"",
 				.tangentTexture = L"",
@@ -415,11 +344,11 @@ namespace components
 
 			api::bridge.CreateMaterial(&info, &api::remix_debug_line_materials[0]);
 
-			info.hash = 2;
+			info.hash = utils::string_hash64("linemat1");
 			info.emissiveColorConstant = { 0.0f, 1.0f, 0.0f };
 			api::bridge.CreateMaterial(&info, &api::remix_debug_line_materials[1]);
 
-			info.hash = 3;
+			info.hash = utils::string_hash64("linemat3");
 			info.emissiveColorConstant = { 0.0f, 1.0f, 1.0f };
 			api::bridge.CreateMaterial(&info, &api::remix_debug_line_materials[2]);
 		}
@@ -454,96 +383,23 @@ namespace components
 		model_render::m_benchmark.clear();
 #endif
 
-#if 1
-
-		// #
-		const auto draw_api_portal = [](const std::uint8_t index, const Vector& pos, const Vector& rot, const Vector& scale)
+		// #TODO - fix portal fadein effect
+		if (const auto& n = map_settings::get_loaded_map_name();
+			!n.empty() && n == "sp_a1_wakeup")
 		{
-			remixapi_MeshHandle mesh = nullptr;
+			remix_vars::set_option(remix_vars::get_option("rtx.enablePortalFadeInEffect"), { false });
+			api::disabled_portal_fade = true;
+			api::rayportal_ctx.draw_all_pairs();
 
-			switch (index)
-			{
-				default:
-				case 0: mesh = api::portal0_mesh; break;
-				case 1: mesh = api::portal1_mesh; break;
-				case 2: mesh = api::portal2_mesh; break;
-				case 3: mesh = api::portal3_mesh; break;
-			}
-
-			if (mesh)
-			{
-				utils::vector::matrix3x3 mtx;
-				mtx.scale(scale.x, scale.y, scale.z);
-				mtx.rotate_x(utils::deg_to_rad(rot.x));
-				mtx.rotate_y(utils::deg_to_rad(rot.y));
-				mtx.rotate_z(utils::deg_to_rad(rot.z));
-
-				const auto t0 = mtx.to_remixapi_transform(pos);
-				const remixapi_InstanceInfo info =
-				{
-					.sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
-					.pNext = nullptr,
-					.categoryFlags = 0,
-					.mesh = mesh,
-					.transform = t0,
-					.doubleSided = false
-				};
-				api::bridge.DrawInstance(&info);
-			}
-		};
-
-		/*if (api::portal0_mesh) {
-			api::bridge.DestroyMesh(api::portal0_mesh); api::portal0_mesh = nullptr;
 		}
-
-		if (api::portal1_mesh) {
-			api::bridge.DestroyMesh(api::portal1_mesh); api::portal1_mesh = nullptr;
-		}*/
-
-		//if (api::allow_api_portals)
-		//{
-			if (const auto& n = map_settings::get_loaded_map_name();
-				!n.empty() && n == "sp_a1_wakeup")
+		else
+		{
+			if (api::disabled_portal_fade)
 			{
 				remix_vars::set_option(remix_vars::get_option("rtx.enablePortalFadeInEffect"), { false });
-				api::disabled_portal_fade = true;
-
-				/*
-				api::create_portal(2, api::portal0_mesh, api::portal0_material, true);
-				api::create_portal(3, api::portal1_mesh, api::portal1_material);
-
-				draw_api_portal(2,	{ 6144.0, 3456.0f, 1662.0f },
-									{ 90.0f, 0.0f, 0.0f }, 
-									{ 1.27f, 1.27f, 1.0f });
-
-				draw_api_portal(3,	{ 10375.0f, 1216.0f, 290.0f },
-									{ -90.0f, 0.0f, 0.0f },
-									{ 1.4f, 1.4f, 1.0f });
-
-				api::create_portal(4, api::portal2_mesh, api::portal2_material, true);
-				api::create_portal(5, api::portal3_mesh, api::portal3_material, true);
-
-				draw_api_portal(4,	{ 6980.0f, 550.0f, 440.0f },
-									{ 0.0f, 0.0f, -180.0f },
-									{ 1.0f, 1.0f, 1.0f });
-
-				draw_api_portal(5,	{ 6980.0f, 965.0f, 440.0f },
-									{ 0.0f, 0.0f, 0.0f },
-									{ 1.0f, 1.0f, 1.0f });
-				*/
-
-				api::rayportal_ctx.draw_all_pairs();
-
+				api::disabled_portal_fade = false;
 			}
-		//}
-			else
-			{
-				if (api::disabled_portal_fade)
-				{
-					remix_vars::set_option(remix_vars::get_option("rtx.enablePortalFadeInEffect"), { false });
-					api::disabled_portal_fade = false;
-				}
-			}
+		}
 
 		/*if (!api::light_handle)
 		{
@@ -570,7 +426,6 @@ namespace components
 		{
 			api::bridge.DrawLightInstance(api::light_handle);
 		}*/
-#endif
 	}
 
 	/**
@@ -699,6 +554,7 @@ namespace components
 		map_settings::on_map_load(map_name);
 		main_module::setup_required_cvars();
 
+#if 0
 		Vector pos1 = { 6144.0, 3456.0f, 1662.0f };
 		Vector rot1 = { -90.0f, 0.0f, 0.0f };
 		Vector2D scale1 = { 127.0f, 127.0f };
@@ -724,30 +580,7 @@ namespace components
 		api::rayportal_ctx.add_pair(api::PORTAL_PAIR::PORTAL_PAIR_2,
 			pos1, rot1, scale1, true,
 			pos2, rot2, scale2, true);
-
-		/*
-		 api::create_portal(2, api::portal0_mesh, api::portal0_material, true);
-				api::create_portal(3, api::portal1_mesh, api::portal1_material);
-
-				draw_api_portal(2,	{ 6144.0, 3456.0f, 1662.0f },
-									{ 90.0f, 0.0f, 0.0f }, 
-									{ 1.27f, 1.27f, 1.0f });
-
-				draw_api_portal(3,	{ 10375.0f, 1216.0f, 290.0f },
-									{ -90.0f, 0.0f, 0.0f },
-									{ 1.4f, 1.4f, 1.0f });
-
-				api::create_portal(4, api::portal2_mesh, api::portal2_material, true);
-				api::create_portal(5, api::portal3_mesh, api::portal3_material, true);
-
-				draw_api_portal(4,	{ 6980.0f, 550.0f, 440.0f },
-									{ 0.0f, 0.0f, -180.0f },
-									{ 1.0f, 1.0f, 1.0f });
-
-				draw_api_portal(5,	{ 6980.0f, 965.0f, 440.0f },
-									{ 0.0f, 0.0f, 0.0f },
-									{ 1.0f, 1.0f, 1.0f });
-		 */
+#endif
 
 		// reset portal vars
 		model_render::portal1_ptr = nullptr;
@@ -785,7 +618,6 @@ namespace components
 	void on_host_disconnect_hk()
 	{
 		map_settings::on_map_exit(); 
-
 		api::rayportal_ctx.destroy_all_pairs();
 	}
 
@@ -1184,7 +1016,8 @@ namespace components
 		// do not allow api portals if the game has already spawned portals
 		//api::allow_api_portals = !is_using_custom_vis;
 
-		if (/*api::allow_api_portals &&*/ api::portal0_mesh && api::portal1_mesh)
+		//if (/*api::allow_api_portals &&*/ api::portal0_mesh && api::portal1_mesh)
+		if (!api::rayportal_ctx.empty())
 		{
 			auto& vis = customVisibility;
 

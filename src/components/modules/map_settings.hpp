@@ -17,6 +17,7 @@ namespace components
 		enum PARSE_MODE : std::uint32_t
 		{
 			FOG,
+			API_PORTALS,
 			CULL,
 			MARKER,
 			API_VARS
@@ -65,6 +66,7 @@ namespace components
 		map_settings_s* get_or_create_settings(bool parse_mode = true, const char* map_name = nullptr);
 
 		void parse_fog();
+		void parse_portal_pairs();
 		void parse_culling();
 		void parse_markers();
 		void open_and_set_var_config(const std::string& config, bool ignore_hashes = false, const char* custom_path = nullptr);

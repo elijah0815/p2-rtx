@@ -23,7 +23,9 @@ namespace components
 		extern std::uint32_t remix_debug_line_amount;
 		extern std::uint64_t remix_debug_last_line_hash;
 
-		
+
+		// #
+		// rayportal context (api)
 
 		enum PORTAL_PAIR : std::uint8_t
 		{
@@ -325,14 +327,6 @@ namespace components
 					}
 				}
 
-				//// del copy and copy assignment operator
-				//portal_pair(const portal_pair&) = delete;
-				//portal_pair& operator=(const portal_pair&) = delete;
-
-				//// del move and move assignment operator
-				//portal_pair(portal_pair&&) = delete;
-				//portal_pair& operator=(portal_pair&&) = delete;
-
 				/**
 				 * This destroys all remixAPI objects associated with the pair
 				 */
@@ -496,7 +490,6 @@ namespace components
 			 */
 			void destroy_all_pairs()
 			{
-
 				for (auto& p : pairs) {
 					p.second.destroy_pair();
 				}
@@ -548,6 +541,27 @@ namespace components
 				}
 
 				return res;
+			}
+
+			/**
+			 * Returns the specified portal pair if it exists
+			 * @param pair	the portal pair
+			 * @return		a pointer to the portal pair - nullptr if not found
+			 */
+			const portal_pair* get_portal_pair(PORTAL_PAIR pair)
+			{
+				for (auto it = pairs.begin(); it != pairs.end(); ++it)
+				{
+					if (it->second.get_pair_num() == pair) {
+						return &it->second;
+					}
+				}
+
+				return nullptr;
+			}
+
+			bool empty() const {
+				return pairs.empty();
 			}
 
 			struct settings_s
