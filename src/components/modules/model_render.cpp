@@ -38,8 +38,10 @@ namespace components
 	{
 		LPDIRECT3DTEXTURE9 portal_mask;
 		LPDIRECT3DTEXTURE9 portal_blue;
+		LPDIRECT3DTEXTURE9 portal_blue_overlay;
 		LPDIRECT3DTEXTURE9 portal_blue_closed;
 		LPDIRECT3DTEXTURE9 portal_orange;
+		LPDIRECT3DTEXTURE9 portal_orange_overlay;
 		LPDIRECT3DTEXTURE9 portal_orange_closed;
 		LPDIRECT3DTEXTURE9 glass_shards;
 		LPDIRECT3DTEXTURE9 glass_window_lamps;
@@ -62,8 +64,10 @@ namespace components
 		{
 			if (tex_addons::portal_mask) tex_addons::portal_mask->Release();
 			if (tex_addons::portal_blue) tex_addons::portal_blue->Release();
+			if (tex_addons::portal_blue_overlay) tex_addons::portal_blue_overlay->Release();
 			if (tex_addons::portal_blue_closed) tex_addons::portal_blue_closed->Release();
 			if (tex_addons::portal_orange) tex_addons::portal_orange->Release();
+			if (tex_addons::portal_orange_overlay) tex_addons::portal_orange_overlay->Release();
 			if (tex_addons::portal_orange_closed) tex_addons::portal_orange_closed->Release();
 			if (tex_addons::glass_shards) tex_addons::glass_shards->Release();
 			if (tex_addons::glass_window_lamps) tex_addons::glass_window_lamps->Release();
@@ -84,8 +88,10 @@ namespace components
 
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_mask.png", &tex_addons::portal_mask);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_blue.png", &tex_addons::portal_blue);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_blue_overlay.png", &tex_addons::portal_blue_overlay);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_blue_closed.png", &tex_addons::portal_blue_closed);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_orange.png", &tex_addons::portal_orange);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_orange_overlay.png", &tex_addons::portal_orange_overlay);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_orange_closed.png", &tex_addons::portal_orange_closed);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_shards.png", &tex_addons::glass_shards);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_window_refract.png", &tex_addons::glass_window_lamps);
@@ -836,6 +842,12 @@ namespace components
 
 				if (tex_addons::portal_blue)
 				{
+					// render static portal overlay - currently not visible through walls
+#if 0
+					ctx.modifiers.dual_render_with_specified_texture = true;
+					ctx.modifiers.dual_render_texture = tex_addons::portal_blue_overlay;
+					ctx.modifiers.dual_render_with_specified_texture_blend_add = true;
+#endif
 					ctx.save_texture(dev, 0);
 					dev->SetTexture(0, tex_addons::portal_blue);
 				}
@@ -911,6 +923,12 @@ namespace components
 
 					if (tex_addons::portal_orange)
 					{
+						// render static portal overlay - currently not visible through walls
+#if 0
+						ctx.modifiers.dual_render_with_specified_texture = true;
+						ctx.modifiers.dual_render_texture = tex_addons::portal_orange_overlay;
+						ctx.modifiers.dual_render_with_specified_texture_blend_add = true;
+#endif
 						ctx.save_texture(dev, 0);
 						dev->SetTexture(0, tex_addons::portal_orange);
 					}
@@ -1370,7 +1388,7 @@ namespace components
 			else if (mesh->m_VertexFormat == 0xa0007) // portal fx 
 			{
 				//ctx.modifiers.do_not_render = true;
-				ctx.save_vs(dev);
+				ctx.save_vs(dev); 
 				dev->SetVertexShader(nullptr);
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_NORMAL | D3DFVF_TEX5 | D3DFVF_TEXCOORDSIZE1(4)); // tc at 16 + 12 :: 68 - 4 as last tc is one float
 				dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
@@ -1878,7 +1896,7 @@ namespace components
 	{
 		const auto dev = game::get_d3d_device();
 		const auto shaderapi = game::get_shaderapi();
-		const auto& ctx = model_render::primctx;
+		auto& ctx = model_render::primctx;
 
 		// 0 = Gamma 1.0 (fixes dark albedo) :: 1 = Gamma 2.2
 		dev->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, ctx.modifiers.with_high_gamma ? 1u : 0u);
@@ -2078,6 +2096,32 @@ namespace components
 
 			// set new texture
 			dev->SetTexture(0, ctx.modifiers.dual_render_texture);
+
+			// BLEND ADD mode
+			if (ctx.modifiers.dual_render_with_specified_texture_blend_add)
+			{
+				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+
+				ctx.save_rs(dev, D3DRS_BLENDOP);
+				dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+
+				ctx.save_rs(dev, D3DRS_SRCBLEND);
+				dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
+
+				ctx.save_rs(dev, D3DRS_DESTBLEND);
+				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+
+				ctx.save_rs(dev, D3DRS_ZWRITEENABLE);
+				dev->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
+
+				ctx.save_rs(dev, D3DRS_ZENABLE);
+				dev->SetRenderState(D3DRS_ZENABLE, FALSE);
+
+				// set remix texture categories
+				ctx.save_rs(dev, (D3DRENDERSTATETYPE)42);
+				dev->SetRenderState((D3DRENDERSTATETYPE)42, WorldMatte | IgnoreOpacityMicromap);
+			}
 
 			// re-draw surface
 			dev->DrawIndexedPrimitive(type, base_vert_index, min_vert_index, num_verts, start_index, prim_count);

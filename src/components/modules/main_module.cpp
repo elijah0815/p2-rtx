@@ -277,13 +277,132 @@ namespace components
 	}
 
 
+	// #
+	// #
 
+	namespace events
+	{
+		scene_entity_event_s s_ent = {};
+
+		// > scene_ent_on_start_event && scene_ent_on_finish_event can be used to detect when choreography's (vcd's) start and end
+		// > use cvar 'scene_print' to get event names or look into NUT files
+
+		// called from main_module::once_per_frame_cb()
+		void on_client_frame()
+		{
+			const auto& mapname = map_settings::get_loaded_map_name();
+			if (!mapname.empty())
+			{
+				if (mapname == "sp_a4_finale2")
+				{
+					if (s_ent.a4_f2_api_portal_spawn.has_elapsed(5.0f))
+					{
+						auto& p = api::rayportal_ctx.get_portal_pair(api::PORTAL_PAIR_1)->get_portal0();
+						p.m_pos = { 2108.0f, 774.0f, -18.0f };
+						p.uncache();
+						s_ent.a4_f2_api_portal_spawn.reset();
+					}
+				}
+			}
+		}
+
+		// #
+		// #
+
+		// 'CSceneEntity::StartEvent'
+		void scene_ent_on_start_event_hk(CChoreoEvent* ev)
+		{
+#if 0		// not needed right now
+			if (ev->m_pScene && std::string_view(ev->m_Name.string) != "NULL")
+			{
+				const auto& mapname = map_settings::get_loaded_map_name();
+				if (!mapname.empty())
+				{
+					if (mapname == "sp_a4_finale2")
+					{
+						// scenes/npc/sphere03/bw_a4_finale02_trapintro02.vcd
+						if (std::string_view(ev->m_pScene->m_szFileName).ends_with("trapintro02.vcd")) {
+							s_ent.a4_f2_api_portal_spawn.trigger();
+						}
+					}
+				}
+			}
+#endif
+		}
+
+		HOOK_RETN_PLACE_DEF(scene_ent_on_start_event_retn);
+		__declspec(naked) void scene_ent_on_start_event_stub()
+		{
+			__asm
+			{
+				// og
+				mov     edi, [ebp + 0x10];
+				mov     esi, ecx;
+
+				pushad;
+				push    edi;
+				call	scene_ent_on_start_event_hk;
+				add		esp, 4;
+				popad;
+
+				// og
+				jmp		scene_ent_on_start_event_retn;
+			}
+		}
+
+		// #
+		// #
+
+		// 'CSceneEntity::OnSceneFinished' :: triggered right after the audio stops - ignores postdelay
+		void scene_ent_on_finish_event_hk(const char* scene_name)
+		{
+			if (scene_name)
+			{
+				const auto& mapname = map_settings::get_loaded_map_name();
+				if (!mapname.empty())
+				{
+					if (mapname == "sp_a4_finale2")
+					{
+						// scenes/npc/sphere03/bw_a4_finale02_trapintro02.vcd
+						if (std::string_view(scene_name).ends_with("trapintro02.vcd")) {
+							s_ent.a4_f2_api_portal_spawn.trigger();
+						}
+					}
+				}
+			}
+		}
+
+		HOOK_RETN_PLACE_DEF(scene_ent_on_finish_event_retn);
+		__declspec(naked) void scene_ent_on_finish_event_stub()
+		{
+			__asm
+			{
+				// og
+				mov     eax, [esi + 0x360]; // CSceneEntity->m_iszSceneFile
+
+				pushad;
+				push    eax;
+				call	scene_ent_on_finish_event_hk;
+				add		esp, 4;
+				popad;
+
+				// og
+				jmp		scene_ent_on_finish_event_retn;
+			}
+		}
+	}
+
+
+	// #
+	// #
 
 	void once_per_frame_cb()
 	{
 		const auto dev = game::get_d3d_device();
 
 		remix_vars::on_client_frame();
+
+		events::on_client_frame();
 
 		// force cvars per frame just to make sure
 		main_module::setup_required_cvars();
@@ -520,6 +639,9 @@ namespace components
 		}
 	}
 
+
+	
+	
 #if 0
 	void on_cl_init_hk()
 	{
@@ -620,6 +742,7 @@ namespace components
 	{
 		map_settings::on_map_exit(); 
 		api::rayportal_ctx.destroy_all_pairs();
+		events::s_ent.reset();
 	}
 
 	HOOK_RETN_PLACE_DEF(on_host_disconnect_retn);
@@ -1277,6 +1400,7 @@ namespace components
 		utils::hook(ENGINE_BASE + USE_OFFSET(0x19A3E1, 0x197DF1), on_host_disconnect_stub).install()->quick();
 		HOOK_RETN_PLACE(on_host_disconnect_retn, ENGINE_BASE + USE_OFFSET(0x19A3E6, 0x197DF6));
 
+
 		// CViewRender::RenderView :: "start" of current frame (after CViewRender::DrawMonitors)
 		utils::hook::nop(CLIENT_BASE + USE_OFFSET(0x1F23C5, 0x1ECDC5), 7);
 		utils::hook(CLIENT_BASE + USE_OFFSET(0x1F23C5, 0x1ECDC5), cviewrenderer_renderview_stub).install()->quick();
@@ -1285,6 +1409,17 @@ namespace components
 		// CViewRender::DrawOneMonitor
 		utils::hook(CLIENT_BASE + USE_OFFSET(0x1EE8F4, 0x1E92F4), cviewrenderer_drawonemonitor_stub).install()->quick();
 		HOOK_RETN_PLACE(cviewrenderer_drawonemonitor_retn, CLIENT_BASE + USE_OFFSET(0x1EE8F9, 0x1E92F9));
+
+
+		// CSceneEntity::StartEvent :: : can be used to detect the start of scene (vcd) entities
+		utils::hook(SERVER_BASE + USE_OFFSET(0x233618, 0x22D428), events::scene_ent_on_start_event_stub).install()->quick();
+		HOOK_RETN_PLACE(events::scene_ent_on_start_event_retn, SERVER_BASE + USE_OFFSET(0x23361D, 0x22D42D));
+
+		// CSceneEntity::OnSceneFinished
+		utils::hook::nop(SERVER_BASE + USE_OFFSET(0x238483, 0x232273), 6);
+		utils::hook(SERVER_BASE + USE_OFFSET(0x238483, 0x232273), events::scene_ent_on_finish_event_stub).install()->quick();
+		HOOK_RETN_PLACE(events::scene_ent_on_finish_event_retn, SERVER_BASE + USE_OFFSET(0x238489, 0x232279));
+
 
 		// #OFFSET - missing
 		// CL_Init :: Unused as asi injection happens after CL_Init

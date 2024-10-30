@@ -2607,6 +2607,71 @@ namespace components
 		const ConCommand* (__thiscall* FindCommand_const)(CCvar*, const char*);
 		ConCommand* (__thiscall* FindCommand)(CCvar*, const char*);
 	};
+
+	struct CUtlString
+	{
+		//CUtlBinaryBlock m_Storage;
+		const char* string;
+		char pad[10];
+	}; STATIC_ASSERT_SIZE(CUtlString, 0x10);
+
+	struct __declspec(align(4)) CChoreoActor
+	{
+		char m_szName[128];
+		// ...
+	};
+
+	struct CChoreoScene
+	{
+		char pad1[0x7C];
+		float m_flCurrentTime;
+		float m_flStartTime;
+		float m_flEndTime;
+		bool m_bRecalculateSceneTimes;
+		float m_flEarliestTime;
+		float m_flLatestTime;
+		int m_nActiveEvents;
+		float m_flSoundSystemLatency;
+		float m_flLastActiveTime;
+		void (*m_pfnPrint)(const char*, ...);
+		void* m_pIChoreoEventCallback;
+		void* m_pTokenizer;
+		char m_szMapname[128];
+		int m_nSceneFPS;
+		char pad2[0x5C];
+		char m_szFileName[128];
+	};
+	STATIC_ASSERT_OFFSET(CChoreoScene, m_flCurrentTime, 0x7C);
+	STATIC_ASSERT_OFFSET(CChoreoScene, m_szFileName, 0x18C);
+
+	struct __declspec(align(4)) CChoreoEvent
+	{
+		void* baseclass;
+		unsigned __int8 m_fType;
+		unsigned __int8 m_ccType;
+		CUtlString m_Name;
+		CUtlString m_Parameters;
+		CUtlString m_Parameters2;
+		CUtlString m_Parameters3;
+		float m_flStartTime;
+		float m_flEndTime;
+		float m_flGestureSequenceDuration;
+		int m_nNumLoops;
+		int m_nLoopsRemaining;
+		char pad1[0x38];
+		CUtlString m_TagName;
+		CUtlString m_TagWavName;
+		CChoreoActor* m_pActor;
+		void* m_pChannel; // CChoreoChannel
+		char pad2[0x64];
+		CChoreoScene* m_pSubScene;
+		void* m_pMixer; // CAudioMixer
+		CChoreoScene* m_pScene;
+		// ....
+	};
+	STATIC_ASSERT_OFFSET(CChoreoEvent, m_TagName, 0x94);
+	STATIC_ASSERT_OFFSET(CChoreoEvent, m_pSubScene, 0x120);
+	STATIC_ASSERT_OFFSET(CChoreoEvent, m_pScene, 0x128);
 }
 
 

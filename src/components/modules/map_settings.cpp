@@ -7,6 +7,7 @@ namespace components
 		map_settings::m_loaded_map_name = !map_name.empty() ? map_name : game::get_map_name();
 		utils::replace_all(map_settings::m_loaded_map_name, std::string("maps/"), "");		// if sp map
 		utils::replace_all(map_settings::m_loaded_map_name, std::string(".bsp"), "");
+		map_settings::m_loaded_map_name_hashed = utils::string_hash32(map_settings::m_loaded_map_name);
 
 		if (m_settings.empty() || reload_settings) {
 			map_settings::load_settings();
@@ -157,6 +158,7 @@ namespace components
 		map_settings::destroy_markers();
 		map_settings::clear_loaded_map_settings();
 		map_settings::m_loaded_map_name = "";
+		map_settings::m_loaded_map_name_hashed = 0u;
 	}
 
 	bool map_settings::load_settings()
