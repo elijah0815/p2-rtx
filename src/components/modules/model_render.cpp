@@ -1003,6 +1003,107 @@ namespace components
 					dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1 | D3DFVF_TEXCOORDSIZE2(0));
 					dev->SetVertexShader(nullptr);
 					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+
+					if (const auto& m = map_settings::get_loaded_map_name(); !m.empty())
+					{
+						if (m.ends_with("finale2"))
+						{
+							if (g_player_current_area == 4)
+							{
+								// invert along the x axis
+								mtx.m[0][0] = -1;
+								dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+
+								//ctx.save_rs(dev, D3DRS_CULLMODE);
+								//dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+
+								if (primlist)
+								{
+									IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
+									dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
+
+									IDirect3DIndexBuffer9* ib = nullptr;
+									if (SUCCEEDED(dev->GetIndices(&ib)))
+									{
+										//void* ib_data; // lock index buffer to retrieve the relevant vertex indices
+										WORD* ib_data;
+										if (SUCCEEDED(ib->Lock(0, 0, (void**)&ib_data, 0)))
+										{
+											{ // reverse triangle order
+												//if (primlist->m_NumIndices == 4)
+												//{
+												//	int start_index = primlist->m_FirstIndex;
+												//	std::swap(ib_data[start_index + 0], ib_data[start_index + 3]);
+												//	std::swap(ib_data[start_index + 1], ib_data[start_index + 2]);
+												//}
+											}
+
+											// add relevant indices without duplicates
+											std::unordered_set<std::uint16_t> indices; indices.reserve(primlist->m_NumIndices);
+
+											for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++) {
+												indices.insert(static_cast<std::uint16_t*>(ib_data)[primlist->m_FirstIndex + i]);
+											}
+
+											ib->Unlock();
+
+											// get the range of vertices that we are going to work with
+											UINT min_vert = 0u, max_vert = 0u;
+											{
+												auto [min_it, max_it] = std::minmax_element(indices.begin(), indices.end());
+												min_vert = *min_it;
+												max_vert = *max_it;
+											}
+
+											void* src_buffer_data;
+
+											// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
+											if (SUCCEEDED(vb->Lock(min_vert * t_stride, max_vert * t_stride, &src_buffer_data, 0)))
+											{
+												struct src_vert
+												{
+													Vector pos;
+													Vector normal;
+													Vector2D tc;
+												};
+
+												for (auto i : indices) 
+												{
+													// we need to subtract min_vert because we locked @ min_vert which is the start of our lock
+													i -= static_cast<std::uint16_t>(min_vert);
+
+													const auto v_pos_in_src_buffer = i * t_stride;
+													const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
+
+													// invert x coordinate as we scaled X by -1 using the world matrix
+													src->pos.x = src->pos.x * -1.0f - 0.5f;
+
+													// flip normal
+													src->normal *= -1.0f;
+												}
+
+#if 0
+												auto v = static_cast<src_vert*>(src_buffer_data);
+												int startIndex = 0; 
+												// Swap vertices for a quad
+												//std::swap(v[startIndex + 1], v[startIndex + 2]);
+												//std::swap(v[startIndex + 0], v[startIndex + 3]);
+												v[startIndex + 1].normal = v[startIndex + 1].normal.Scale(-1.0f);
+												v[startIndex + 2].normal = v[startIndex + 2].normal.Scale(-1.0f);
+												v[startIndex + 0].pos.x = v[startIndex + 0].pos.x * -1.0f - 10;
+												v[startIndex + 1].pos.x = v[startIndex + 1].pos.x * -1.0f - 10;
+												v[startIndex + 2].pos.x = v[startIndex + 2].pos.x * -1.0f - 10;
+												v[startIndex + 3].pos.x = v[startIndex + 3].pos.x * -1.0f - 10;
+#endif
+
+												vb->Unlock();
+											}
+										}
+									}
+								}
+							}
+						}
+					}
 				}
 			}
 

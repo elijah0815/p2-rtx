@@ -28,9 +28,9 @@
 
 namespace components
 {
-	int player_current_node = -1;
-	int player_current_leaf = -1;
-	int player_current_area = -1;
+	int g_player_current_node = -1;
+	int g_player_current_leaf = -1;
+	int g_player_current_area = -1;
 
 	namespace api
 	{
@@ -79,10 +79,10 @@ namespace components
 					);
 				}
 
-				if (player_current_area != -1)
+				if (g_player_current_area != -1)
 				{
 					SetRect(&rect, 20, 125, 512, 512);
-					auto text = utils::va("Area: %d", player_current_area);
+					auto text = utils::va("Area: %d", g_player_current_area);
 					main_module::d3d_font->DrawTextA
 					(
 						nullptr,
@@ -94,10 +94,10 @@ namespace components
 					);
 				}
 
-				if (player_current_leaf != -1)
+				if (g_player_current_leaf != -1)
 				{
 					SetRect(&rect, 20, 145, 512, 512);
-					auto text = utils::va("Leaf: %d", player_current_leaf);
+					auto text = utils::va("Leaf: %d", g_player_current_leaf);
 					main_module::d3d_font->DrawTextA
 					(
 						nullptr,
@@ -828,9 +828,9 @@ namespace components
 		// CM_LeafArea :: get current player area
 		const auto current_area = utils::hook::call<int(__cdecl)(int leafnum)>(ENGINE_BASE + USE_OFFSET(0x15ACE0, 0x159470))(current_leaf);
 
-		player_current_area = current_area;
-		player_current_node = -1;
-		player_current_leaf = -1;
+		g_player_current_area = current_area;
+		g_player_current_node = -1;
+		g_player_current_leaf = -1;
 
 		const auto map_settings = map_settings::get_loaded_map_settings();
 
@@ -905,7 +905,7 @@ namespace components
 		// show leaf index as 3D text
 		if (current_leaf < world->numleafs)
 		{
-			player_current_leaf = current_leaf;
+			g_player_current_leaf = current_leaf;
 
 			if (api::remix_debug_node_vis)
 			{
@@ -930,7 +930,7 @@ namespace components
 					if (l < static_cast<std::uint32_t>(world->numleafs)) 
 					{
 						// force leaf to be visible
-						force_leaf_vis(l, &world->nodes[player_current_node]);
+						force_leaf_vis(l, &world->nodes[g_player_current_node]);
 					}
 				}
 			}

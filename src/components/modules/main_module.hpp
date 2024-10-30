@@ -2,6 +2,10 @@
 
 namespace components
 {
+	extern int g_player_current_node;
+	extern int g_player_current_leaf;
+	extern int g_player_current_area;
+
 	namespace api
 	{
 		enum DEBUG_REMIX_LINE_COLOR
@@ -36,10 +40,24 @@ namespace components
 		// variables directly influencing the class below 
 		extern bool rayportal_show_debug_info;
 
+		class rayportal_context; // forward decl
+		extern rayportal_context rayportal_ctx;
+
 		class rayportal_context
 		{
 		public:
-			class portal_pair;
+			class portal_pair; // forward decl
+
+			uint32_t& get_pair_creation_counter() {
+				return m_portal_material_creation_counter;
+			}
+
+		private:
+			uint32_t m_portal_material_creation_counter = 0u;
+
+
+		// #
+		// portal_single
 
 		public:
 			class portal_single
@@ -112,10 +130,11 @@ namespace components
 
 					remixapi_MeshInfo i =
 					{
-					  .sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
-					  .hash = utils::string_hash64(utils::va("pmesh%d", m_index)),
-					  .surfaces_values = &triangles,
-					  .surfaces_count = 1,
+						.sType = REMIXAPI_STRUCT_TYPE_MESH_INFO,
+						
+						.hash = utils::string_hash64(utils::va("pmesh%d%d", m_index, rayportal_ctx.get_pair_creation_counter())),
+						.surfaces_values = &triangles,
+						.surfaces_count = 1,
 					};
 
 					return api::bridge.CreateMesh(&i, &m_hmesh);
@@ -147,7 +166,8 @@ namespace components
 
 					remixapi_MaterialInfo info = {};
 					info.sType = REMIXAPI_STRUCT_TYPE_MATERIAL_INFO;
-					info.hash = utils::string_hash64(utils::va("pmat%d", m_index));
+					// we have to use a new hash when we re-create the material or the mask setting wont apply (remix material is cached?)
+					info.hash = utils::string_hash64(utils::va("pmat%d%d", m_index, rayportal_ctx.get_pair_creation_counter()));
 					info.emissiveIntensity = 0.0f;
 					info.emissiveColorConstant = { 0.0f, 0.0f, 0.0f };
 					info.albedoTexture = !m_square_mask ? L"" : mask_path.data(); // requires changes to dxvk-remix (PR#80)
@@ -318,10 +338,12 @@ namespace components
 					case PORTAL_PAIR_1:
 						m_portal0.init(2);
 						m_portal1.init(3);
+						rayportal_ctx.get_pair_creation_counter()++;
 						break;
 					case PORTAL_PAIR_2:
 						m_portal0.init(4);
 						m_portal1.init(5);
+						rayportal_ctx.get_pair_creation_counter()++;
 						break;
 					}
 				}
@@ -565,18 +587,18 @@ namespace components
 				return pairs.empty();
 			}
 
-			struct settings_s
+			/*struct settings_s
 			{
 				bool show_debug_information = false;
 			};
 
-			settings_s settings = {};
+			settings_s settings = {};*/
 
 		//private:
 			std::map<PORTAL_PAIR, portal_pair> pairs;
 		};
 
-		extern rayportal_context rayportal_ctx;
+		//extern rayportal_context rayportal_ctx;
 	}
 
 	class main_module : public component

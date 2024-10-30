@@ -63,7 +63,7 @@ namespace components
 		static inline bool m_spawned_markers = false;
 
 		bool load_settings();
-		map_settings_s* get_or_create_settings(bool parse_mode = true, const char* map_name = nullptr);
+		map_settings_s* get_or_create_settings(bool parse_mode = true);
 
 		void parse_fog();
 		void parse_portal_pairs();

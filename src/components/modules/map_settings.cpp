@@ -4,13 +4,13 @@ namespace components
 {
 	void map_settings::set_settings_for_map(const std::string& map_name, bool reload_settings)
 	{
-		if (m_settings.empty() || reload_settings) {
-			map_settings::load_settings();
-		}
-
 		map_settings::m_loaded_map_name = !map_name.empty() ? map_name : game::get_map_name();
 		utils::replace_all(map_settings::m_loaded_map_name, std::string("maps/"), "");		// if sp map
 		utils::replace_all(map_settings::m_loaded_map_name, std::string(".bsp"), "");
+
+		if (m_settings.empty() || reload_settings) {
+			map_settings::load_settings();
+		}
 
 		static bool disable_map_configs = flags::has_flag("xo_disable_map_conf");
 		if (api::m_initialized && !disable_map_configs)
@@ -231,18 +231,21 @@ namespace components
 		return false;
 	}
 
-	map_settings::map_settings_s* map_settings::get_or_create_settings(bool parse_mode, const char* map_name)
+	map_settings::map_settings_s* map_settings::get_or_create_settings(bool parse_mode)
 	{
 		// check if map settings exist
-		for (auto& e : m_settings)
+		if (!m_settings.empty())
 		{
-			if (e.mapname._Equal(parse_mode ? m_args[0] : map_name)) {
-				return &e;
+			for (auto& e : m_settings)
+			{
+				if (e.mapname._Equal(parse_mode ? m_args[0] : m_loaded_map_name)) {
+					return &e;
+				}
 			}
 		}
 
 		// create defaults if not
-		m_settings.push_back(map_settings_s(parse_mode ? m_args[0] : map_name));
+		m_settings.push_back(map_settings_s(parse_mode ? m_args[0] : m_loaded_map_name));
 		return &m_settings.back();
 	}
 
@@ -264,10 +267,10 @@ namespace components
 	{
 		api::rayportal_ctx.destroy_all_pairs();
 
-		if (map_settings_s* s = get_or_create_settings(); s)
+		//if (map_settings_s* s = get_or_create_settings(); s)
 		{
 			// we are not really writing settings here .. we directly create the portal pairs
-			if (m_args[0] != s->mapname) {
+			if (m_args[0] != get_loaded_map_name()) {
 				return;
 			}
 
