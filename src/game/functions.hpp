@@ -48,4 +48,7 @@ namespace game
 
 	inline const float* get_current_view_origin() { return reinterpret_cast<float*>(ENGINE_BASE + USE_OFFSET(0x513380, 0x50DB50)); }
 	inline Vector get_current_view_origin_as_vector() { return get_current_view_origin(); }
+
+	// CM_PointLeafnum
+	inline int get_leaf_from_position(const Vector& pos) { return utils::hook::call<int(__cdecl)(const float*)>(ENGINE_BASE + USE_OFFSET(0x159C80, 0x158540))(&pos.x); }
 }

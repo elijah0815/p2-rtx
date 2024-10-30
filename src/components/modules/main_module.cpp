@@ -384,8 +384,9 @@ namespace components
 #endif
 
 		// #TODO - fix portal fadein effect
-		if (const auto& n = map_settings::get_loaded_map_name();
-			!n.empty() && n == "sp_a1_wakeup")
+		//if (const auto& n = map_settings::get_loaded_map_name();
+		//	!n.empty() && n == "sp_a1_wakeup")
+		if (!api::rayportal_ctx.empty())
 		{
 			remix_vars::set_option(remix_vars::get_option("rtx.enablePortalFadeInEffect"), { false });
 			api::disabled_portal_fade = true;
@@ -819,10 +820,10 @@ namespace components
 	void pre_recursive_world_node()
 	{
 		const auto world = game::get_hoststate_worldbrush_data();
-		//const auto g_CurrentViewOrigin = reinterpret_cast<float*>(ENGINE_BASE + USE_OFFSET(0x513380, 0x50DB50));
 
 		// CM_PointLeafnum :: get current leaf
-		const auto current_leaf = utils::hook::call<int(__cdecl)(const float*)>(ENGINE_BASE + USE_OFFSET(0x159C80, 0x158540))(game::get_current_view_origin());
+		const auto current_leaf = game::get_leaf_from_position(game::get_current_view_origin());
+		//utils::hook::call<int(__cdecl)(const float*)>(ENGINE_BASE + USE_OFFSET(0x159C80, 0x158540))(game::get_current_view_origin());
 
 		// CM_LeafArea :: get current player area
 		const auto current_area = utils::hook::call<int(__cdecl)(int leafnum)>(ENGINE_BASE + USE_OFFSET(0x15ACE0, 0x159470))(current_leaf);
@@ -1016,6 +1017,7 @@ namespace components
 		// do not allow api portals if the game has already spawned portals
 		//api::allow_api_portals = !is_using_custom_vis;
 
+#if 0
 		//if (/*api::allow_api_portals &&*/ api::portal0_mesh && api::portal1_mesh)
 		if (!api::rayportal_ctx.empty())
 		{
@@ -1026,39 +1028,42 @@ namespace components
 			{
 				// add the main scene view first if setting custom portal vis
 				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = view->origin;
-				added_player_view_vis = true;
+				//added_player_view_vis = true;
 			}
 
+			for (auto it = api::rayportal_ctx.pairs.begin(); it != api::rayportal_ctx.pairs.end(); ++it)
+			{
+				const auto& p0_corner_points = it->second.get_portal0().get_corner_points();
+				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = p0_corner_points[0];	// 1
+				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = p0_corner_points[1];	// 2
+				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = p0_corner_points[2];	// 3
+				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = p0_corner_points[3];	// 4
+				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = it->second.get_portal0().m_pos; // 5
 
+				const auto& p1_corner_points = it->second.get_portal1().get_corner_points();
+				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = p1_corner_points[0];	// 6
+				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = p1_corner_points[1];	// 7
+				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = p1_corner_points[2];	// 8
+				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = p1_corner_points[3];	// 9
+				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = it->second.get_portal1().m_pos;
 
-			/*
-				Vector pos1 = { 6144.0, 3456.0f, 1662.0f };
-				Vector rot1 = { 90.0f, 0.0f, 0.0f };
-				Vector scale1 = { 127.0f, 127.0f, 127.0f };
+				vis.m_iForceViewLeaf = game::get_leaf_from_position(it->second.get_portal1().m_pos);
+				vis.m_VisData.m_vecVisOrigin = it->second.get_portal1().m_pos; // last m_rgVisOrigin
+				vis.m_VisData.m_fDistToAreaPortalTolerance = 64.0f;
+				vis.m_VisData.m_bTrimFrustumToPortalCorners = true;
 
-				Vector pos2 = { 10375.0f, 1216.0f, 290.0f };
-				Vector rot2 = { -90.0f, 0.0f, 0.0f };
-				Vector scale2 = { 350.0f, 350.0f, 350.0f };
+				vis.m_VisData.m_vPortalOrigin = it->second.get_portal1().m_pos; // vis org 10 : z -= 1
+				vis.m_VisData.m_vPortalOrigin.z -= 1; // ?
 
-				api::rayportal_ctx.add_pair(api::PORTAL_PAIR::PORTAL_PAIR_1,
-					pos1, rot1, scale1, true,
-					pos2, rot2, scale2, false);
+				vis.m_VisData.m_vPortalForward = it->second.get_portal1().get_normal();
+				vis.m_VisData.m_flPortalRadius = 64.4980621f;
+				vis.m_VisData.m_vPortalCorners[0] = p1_corner_points[0]; // vis org 6
+				vis.m_VisData.m_vPortalCorners[1] = p1_corner_points[1]; // 7
+				vis.m_VisData.m_vPortalCorners[2] = p1_corner_points[2]; // 8
+				vis.m_VisData.m_vPortalCorners[3] = p1_corner_points[3]; // 9
+			}
 
-
-
-				pos1 = { 6980.0f, 550.0f, 440.0f };
-				rot1 = { 45.0f, 0.0f, -180.0f };
-				scale1 = { 100.0f, 1.0f, 100.0f };
-
-				pos2 = { 6980.0f, 965.0f, 440.0f };
-				rot2 = { 0.0f, 45.0f, -90.0f };
-				scale2 = { 100.0f, 1.0f, 50.0f };
-
-				api::rayportal_ctx.add_pair(api::PORTAL_PAIR::PORTAL_PAIR_2,
-					pos1, rot1, scale1, true,
-					pos2, rot2, scale2, true);
-			 */
-
+#if 0
 			//portal0 corners?
 			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6110.87109f, 3518.96875f, 1667.12109f };	// 1
 			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6174.87109f, 3518.96875f, 1667.12109f };	// 2
@@ -1069,7 +1074,7 @@ namespace components
 			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 10451.3281f, 1162.59399f, 344.843750f };	// 7
 			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 10451.3281f, 1162.59399f, 232.843750f };	// 8
 			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 10460.3789f, 1225.95068f, 232.843750f };	// 9
-			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 10455.8535f, 1194.27234f, 288.843750f };	// 10
+			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 10455.8535f, 1194.27234f, 288.843750f };	// 10 -- center
 
 			// last portal data
 			vis.m_iForceViewLeaf = 107;
@@ -1083,9 +1088,11 @@ namespace components
 			vis.m_VisData.m_vPortalCorners[1] = { 10451.3281f, 1162.59399f, 344.843750 }; // 7
 			vis.m_VisData.m_vPortalCorners[2] = { 10451.3281f, 1162.59399f, 232.843750 }; // 8
 			vis.m_VisData.m_vPortalCorners[3] = { 10460.3789f, 1225.95068f, 232.843750 }; // 9
+#endif
 
 			is_using_custom_vis = true;
 		}
+#endif
 
 		utils::hook::call<void(__fastcall)(void* this_ptr, void* null, bool, int, const CViewSetup*, int, int, bool, int, ViewCustomVisibility_t*)>(CLIENT_BASE + USE_OFFSET(0x1EDAE0, 0x1E84E0))
 			(view_renderer, nullptr, bDrew3dSkybox, nSkyboxVisible, view, nClearFlags, viewID, bDrawViewModel, baseDrawFlags, is_using_custom_vis ? &customVisibility : nullptr);

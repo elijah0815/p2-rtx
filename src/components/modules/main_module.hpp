@@ -255,10 +255,9 @@ namespace components
 				 * @param transform the remixapi_Transform for the portal 
 				 * @param normal	normal of the portal
 				 */
-				void cache(const remixapi_Transform& transform, const Vector& normal)
+				void cache(const remixapi_Transform& transform)
 				{
 					m_transform = transform;
-					m_normal = normal;
 					m_cached = true;
 				}
 
@@ -396,36 +395,38 @@ namespace components
 							t0.matrix[1][3] = transp.m[1][3];
 							t0.matrix[2][3] = transp.m[2][3];*/
 
-							utils::vector::matrix3x3 mtx;
-							mtx.scale(p.m_scale.x, p.m_scale.y, p.m_scale.z);
-							mtx.rotate_z(utils::deg_to_rad(p.m_rot.z));
-							mtx.rotate_y(utils::deg_to_rad(p.m_rot.y));
-							mtx.rotate_x(utils::deg_to_rad(p.m_rot.x));
+							if (!p.is_cached()) 
+							{
+								utils::vector::matrix3x3 mtx;
+								mtx.scale(p.m_scale.x, p.m_scale.y, p.m_scale.z);
+								mtx.rotate_z(utils::deg_to_rad(p.m_rot.z));
+								mtx.rotate_y(utils::deg_to_rad(p.m_rot.y));
+								mtx.rotate_x(utils::deg_to_rad(p.m_rot.x));
 
-							// calculate portal normal if not cached
-							Vector normal = {};
+								// calculate portal normal if not cached
+								p.calculate_normal(mtx);
 
-							if (!p.is_cached()) {
-								normal = p.calculate_normal(mtx);
-							}
+								// calculate portal corner positions if not cached
+								p.calculate_corners();
 
-							// transpose because remix transforms are column major
-							mtx.transpose();
+								// transpose because remix transforms are column major
+								mtx.transpose();
 
-							// cache transform so it's not recalculated every frame
-							if (!p.is_cached()) {
-								p.cache(mtx.to_remixapi_transform(p.m_pos), normal);
+								// refactor this
+								p.cache(mtx.to_remixapi_transform(p.m_pos));
 							}
 
 							if (api::rayportal_show_debug_info)
 							{
+								const auto& normal = p.get_normal();
+
 								Vector debug_pos = p.m_pos;
 								float scaled_offset = debug_pos.DistTo(game::get_current_view_origin_as_vector()) * 0.025f;
 								game::debug_add_text_overlay(&debug_pos.x, 0.0f, utils::va("Pair: %d --- Rayportal Index: %d\n", this->get_pair_num(), p.get_index())); debug_pos.z -= scaled_offset;
 								game::debug_add_text_overlay(&debug_pos.x, 0.0f, utils::va("Position: %.2f %.2f %.2f", p.m_pos.x, p.m_pos.y, p.m_pos.z)); debug_pos.z -= scaled_offset;
 								game::debug_add_text_overlay(&debug_pos.x, 0.0f, utils::va("Normal: %.2f %.2f %.2f", normal.x, normal.y, normal.z));
 
-								const auto corner_points = p.calculate_corners();
+								const auto corner_points = p.get_corner_points();
 								api::add_debug_line(corner_points[0], corner_points[1], 1.0f, api::DEBUG_REMIX_LINE_COLOR::RED);
 								api::add_debug_line(corner_points[1], corner_points[2], 1.0f, api::DEBUG_REMIX_LINE_COLOR::RED);
 								api::add_debug_line(corner_points[2], corner_points[3], 1.0f, api::DEBUG_REMIX_LINE_COLOR::RED);
@@ -571,7 +572,7 @@ namespace components
 
 			settings_s settings = {};
 
-		private:
+		//private:
 			std::map<PORTAL_PAIR, portal_pair> pairs;
 		};
 

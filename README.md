@@ -72,6 +72,7 @@ for GEL rendering (`bin/.trex/d3d9.dll`)
 
   #### Map Settings:
     - `xo_debug_toggle_node_vis` :: Toggle debug visualization of bsp leafs using the remix API  
+    - `xo_debug_toggle_rayportal_info` :: Toggle debug info for portal pairs spawned via map settings  
     - `xo_mapsettings_update` :: Reload the map_settings.ini file + map.conf    
    
   #### Remix Variables:
