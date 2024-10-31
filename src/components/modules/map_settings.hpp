@@ -46,27 +46,34 @@ namespace components
 			std::vector<std::string> api_var_configs;
 		};
 
-		static map_settings_s* get_loaded_map_settings() { return m_loaded_map_settings; }
-		static const std::string& get_loaded_map_name() { return m_loaded_map_name; }
-		static const uint32_t& get_loaded_map_name_hashed() { return m_loaded_map_name_hashed; }
-		static void clear_loaded_map_settings() { m_loaded_map_settings = nullptr; }
-		void set_settings_for_map(const std::string& map_name, bool reload_settings = false);
+		static map_settings_s& get_map_settings() { return m_map_settings; }
+		static const std::string& get_map_name() { return m_map_settings.mapname; }
+
+		static void clear_map_settings()
+		{
+			m_map_settings.area_settings.clear();
+
+			destroy_markers();
+			m_map_settings.map_markers.clear();
+
+			m_map_settings.api_var_configs.clear();
+			m_map_settings = {};
+		}
+
+		void set_settings_for_map(const std::string& map_name);
 		static void spawn_markers_once();
 		static void destroy_markers();
 		static void on_map_exit();
 
 
 	private:
-		static inline std::string m_loaded_map_name;
-		static inline uint32_t m_loaded_map_name_hashed;
-		static inline map_settings_s* m_loaded_map_settings = nullptr;
-		static inline std::vector<map_settings_s> m_settings;
+
+		static inline map_settings_s m_map_settings = {};
 		static inline std::vector<std::string> m_args;
 		static inline bool m_spawned_markers = false;
 
-		bool load_settings();
-		map_settings_s* get_or_create_settings(bool parse_mode = true);
-
+		bool parse_ini();
+		bool matches_map_name();
 		void parse_fog();
 		void parse_portal_pairs();
 		void parse_culling();

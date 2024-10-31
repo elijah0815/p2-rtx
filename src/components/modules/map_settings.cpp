@@ -2,43 +2,26 @@
 
 namespace components
 {
-	void map_settings::set_settings_for_map(const std::string& map_name, bool reload_settings)
+	void map_settings::set_settings_for_map(const std::string& map_name)
 	{
-		map_settings::m_loaded_map_name = !map_name.empty() ? map_name : game::get_map_name();
-		utils::replace_all(map_settings::m_loaded_map_name, std::string("maps/"), "");		// if sp map
-		utils::replace_all(map_settings::m_loaded_map_name, std::string(".bsp"), "");
-		map_settings::m_loaded_map_name_hashed = utils::string_hash32(map_settings::m_loaded_map_name);
+		m_map_settings.mapname = !map_name.empty() ? map_name : game::get_map_name();
+		utils::replace_all(m_map_settings.mapname, std::string("maps/"), "");		// if sp map
+		utils::replace_all(m_map_settings.mapname, std::string(".bsp"), "");
 
-		if (m_settings.empty() || reload_settings) {
-			map_settings::load_settings();
-		}
+		parse_ini();
 
 		static bool disable_map_configs = flags::has_flag("xo_disable_map_conf");
 		if (api::m_initialized && !disable_map_configs)
 		{
 			// resets all modified variables back to rtx.conf level
-			remix_vars::get()->reset_all_modified();
+			remix_vars::reset_all_modified();
 
 			// auto apply {map_name}.conf (if it exists)
-			open_and_set_var_config(map_settings::m_loaded_map_name + ".conf");
+			open_and_set_var_config(m_map_settings.mapname + ".conf");
 
-			// get settings for loaded map
-			for (auto& s : m_settings)
-			{
-				if (s.mapname == map_settings::m_loaded_map_name)
-				{
-					// found map settings - 
-					m_loaded_map_settings = &s;
-
-					// cannot spawn markers in here - too early
-
-					// apply other manually defined configs
-					for (const auto& f : s.api_var_configs) {
-						open_and_set_var_config(f);
-					}
-
-					break;
-				}
+			// apply other manually defined configs
+			for (const auto& f : m_map_settings.api_var_configs) {
+				open_and_set_var_config(f);
 			}
 		}
 	}
@@ -47,125 +30,113 @@ namespace components
 	// called from 'once_per_frame_cb()' instead
 	void map_settings::spawn_markers_once()
 	{
-		if (auto s = get_loaded_map_settings(); s)
+		// only spawn markers once
+		if (m_spawned_markers) {
+			return;
+		}
+
+		m_spawned_markers = true;
+
+		// spawn map markers
+		for (auto i = 0u; i < m_map_settings.map_markers.size(); i++)
 		{
-			// only spawn markers once
-			if (map_settings::m_spawned_markers) {
-				return;
-			}
-
-			map_settings::m_spawned_markers = true;
-
-			// spawn map markers
-			for (auto i = 0u; i < s->map_markers.size(); i++)
+			auto& m = m_map_settings.map_markers[i];
+			if (m.active)
 			{
-				auto& m = s->map_markers[i];
-				if (m.active)
+				if (i > 99) {
+					continue; // safety check
+				}
+
+				const auto mdl_num = i / 10u;
+				const auto skin_num = i % 10u;
+
+				const auto model_name = utils::va("models/props_xo/mapmarker%03d.mdl", mdl_num * 10);
+
+				void* mdlcache = reinterpret_cast<void*>(*(DWORD*)(SERVER_BASE + USE_OFFSET(0x86B07C, 0x8618FC)));
+
+				// mdlcache->BeginLock
+				utils::hook::call_virtual<30, void>(mdlcache);
+
+				// mdlcache->FindMDL
+				const auto mdl_handle = utils::hook::call_virtual<9, std::uint16_t>(mdlcache, model_name);
+				if (mdl_handle != 0xFFFF)
 				{
-					if (i > 99) {
-						continue; // safety check
-					}
+					// save precache state - CBaseEntity::m_bAllowPrecache
+					const bool old_precache_state = *reinterpret_cast<bool*>(SERVER_BASE + USE_OFFSET(0x7BC2B0, 0x7B2C58));
 
-					const auto mdl_num = i / 10u;
-					const auto skin_num = i % 10u;
+					// allow precaching - CBaseEntity::m_bAllowPrecache
+					*reinterpret_cast<bool*>(SERVER_BASE + USE_OFFSET(0x7BC2B0, 0x7B2C58)) = true;
 
-					const auto model_name = utils::va("models/props_xo/mapmarker%03d.mdl", mdl_num * 10);
+					// CreateEntityByName - CBaseEntity *__cdecl CreateEntityByName(const char *className, int iForceEdictIndex, bool bNotify)
+					m.handle = utils::hook::call<void* (__cdecl)(const char* className, int iForceEdictIndex, bool bNotify)>(SERVER_BASE + USE_OFFSET(0x19F2C0, 0x19A090))
+						("dynamic_prop", -1, true);
 
-					void* mdlcache = reinterpret_cast<void*>(*(DWORD*)(SERVER_BASE + USE_OFFSET(0x86B07C, 0x8618FC)));
-
-					// mdlcache->BeginLock
-					utils::hook::call_virtual<30, void>(mdlcache);
-
-					// mdlcache->FindMDL
-					const auto mdl_handle = utils::hook::call_virtual<9, std::uint16_t>(mdlcache, model_name);
-					if (mdl_handle != 0xFFFF)
+					if (m.handle)
 					{
-						// save precache state - CBaseEntity::m_bAllowPrecache
-						const bool old_precache_state = *reinterpret_cast<bool*>(SERVER_BASE + USE_OFFSET(0x7BC2B0, 0x7B2C58));
+						// ent->KeyValue
+						utils::hook::call_virtual<35, void>(m.handle, "origin", utils::va("%.10f %.10f %.10f", m.origin[0], m.origin[1], m.origin[2]));
+						utils::hook::call_virtual<35, void>(m.handle, "model", model_name);
+						utils::hook::call_virtual<35, void>(m.handle, "solid", "2");
 
-						// allow precaching - CBaseEntity::m_bAllowPrecache
-						*reinterpret_cast<bool*>(SERVER_BASE + USE_OFFSET(0x7BC2B0, 0x7B2C58)) = true;
-
-						// CreateEntityByName - CBaseEntity *__cdecl CreateEntityByName(const char *className, int iForceEdictIndex, bool bNotify)
-						m.handle = utils::hook::call<void* (__cdecl)(const char* className, int iForceEdictIndex, bool bNotify)>(SERVER_BASE + USE_OFFSET(0x19F2C0, 0x19A090))
-							("dynamic_prop", -1, true);
-
-						if (m.handle)
+						struct skin_offset
 						{
-							// ent->KeyValue
-							utils::hook::call_virtual<35, void>(m.handle, "origin", utils::va("%.10f %.10f %.10f", m.origin[0], m.origin[1], m.origin[2]));
-							utils::hook::call_virtual<35, void>(m.handle, "model", model_name);
-							utils::hook::call_virtual<35, void>(m.handle, "solid", "2");
+							char pad[0x37C];
+							int m_nSkin;
+						}; STATIC_ASSERT_OFFSET(skin_offset, m_nSkin, 0x37C);
 
-							struct skin_offset
-							{
-								char pad[0x37C];
-								int m_nSkin;
-							}; STATIC_ASSERT_OFFSET(skin_offset, m_nSkin, 0x37C);
+						auto skin_val = static_cast<skin_offset*>(m.handle);
+						skin_val->m_nSkin = skin_num;
 
-							auto skin_val = static_cast<skin_offset*>(m.handle);
-							skin_val->m_nSkin = skin_num;
+						// ent->Precache
+						utils::hook::call_virtual<25, void>(m.handle);
 
-							// ent->Precache
-							utils::hook::call_virtual<25, void>(m.handle);
+						// DispatchSpawn
+						utils::hook::call<void(__cdecl)(void* pEntity, bool bRunVScripts)>(SERVER_BASE + USE_OFFSET(0x27F520, 0x279480))
+							(m.handle, true);
 
-							// DispatchSpawn
-							utils::hook::call<void(__cdecl)(void* pEntity, bool bRunVScripts)>(SERVER_BASE + USE_OFFSET(0x27F520, 0x279480))
-								(m.handle, true);
-
-							// ent->Activate
-							utils::hook::call_virtual<37, void>(m.handle);
-						}
-						else {
-							m.active = false;
-						}
-
-						// restore precaching state - CBaseEntity::m_bAllowPrecache
-						*reinterpret_cast<bool*>(SERVER_BASE + USE_OFFSET(0x7BC2B0, 0x7B2C58)) = old_precache_state;
+						// ent->Activate
+						utils::hook::call_virtual<37, void>(m.handle);
 					}
 					else {
 						m.active = false;
 					}
 
-					utils::hook::call_virtual<31, void>(mdlcache); // mdlcache->EndLock
+					// restore precaching state - CBaseEntity::m_bAllowPrecache
+					*reinterpret_cast<bool*>(SERVER_BASE + USE_OFFSET(0x7BC2B0, 0x7B2C58)) = old_precache_state;
 				}
+				else {
+					m.active = false;
+				}
+
+				utils::hook::call_virtual<31, void>(mdlcache); // mdlcache->EndLock
 			}
 		}
 	}
 
 	void map_settings::destroy_markers()
 	{
-		if (auto* s = map_settings::get_loaded_map_settings(); s)
+		// destroy active markers
+		for (auto& m : m_map_settings.map_markers)
 		{
-			// destroy active markers
-			for (auto& m : s->map_markers)
+			if (m.handle)
 			{
-				if (m.handle)
-				{
-					game::cbaseentity_remove(m.handle);
-					m.handle = nullptr;
-				}
+				game::cbaseentity_remove(m.handle);
+				m.handle = nullptr;
 			}
-
-			s->map_markers.clear();
 		}
 
-		map_settings::m_spawned_markers = false;
+		m_map_settings.map_markers.clear();
+		m_spawned_markers = false;
 	}
 
 	void map_settings::on_map_exit()
 	{
-		map_settings::destroy_markers();
-		map_settings::clear_loaded_map_settings();
-		map_settings::m_loaded_map_name = "";
-		map_settings::m_loaded_map_name_hashed = 0u;
+		api::rayportal_ctx.destroy_all_pairs();
+		clear_map_settings();
 	}
 
-	bool map_settings::load_settings()
+	bool map_settings::parse_ini()
 	{
-		m_settings.clear();
-		m_settings.reserve(32);
-
 		std::ifstream file;
 		if (utils::open_file_homepath("portal2-rtx", "map_settings.ini", file))
 		{
@@ -233,30 +204,17 @@ namespace components
 		return false;
 	}
 
-	map_settings::map_settings_s* map_settings::get_or_create_settings(bool parse_mode)
+	bool map_settings::matches_map_name()
 	{
-		// check if map settings exist
-		if (!m_settings.empty())
-		{
-			for (auto& e : m_settings)
-			{
-				if (e.mapname._Equal(parse_mode ? m_args[0] : m_loaded_map_name)) {
-					return &e;
-				}
-			}
-		}
-
-		// create defaults if not
-		m_settings.push_back(map_settings_s(parse_mode ? m_args[0] : m_loaded_map_name));
-		return &m_settings.back();
+		return utils::str_to_lower(m_args[0]) == m_map_settings.mapname;
 	}
 
 	void map_settings::parse_fog()
 	{
-		if (map_settings_s* s = get_or_create_settings(); s)
+		if (matches_map_name())
 		{
-			s->fog_dist = utils::try_stof(m_args[1], 0.0f);
-			s->fog_color = D3DCOLOR_XRGB
+			m_map_settings.fog_dist = utils::try_stof(m_args[1], 0.0f);
+			m_map_settings.fog_color = D3DCOLOR_XRGB
 			(
 				utils::try_stoi(m_args[2], 255),
 				utils::try_stoi(m_args[3], 255),
@@ -267,15 +225,8 @@ namespace components
 
 	void map_settings::parse_portal_pairs()
 	{
-		api::rayportal_ctx.destroy_all_pairs();
-
-		//if (map_settings_s* s = get_or_create_settings(); s)
+		if (matches_map_name())
 		{
-			// we are not really writing settings here .. we directly create the portal pairs
-			if (m_args[0] != get_loaded_map_name()) {
-				return;
-			}
-
 			std::unordered_set<int> added_pairs;
 
 			// for each portal pair
@@ -385,9 +336,9 @@ namespace components
 
 	void map_settings::parse_culling()
 	{
-		if (map_settings_s* s = get_or_create_settings(); s)
+		if (matches_map_name())
 		{
-			s->area_settings.clear();
+			m_map_settings.area_settings.clear();
 
 			// for each area with it's forced leafs with format -> [cell](index index index)
 			for (auto a = 1u; a < m_args.size(); a++)
@@ -407,11 +358,11 @@ namespace components
 								leaf_idx >= 0)
 				{
 					// ignore duplicate leafs
-					if (s->area_settings.contains(leaf_idx)) {
+					if (m_map_settings.area_settings.contains(leaf_idx)) {
 						continue;
 					}
 
-					const auto elem = s->area_settings.emplace(leaf_idx, std::unordered_set<std::uint32_t>()).first;
+					const auto elem = m_map_settings.area_settings.emplace(leaf_idx, std::unordered_set<std::uint32_t>()).first;
 
 					// get leaf inidices
 					const auto indices_str = utils::split_string_between_delims(str, '(', ')');
@@ -430,10 +381,10 @@ namespace components
 
 	void map_settings::parse_markers()
 	{
-		if (map_settings_s* s = get_or_create_settings(); s)
+		if (matches_map_name())
 		{
 			destroy_markers();
-			s->map_markers.resize(100);
+			m_map_settings.map_markers.resize(100);
 
 			for (auto a = 1u; a < m_args.size(); a++)
 			{
@@ -453,7 +404,7 @@ namespace components
 					}
 
 					// get marker
-					const auto m = &s->map_markers[marker_index];
+					const auto m = &m_map_settings.map_markers[marker_index];
 
 					// ignore duplicate markers
 					if (m->active) {
@@ -521,9 +472,9 @@ namespace components
 
 	void map_settings::parse_api_var_configs()
 	{
-		if (map_settings_s* s = get_or_create_settings(); s)
+		if (matches_map_name())
 		{
-			s->api_var_configs.clear();
+			m_map_settings.api_var_configs.clear();
 			for (auto a = 1u; a < m_args.size(); a++)
 			{
 				auto str = m_args[a];
@@ -532,23 +483,22 @@ namespace components
 				}
 
 				utils::trim(str);
-				s->api_var_configs.emplace_back(str);
+				m_map_settings.api_var_configs.emplace_back(str);
 			}
 		}
 	}
 
-
-	void map_settings::	on_map_load(const std::string& map_name)
+	void map_settings::on_map_load(const std::string& map_name)
 	{
 		map_settings::get()->set_settings_for_map(map_name);
 	}
 
-	ConCommand xo_mapsettings_update{};
-
+	ConCommand xo_mapsettings_update {};
 	void xo_mapsettings_update_fn()
 	{
+		api::rayportal_ctx.destroy_all_pairs();
 		map_settings::get()->destroy_markers();
-		map_settings::get()->set_settings_for_map("", true);
+		map_settings::get()->set_settings_for_map("");
 	}
 
 	map_settings::map_settings()

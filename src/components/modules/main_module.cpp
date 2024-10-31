@@ -65,13 +65,13 @@ namespace components
 			{
 				RECT rect;
 
-				if (!map_settings::get_loaded_map_name().empty())
+				if (!map_settings::get_map_name().empty())
 				{
 					SetRect(&rect, 20, 100, 512, 512);
 					main_module::d3d_font->DrawTextA
 					(
 						nullptr,
-						map_settings::get_loaded_map_name().c_str(),
+						map_settings::get_map_name().c_str(),
 						-1,       // text length (-1 = null-terminated)
 						&rect,
 						DT_NOCLIP,
@@ -290,7 +290,7 @@ namespace components
 		// called from main_module::once_per_frame_cb()
 		void on_client_frame()
 		{
-			const auto& mapname = map_settings::get_loaded_map_name();
+			const auto& mapname = map_settings::get_map_name();
 			if (!mapname.empty())
 			{
 				if (mapname == "sp_a4_finale2")
@@ -361,7 +361,7 @@ namespace components
 		{
 			if (scene_name)
 			{
-				const auto& mapname = map_settings::get_loaded_map_name();
+				const auto& mapname = map_settings::get_map_name();
 				if (!mapname.empty())
 				{
 					if (mapname == "sp_a4_finale2")
@@ -416,15 +416,15 @@ namespace components
 		// fog
 		if (static bool allow_fog = !flags::has_flag("no_fog"); allow_fog)
 		{
-			const auto s = map_settings::get_loaded_map_settings();
-			if (s && s->fog_dist > 0.0f)
+			const auto& s = map_settings::get_map_settings();
+			if (s.fog_dist > 0.0f)
 			{
 				const float fog_start = 1.0f; // not useful
 				dev->SetRenderState(D3DRS_FOGENABLE, TRUE);
 				dev->SetRenderState(D3DRS_FOGVERTEXMODE, D3DFOG_LINEAR);
 				dev->SetRenderState(D3DRS_FOGSTART, *(DWORD*)&fog_start);
-				dev->SetRenderState(D3DRS_FOGEND, *(DWORD*)&s->fog_dist);
-				dev->SetRenderState(D3DRS_FOGCOLOR, s->fog_color);
+				dev->SetRenderState(D3DRS_FOGEND, *(DWORD*)&s.fog_dist);
+				dev->SetRenderState(D3DRS_FOGCOLOR, s.fog_color);
 			}
 			else
 			{
@@ -744,7 +744,6 @@ namespace components
 	void on_host_disconnect_hk()
 	{
 		map_settings::on_map_exit(); 
-		api::rayportal_ctx.destroy_all_pairs();
 		events::s_ent.reset();
 		model_render::linked_area_portals.clear();
 	}
@@ -959,7 +958,7 @@ namespace components
 		g_player_current_node = -1;
 		g_player_current_leaf = -1;
 
-		const auto map_settings = map_settings::get_loaded_map_settings();
+		const auto map_settings = map_settings::get_map_settings();
 
 		// find the bsp node the player is currently in + visualize node / leaf using the remix api
 		// - skip if map settings contains no overrides for current map and debug vis is not active
@@ -1047,11 +1046,11 @@ namespace components
 		// Otherwise, 'R_RecursiveWorldNode' will never reach the target leaf
 
 #if 1
-		if (map_settings && !map_settings->area_settings.empty())
+		if (!map_settings.area_settings.empty())
 		{
-			if (map_settings->area_settings.contains(current_area))
+			if (map_settings.area_settings.contains(current_area))
 			{
-				auto tweaks = map_settings->area_settings.find(current_area);
+				auto tweaks = map_settings.area_settings.find(current_area);
 				for (auto l : tweaks->second)
 				{
 					if (l < static_cast<std::uint32_t>(world->numleafs)) 

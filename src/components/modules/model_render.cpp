@@ -1022,7 +1022,7 @@ namespace components
 					dev->SetVertexShader(nullptr);
 					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
 
-					if (const auto& m = map_settings::get_loaded_map_name(); !m.empty())
+					if (const auto& m = map_settings::get_map_name(); !m.empty())
 					{
 						if (m.ends_with("finale2"))
 						{
@@ -1178,6 +1178,8 @@ namespace components
 						ctx.set_texture_transform(dev, &ret);
 						ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
 						dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
+
+						ctx.modifiers.as_transport_beam = true;
 					}
 				}
 				// render bik using shaders
@@ -1481,7 +1483,7 @@ namespace components
 			else if (mesh->m_VertexFormat == 0x924900005) // stride 0x70 - 112
 			{
 				// #TODO - remove when floating point perc. gets better with shaders
-				if (map_settings::get_loaded_map_name() == "sp_a1_wakeup") 
+				if (map_settings::get_map_name() == "sp_a1_wakeup") 
 				{
 					if (ctx.info.material_name.starts_with("particle/beam_generic")) {
 						ctx.modifiers.do_not_render = true; 
@@ -1651,7 +1653,7 @@ namespace components
 				if (ctx.info.buffer_state.m_Transform[2].m[3][2] == -1.00003529f)
 				{
 					// #TODO - remove when floating point perc. gets better with shaders
-					if (map_settings::get_loaded_map_name() == "sp_a1_wakeup") 
+					if (map_settings::get_map_name() == "sp_a1_wakeup") 
 					{
 						if (ctx.info.material_name == "particle/particle_glow_05_add_15ob" || ctx.info.material_name == "particle/electrical_arc/electrical_arc")  {
 							ctx.modifiers.do_not_render = true;  
