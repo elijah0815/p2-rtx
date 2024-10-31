@@ -297,10 +297,13 @@ namespace components
 				{
 					if (s_ent.a4_f2_api_portal_spawn.has_elapsed(5.0f))
 					{
-						auto& p = api::rayportal_ctx.get_portal_pair(api::PORTAL_PAIR_1)->get_portal0();
-						p.m_pos = { 2108.0f, 774.0f, -18.0f };
-						p.uncache();
-						s_ent.a4_f2_api_portal_spawn.reset();
+						if (!api::rayportal_ctx.empty())
+						{
+							auto& p = api::rayportal_ctx.get_portal_pair(api::PORTAL_PAIR_1)->get_portal0();
+							p.m_pos = { 2108.0f, 774.0f, -18.0f };
+							p.uncache();
+							s_ent.a4_f2_api_portal_spawn.reset();
+						}
 					}
 				}
 			}
@@ -743,6 +746,7 @@ namespace components
 		map_settings::on_map_exit(); 
 		api::rayportal_ctx.destroy_all_pairs();
 		events::s_ent.reset();
+		model_render::linked_area_portals.clear();
 	}
 
 	HOOK_RETN_PLACE_DEF(on_host_disconnect_retn);
@@ -1098,6 +1102,11 @@ namespace components
 	// #
 	// Portal anti cull
 
+	// CustomVis will be used when Map_VisSetup is called (which calculates pot. visible nodes and updates their visframe)
+	// This can be quite bad if we force a node that is completely on the other side of the node tree because that will make the entire tree visible (R_RecursiveWorldNode will not render the other side otherwise)
+	// That is not a problem with the way the game normally renders portals (stencil) as that happens in a completely different renderview so areas can be rendered separately from each other 
+	// Since we disabled the stencil'd rendering, we have to render everything in one pass.
+
 	// CViewRender* this
 	void viewdrawscene_custom_portal_vis(void* view_renderer, bool bDrew3dSkybox, int nSkyboxVisible, const CViewSetup* view, int nClearFlags, int viewID, bool bDrawViewModel, int baseDrawFlags, [[maybe_unused]] ViewCustomVisibility_t* pCustomVisibility)
 	{
@@ -1136,6 +1145,34 @@ namespace components
 
 			is_using_custom_vis = true;
 		}
+
+		// custom vis for area portals that were added in the previous frame (portal views are rendered after the main scene)
+		// >> this can be kinda bad as it potentially makes the whole map visible when the area is on the other side of the map and thus
+		// setting the whole node tree to the current visframe >> R_RecursiveWorld
+#if 0
+		for (const auto& p : model_render::linked_area_portals)
+		{
+			// check if player view was added already
+			if (!added_player_view_vis)
+			{
+				// add the main scene view first if setting custom portal vis
+				customVisibility.m_rgVisOrigins[customVisibility.m_nNumVisOrigins++] = view->origin;
+				added_player_view_vis = true;
+			}
+
+			//CPortalRenderable_FlatBasic::AddToVisAsExitPortal(CPortalRenderable_FlatBasic * this, ViewCustomVisibility_t * pCustomVisibility)
+			utils::hook::call<void(__fastcall)(void* this_ptr, void* null, ViewCustomVisibility_t*)>(CLIENT_BASE + USE_OFFSET(0x2C2830, 0x2BBDA0))
+				(p, nullptr, &customVisibility);
+
+			is_using_custom_vis = true;
+		}
+#endif
+		// remove all area portals that were added in the previous frame
+		model_render::linked_area_portals.clear();  
+
+
+
+
 
 		// do not allow api portals if the game has already spawned portals
 		//api::allow_api_portals = !is_using_custom_vis;

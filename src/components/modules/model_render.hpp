@@ -432,5 +432,7 @@ namespace components
 		static inline float portal2_open_amount = 0.0f;
 		static inline bool  portal2_is_linked = false;
 		static inline const C_Prop_Portal* portal2_ptr = nullptr;
+
+		static inline std::vector<CPortalRenderable_FlatBasic*> linked_area_portals;
 	};
 }

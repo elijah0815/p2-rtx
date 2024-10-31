@@ -694,9 +694,9 @@ namespace components
 			//}
 		}
 
-		/*if (ctx.info.material_name.contains("project"))
+		/*if (ctx.info.material_name.contains("railing_bts"))
 		{
-			int break_me = 1;
+			int break_me = 1; 
 		}*/
 
 		if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x2480033)
@@ -2476,6 +2476,43 @@ namespace components
 		}
 	}
 
+
+	// #
+
+	// Grabs area portal - could be used to spawn api portals
+	// Could also be used to auto. set vis for area portals but performance can be really bad
+	void grab_linked_area_portal(void* cportalrenderable)
+	{
+		// CPortalRenderable + 0x96 = linked portal
+		auto p = reinterpret_cast<CPortalRenderable_FlatBasic*>(*((DWORD*)cportalrenderable + 0x96));
+
+		if (std::ranges::find(model_render::linked_area_portals.begin(), model_render::linked_area_portals.end(), p) == model_render::linked_area_portals.end())
+		{
+			// Pointer does not exist, so add it
+			model_render::linked_area_portals.push_back(p);
+		}
+	}
+
+	HOOK_RETN_PLACE_DEF(render_portal_view_to_backbuffer_retn);
+	void __declspec(naked) render_portal_view_to_backbuffer_stub()
+	{
+		__asm
+		{
+			pushad;
+			push	ecx; // CPortalRenderable*
+			call	grab_linked_area_portal;
+			add		esp, 4;
+			popad;
+
+			// og
+			mov     eax, [ebp - 8];
+			jmp		render_portal_view_to_backbuffer_retn;
+		}
+	}
+
+
+
+
 	/*void post_draw_painted_surface()
 	{
 		int break_me = 0;
@@ -2554,6 +2591,20 @@ namespace components
 
 		// C_Prop_Portal::ClientThink :: hook to get portal 1/2 m_fOpenAmount member var
 		utils::hook(CLIENT_BASE + USE_OFFSET(0x285AD2, 0x280012), prop_portal_client_think_stub, HOOK_JUMP).install()->quick();
+
+
+		// #
+		// Area portals
+
+#if 0	// not helping with entity culling
+		// disable 'r_portal_stencil_depth' check in 'CPortalRender::DrawPortalsUsingStencils_Old'
+		utils::hook::set<BYTE>(CLIENT_BASE + USE_OFFSET(0x2BE21B, 0x2B778B), 0xEB); // jl to jmp
+
+		// disable 'RenderPortalViewToBackBuffer' call in 'CPortalRender::DrawPortalsUsingStencils_Old'
+		utils::hook::nop(CLIENT_BASE + USE_OFFSET(0x2BE7E8, 0x2B7D58),7);
+		utils::hook(CLIENT_BASE + USE_OFFSET(0x2BE7E8, 0x2B7D58), render_portal_view_to_backbuffer_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(render_portal_view_to_backbuffer_retn, CLIENT_BASE + USE_OFFSET(0x2BE7EF, 0x2B7D5F));
+#endif
 
 		// Shader_DrawSurfaceDynamic -> BuildMSurfaceVertexArrays :: change texcoords when building the vertexbuffer
 		// so that we do not need to lock and unlock for each BSP surface when rendering
