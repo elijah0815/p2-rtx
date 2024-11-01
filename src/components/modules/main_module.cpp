@@ -578,7 +578,9 @@ namespace components
 		dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(colView));
 		dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(colProj));
 
-		main_module::framecount++; // used for debug anim
+		if (!game::is_paused()) {
+			main_module::framecount++; // used for debug anim
+		}
 
 		// set a default material with diffuse set to a warm white
 		// so that add light to texture works and does not require rtx.effectLightPlasmaBall (animated)

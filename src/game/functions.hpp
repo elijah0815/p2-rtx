@@ -51,4 +51,13 @@ namespace game
 
 	// CM_PointLeafnum
 	inline int get_leaf_from_position(const Vector& pos) { return utils::hook::call<int(__cdecl)(const float*)>(ENGINE_BASE + USE_OFFSET(0x159C80, 0x158540))(&pos.x); }
+
+	inline bool is_paused()
+	{
+		// GetBaseLocalClient
+		const auto cclientstate_ptr = utils::hook::call<void*(__cdecl)()>(ENGINE_BASE + USE_OFFSET(0x9EAF0, 0x9E7E0))();
+
+		// CClientState::IsPaused
+		return utils::hook::call<BOOL(__fastcall)(void* this_ptr, void* null)>(ENGINE_BASE + USE_OFFSET(0xAB850, 0xAB140))(cclientstate_ptr, nullptr);
+	}
 }
