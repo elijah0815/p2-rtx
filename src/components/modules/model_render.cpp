@@ -243,6 +243,7 @@ namespace components
 		vertex_decl->GetDeclaration((D3DVERTEXELEMENT9*)decl, &numElements);
 		int break_me = 1; // look into decl
 
+#if 0
 		if (primlist)
 		{
 			IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
@@ -314,6 +315,7 @@ namespace components
 				}
 			}
 		}
+#endif
 #endif
 	}
 
@@ -694,9 +696,9 @@ namespace components
 			//}
 		}
 
-		/*if (ctx.info.material_name.contains("railing_bts"))
+		/*if (ctx.info.material_name.contains("occlusionproxy"))
 		{
-			int break_me = 1; 
+			int break_me = 1;   
 		}*/
 
 		if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x2480033)
@@ -1256,6 +1258,10 @@ namespace components
 
 					const auto s_viewFadeColor = reinterpret_cast<Vector4D*>(CLIENT_BASE + USE_OFFSET(0x9F7748, 0x9EDAF8));
 
+					/*const auto s_viewFadeModulate = reinterpret_cast<bool*>(CLIENT_BASE + USE_OFFSET(0x0, 0x9ECEE0));
+					if (s_viewFadeModulate && *s_viewFadeModulate)
+					{ }*/
+
 					ctx.save_vs(dev);
 					dev->SetVertexShader(nullptr);
 					dev->SetPixelShader(nullptr); // needed
@@ -1265,6 +1271,15 @@ namespace components
 
 					ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
 					dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+
+					ctx.save_rs(dev, D3DRS_BLENDOP);
+					dev->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+
+					ctx.save_rs(dev, D3DRS_SRCBLEND);
+					dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+
+					ctx.save_rs(dev, D3DRS_DESTBLEND);
+					dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
 
 					ctx.save_rs(dev, D3DRS_ZWRITEENABLE);
 					dev->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
@@ -1300,11 +1315,18 @@ namespace components
 					// do not render the original mesh
 					ctx.modifiers.do_not_render = true;
 				}
+				//else if (ctx.info.shader_name.starts_with("Occl"))
+				//{
+				//	ctx.save_vs(dev);
+				//	dev->SetVertexShader(nullptr);
+				//	//lookat_vertex_decl(dev, primlist);
+
+				//	dev->SetFVF(D3DFVF_XYZ | D3DFVF_TEX3 | D3DFVF_TEXCOORDSIZE1(2));
+				//	dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
+				//}
 #endif
 				//else 
 				//{
-					//ctx.modifiers.do_not_render = true; 
-					// Eye of Glados is rendered here (using shaders) via one of these:
 					// dev/blurfilterx_nohdr
 					// dev/blurfiltery_nohdr
 					// dev/fade_blur
@@ -1376,7 +1398,6 @@ namespace components
 						ctx.modifiers.as_sky = true;
 					}
 				}
-
 				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr);
 
