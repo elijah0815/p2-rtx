@@ -1784,20 +1784,25 @@ namespace components
 			else if (mesh->m_VertexFormat == 0x24914900005) // stride 144 ....
 			{
 				//ctx.modifiers.do_not_render = true;
-
-				/*dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
-				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);*/
-
-				//dev->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, FALSE);
-				//dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
-
-				// a little heavy but this fixes shader rendering
-				// FF wont draw anything ... ?
-
 				// maybe edit vert texcoords directly within Client :: C_OP_RenderSprites::Render
 
+				//float g_vCropFactor[4] = {};
+				//dev->GetVertexShaderConstantF(15, g_vCropFactor, 1);
+
+				ctx.save_tss(dev, D3DTSS_ALPHAOP);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+
+				bool modulate_alpha = false;
+				{
+					DWORD dest_blend;
+					dev->GetRenderState(D3DRS_DESTBLEND, &dest_blend);
+
+					if ((D3DBLEND)dest_blend == D3DBLEND_ONE) {
+						modulate_alpha = true;
+					}
+				}
 #if 1
-				IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
+				IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u; 
 				if (SUCCEEDED(dev->GetStreamSource(0, &vb, &t_offset, &t_stride)))
 				{
 					IDirect3DIndexBuffer9* ib = nullptr;
@@ -1841,11 +1846,55 @@ namespace components
 									const auto v_pos_in_src_buffer = i * t_stride;
 									const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
 
-									src->tc0.x = std::lerp(src->tc0.z, src->tc0.x, src->tc3.x);
-									src->tc0.y = std::lerp(src->tc0.w, src->tc0.y, src->tc3.y);
-
 									// float2 vCornerID : TEXCOORD3;
 									// o.texCoord0_1.xy = lerp( v.vTexCoord0.zw, v.vTexCoord0.xy, v.vCornerID.xy );
+									// o.texCoord0_1.wz = lerp( v.vTexCoord1.zw, v.vTexCoord1.xy, v.vCornerID.xy );
+
+									//src->tc0.x = std::lerp(src->tc0.z, src->tc0.x, src->tc3.x /** g_vCropFactor[0] + g_vCropFactor[2]*/);
+									//src->tc0.y = std::lerp(src->tc0.w, src->tc0.y, src->tc3.y /** g_vCropFactor[1] + g_vCropFactor[3]*/);
+
+									/*
+										float2 vCornerID        : TEXCOORD3;   // 0,0 1,0 1,1 0,1
+										float4 vTexCoord2		: TEXCOORD4;
+										#if DUALSEQUENCE
+										float4 vSeq2TexCoord0   : TEXCOORD5;
+										float4 vSeq2TexCoord1   : TEXCOORD6; 
+										float4 vParms1          : TEXCOORD7;  // second frame blend, ?,?,?
+
+										float2 lerpold = v.vCornerID.xy;
+										float2 lerpnew = v.vCornerID.xy;
+
+										#if ( ZOOM_ANIMATE_SEQ2 )
+										{
+											lerpold.x = getlerpscale_for_old_frame( v.vCornerID.x, v.vParms1.x );
+											lerpold.y = getlerpscale_for_old_frame( v.vCornerID.y, v.vParms1.x );
+											lerpnew.x = getlerpscale_for_new_frame( v.vCornerID.x, v.vParms1.x );
+											lerpnew.y = getlerpscale_for_new_frame( v.vCornerID.y, v.vParms1.x );
+										}
+										#endif
+
+										o.vSeq2TexCoord0_1.xy	= lerp( v.vSeq2TexCoord0.zw, v.vSeq2TexCoord0.xy, lerpold.xy );
+										o.vSeq2TexCoord0_1.wz	= lerp( v.vSeq2TexCoord1.zw, v.vSeq2TexCoord1.xy, lerpnew.xy );
+									 */
+
+									src->tc0.x = std::lerp(src->tc5.z, src->tc5.x, src->tc3.x);
+									src->tc0.y = std::lerp(src->tc5.w, src->tc5.y, src->tc3.y);
+
+									// 2nd tex
+									//src->tc0.x = std::lerp(src->tc6.z, src->tc6.x, src->tc3.x); 
+									//src->tc0.y = std::lerp(src->tc6.w, src->tc6.y, src->tc3.y);
+
+									if (modulate_alpha)
+									{
+										//float r = static_cast<float>((src->color >> 16) & 0xFF) / 255.0f * 1.0f;
+										//float g = static_cast<float>((src->color >> 8) & 0xFF) / 255.0f * 1.0f;
+										//float b = static_cast<float>((src->color >> 0) & 0xFF) / 255.0f * 1.0f;
+										float a = static_cast<float>((src->color >> 24) & 0xFF) / 255.0f * 0.1f;
+										//src->color = D3DCOLOR_COLORVALUE(r, g, b, a);
+										src->color = (src->color & 0x00FFFFFF) | (static_cast<unsigned char>(a * 255.0f) << 24);
+
+										
+									}
 								}
 
 								vb->Unlock();
@@ -1854,7 +1903,6 @@ namespace components
 					}
 				}
 #endif
-
 				//ctx.save_vs(dev);
 				//dev->SetVertexShader(nullptr);
 				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX2);
