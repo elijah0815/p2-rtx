@@ -2266,150 +2266,11 @@ namespace components
 		}
 	}
 
-	// used if cl_brushfastpath = 1
-	void __fastcall tbl_hk::bmodel_renderer::DrawBrushModelArray::Detour(void* ecx, void* o1, void* o2, int nCount, const BrushArrayInstanceData_t& pInstanceData, int nModelTypeFlags)
-	{
-		const auto dev = game::get_d3d_device();
-		dev->GetVertexShader(&ff_bmodel::s_shader);
-		//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&game::identity));
-
-		VMatrix mat = {}; 
-		mat.m[0][0] = pInstanceData.m_pBrushToWorld->m_flMatVal[0][0];
-		mat.m[1][0] = pInstanceData.m_pBrushToWorld->m_flMatVal[0][1];
-		mat.m[2][0] = pInstanceData.m_pBrushToWorld->m_flMatVal[0][2];
-
-		mat.m[0][1] = pInstanceData.m_pBrushToWorld->m_flMatVal[1][0];
-		mat.m[1][1] = pInstanceData.m_pBrushToWorld->m_flMatVal[1][1];
-		mat.m[2][1] = pInstanceData.m_pBrushToWorld->m_flMatVal[1][2];
-
-		mat.m[0][2] = pInstanceData.m_pBrushToWorld->m_flMatVal[2][0];
-		mat.m[1][2] = pInstanceData.m_pBrushToWorld->m_flMatVal[2][1];
-		mat.m[2][2] = pInstanceData.m_pBrushToWorld->m_flMatVal[2][2];
-
-		mat.m[3][0] = pInstanceData.m_pBrushToWorld->m_flMatVal[0][3];
-		mat.m[3][1] = pInstanceData.m_pBrushToWorld->m_flMatVal[1][3];
-		mat.m[3][2] = pInstanceData.m_pBrushToWorld->m_flMatVal[2][3];
-		mat.m[3][3] = game::IDENTITY.m[3][3];
-
-		dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m)); 
-
-		tbl_hk::bmodel_renderer::table.original<FN>(Index)(ecx, o1, o2, nCount, pInstanceData, nModelTypeFlags);
-
-		dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
-		dev->SetFVF(NULL);
-
-		if (ff_bmodel::s_shader)
-		{
-			dev->SetVertexShader(ff_bmodel::s_shader);
-			ff_bmodel::s_shader = nullptr;
-		}
-	}
-
-	// not used for brushmodels when cl_brushfastpath = 0
-	void cmeshdx8_renderpassforinstances_pre_draw(const CMeshDX8* mesh, [[maybe_unused]] const MeshInstanceData_t* data)
-	{
-		const auto dev = game::get_d3d_device();
-
-		IDirect3DVertexBuffer9* b = nullptr;
-		UINT ofs = 0, stride = 0;
-		dev->GetStreamSource(0, &b, &ofs, &stride);
-
-		// g_pInstanceData ... same as second func argument
-		//MeshInstanceData_t* instance_info = reinterpret_cast<MeshInstanceData_t*>(*(DWORD*)(RENDERER_BASE + 0x1754AC));
-
-		VMatrix mat = {};
-		mat.m[0][0] = data->m_pPoseToWorld->m_flMatVal[0][0];
-		mat.m[1][0] = data->m_pPoseToWorld->m_flMatVal[0][1];
-		mat.m[2][0] = data->m_pPoseToWorld->m_flMatVal[0][2];
-
-		mat.m[0][1] = data->m_pPoseToWorld->m_flMatVal[1][0];
-		mat.m[1][1] = data->m_pPoseToWorld->m_flMatVal[1][1];
-		mat.m[2][1] = data->m_pPoseToWorld->m_flMatVal[1][2];
-
-		mat.m[0][2] = data->m_pPoseToWorld->m_flMatVal[2][0];
-		mat.m[1][2] = data->m_pPoseToWorld->m_flMatVal[2][1];
-		mat.m[2][2] = data->m_pPoseToWorld->m_flMatVal[2][2];
-
-		mat.m[3][0] = data->m_pPoseToWorld->m_flMatVal[0][3];
-		mat.m[3][1] = data->m_pPoseToWorld->m_flMatVal[1][3];
-		mat.m[3][2] = data->m_pPoseToWorld->m_flMatVal[2][3];
-		mat.m[3][3] = game::IDENTITY.m[3][3];
-
-		if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x2480033) // THIS
-		{
-			// tc @ 24
-			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
-			dev->SetVertexShader(nullptr);
-		}
-
-#ifdef DEBUG
-		else if (ff_bmodel::s_shader)
-		{
-			if (mesh->m_VertexFormat == 0xa2183)
-			{
-				int break_me = 0;
-			}
-		}
-#endif
-
-		else 
-		{
-			const auto shaderapi = game::get_shaderapi();
-			const auto current_material = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr);
-			const auto current_material_name = std::string_view(current_material->vftable->GetName(current_material));
-
-			// metal door = 0xa2183
-			if (mesh->m_VertexFormat == 0xa2183) // entities - not brushmodel (eg portal gun stand)
-			{
-				if (current_material_name.contains("props_destruction/glass_"))
-				{
-					IDirect3DBaseTexture9* aa = nullptr;
-					dev->GetTexture(1, &aa);
-					dev->SetTexture(0, aa); 
-				}
-				
-				dev->GetVertexShader(&ff_brushmodels::s_shader);
-				dev->SetVertexShader(nullptr);
-				dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_NORMAL | D3DFVF_TEX4 | D3DFVF_TEXCOORDSIZE1(3));
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m));
-			}
-
-			// somewhat broken - never called ....
-			else if (mesh->m_VertexFormat == 0xa0103) // glass shards
-			{
-				// todo set unique texture
-				dev->SetTexture(0, nullptr); //tex_portal_mask); 
-
-				dev->GetVertexShader(&ff_glass_shards::s_shader);
-				dev->SetVertexShader(nullptr);
-				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX2);
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m));
-			}
-
-#ifdef DEBUG
-			else
-			{
-				int break_me = 1; 
-			}
-#endif
-		}
-
-#ifdef DEBUG
-		/*IDirect3DBaseTexture9* ttex = nullptr;
-		dev->GetTexture(0, &ttex);
-
-		if (!ttex)
-		{
-			int break_me = 1;
-		}*/
-#endif
-	}
-
 	void cmeshdx8_renderpassforinstances_post_draw()
 	{
 		const auto dev = game::get_d3d_device();
 
-		// restore shader if we set it top null right before drawing in the func above
+		// restore shader if we set it to null right before drawing in the func above
 		if (ff_brushmodels::s_shader)
 		{
 			dev->SetVertexShader(ff_brushmodels::s_shader);
@@ -2417,79 +2278,6 @@ namespace components
 			ff_brushmodels::s_shader = nullptr;
 		}
 	}
-
-	HOOK_RETN_PLACE_DEF(cmeshdx8_renderpassforinstances_pre_draw_retn_addr);
-	void __declspec(naked) cmeshdx8_renderpassforinstances_pre_draw_stub()
-	{
-		__asm
-		{
-			// og code
-			call	eax;
-
-			pushad;
-			push	ebx; // actual instance data
-			push	ecx; // CMeshDX8
-			call	cmeshdx8_renderpassforinstances_pre_draw;
-			add		esp, 8;
-			popad;
-
-			// og code
-			mov		ecx, [ebp - 4];
-			mov		edx, [esi + 0x148];
-			push	eax;
-			push	0;
-			push	0;
-			push	ecx;
-			push	edi;
-			call	edx; // DrawIndexedPrimitive
-
-			pushad;
-			call	cmeshdx8_renderpassforinstances_post_draw;
-			popad;
-
-			jmp cmeshdx8_renderpassforinstances_pre_draw_retn_addr;
-		}
-	}
-
-
-
-	// #############
-#if 0
-	void cmeshdx8_renderpasswithvertexindexbuffer_pre_draw()
-	{
-		int break_me = 1;
-	}
-
-	void cmeshdx8_renderpasswithvertexindexbuffer_post_draw()
-	{
-		int break_me = 1;
-	}
-
-	HOOK_RETN_PLACE_DEF(cmeshdx8_renderpasswithvertexindexbuffer_retn_addr);
-	void __declspec(naked) cmeshdx8_renderpasswithvertexindexbuffer_stub()
-	{
-		__asm
-		{
-			pushad;
-			call	cmeshdx8_renderpasswithvertexindexbuffer_pre_draw;
-			popad;
-
-			// og code
-			push	eax;
-			push	ecx;
-			push	0;
-			push	esi;
-			push	edi;
-			call	edx; // DrawIndexedPrimitive
-
-			pushad;
-			call	cmeshdx8_renderpasswithvertexindexbuffer_post_draw;
-			popad;
-
-			jmp		cmeshdx8_renderpasswithvertexindexbuffer_retn_addr;
-		}
-	}
-#endif
 
 	// -----
 
@@ -2550,8 +2338,6 @@ namespace components
 	}
 
 
-	// #
-
 	// Grabs area portal - could be used to spawn api portals
 	// Could also be used to auto. set vis for area portals but performance can be really bad
 	void grab_linked_area_portal(void* cportalrenderable)
@@ -2584,12 +2370,8 @@ namespace components
 	}
 
 
-
-
-	/*void post_draw_painted_surface()
-	{
-		int break_me = 0;
-	}*/
+	// #
+	// #
 
 	HOOK_RETN_PLACE_DEF(draw_painted_surfaces_og_func);
 	HOOK_RETN_PLACE_DEF(draw_painted_surfaces_retn_addr);
@@ -2598,13 +2380,7 @@ namespace components
 		__asm
 		{
 			mov		is_rendering_paint, 1;
-
-			/*pushad;
-			call	post_draw_painted_surface;
-			popad;*/
-
 			call	draw_painted_surfaces_og_func;
-
 			mov		is_rendering_paint, 0;
 			jmp		draw_painted_surfaces_retn_addr;
 		}
@@ -2629,6 +2405,9 @@ namespace components
 	}
 
 
+	// #
+	// #
+
 	model_render::model_render()
 	{
 		tbl_hk::model_renderer::_interface = utils::module_interface.get<tbl_hk::model_renderer::IVModelRender*>("engine.dll", "VEngineModel016");
@@ -2643,18 +2422,12 @@ namespace components
 		HOOK_RETN_PLACE(cmeshdx8_renderpass_post_draw_retn_addr, RENDERER_BASE + USE_OFFSET(0xB28C, 0xADFC));
 
 
-		// brushmodels - cubes - etc - CMeshMgr::RenderPassForInstances
-
+		// brushmodels - cubes - etc
 		tbl_hk::bmodel_renderer::_interface = utils::module_interface.get<tbl_hk::bmodel_renderer::IVRenderView*>("engine.dll", "VEngineRenderView013");
-
 		XASSERT(tbl_hk::bmodel_renderer::table.init(tbl_hk::bmodel_renderer::_interface) == false);
 		XASSERT(tbl_hk::bmodel_renderer::table.hook(&tbl_hk::bmodel_renderer::DrawBrushModelEx::Detour, tbl_hk::bmodel_renderer::DrawBrushModelEx::Index) == false);
-		XASSERT(tbl_hk::bmodel_renderer::table.hook(&tbl_hk::bmodel_renderer::DrawBrushModelArray::Detour, tbl_hk::bmodel_renderer::DrawBrushModelArray::Index) == false);
 
-		utils::hook(RENDERER_BASE + USE_OFFSET(0xA9FD, 0xA56D), cmeshdx8_renderpassforinstances_pre_draw_stub, HOOK_JUMP).install()->quick();
-		HOOK_RETN_PLACE(cmeshdx8_renderpassforinstances_pre_draw_retn_addr, RENDERER_BASE + USE_OFFSET(0xAA11, 0xA581));
-
-		// enable mat_wireframe on portals to make them stable?
+		// enable mat_wireframe on portals
 		//utils::hook::nop(CLIENT_BASE + 0x2BD41C, 6);
 #if 0
 		// 0xA685

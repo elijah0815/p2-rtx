@@ -63,13 +63,6 @@ namespace components
 			void __fastcall Detour(void* ecx, void* o1, IClientEntity* baseentity, model_t* model, const Vector* origin, const QAngle* angles, DrawBrushModelMode_t mode);
 		}
 
-		namespace DrawBrushModelArray
-		{
-			constexpr uint32_t Index = 55u;
-			using FN = void(__fastcall*)(void*, void*, void*, int, const BrushArrayInstanceData_t&, int);
-			void __fastcall Detour(void* ecx, void* o1, void* o2, int nCount, const BrushArrayInstanceData_t& pInstanceData, int nModelTypeFlags);
-		}
-
 		typedef unsigned short ModelInstanceHandle_t;
 		class IVRenderView
 		{
