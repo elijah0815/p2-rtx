@@ -29,6 +29,56 @@ public:
 		x = v[0]; y = v[1]; z = v[2]; w = v[3];
 	}
 
+	Vector4D operator+(const Vector4D& v) const
+	{
+		return Vector4D(x + v.x, y + v.y, z + v.z, w + v.w);
+	}
+
+	Vector4D operator-(const Vector4D& v) const
+	{
+		return Vector4D(x - v.x, y - v.y, z - v.z, w - v.w);
+	}
+
+	Vector4D operator*(const Vector4D& v) const
+	{
+		return Vector4D(x * v.x, y * v.y, z * v.z, w * v.w);
+	}
+
+	Vector4D operator/(const Vector4D& v) const
+	{
+		return Vector4D(x / v.x, y / v.y, z / v.z, w / v.w);
+	}
+
+	Vector4D operator+(float v) const
+	{
+		return Vector4D(x + v, y + v, z + v, w + v);
+	}
+
+	Vector4D operator-(float v) const
+	{
+		return Vector4D(x - v, y - v, z - v, w - v);
+	}
+
+	Vector4D operator*(float v) const
+	{
+		return Vector4D(x * v, y * v, z * v, w * v);
+	}
+
+	friend Vector4D operator*(float v, const Vector4D& vec)
+	{
+		return Vector4D(vec.x * v, vec.y * v, vec.z * v, vec.w * v);
+	}
+
+	Vector4D operator/(float v) const
+	{
+		return Vector4D(x / v, y / v, z / v, w / v);
+	}
+
+	Vector4D operator-() const
+	{
+		return Vector4D(-x, -y, -z, -w);
+	}
+
 	vec_t x, y, z, w;
 };
 
@@ -223,6 +273,11 @@ public:
 		x = v.x; y = v.y; z = v.z;
 	}
 
+	Vector(const Vector4D& v)
+	{
+		x = v.x; y = v.y; z = v.z;
+	}
+
 	Vector(const Vector2D& v)
 	{
 		x = v.x; y = v.y; z = 0.0f;
@@ -323,9 +378,19 @@ public:
 		return Vector(x * v, y * v, z * v);
 	}
 
+	friend Vector operator*(float v, const Vector& vec)
+	{
+		return Vector(vec.x * v, vec.y * v, vec.z * v);
+	}
+
 	Vector operator/(float v) const
 	{
 		return Vector(x / v, y / v, z / v);
+	}
+
+	Vector operator-() const
+	{
+		return Vector(-x, -y, -z);
 	}
 
 	float Lenght(void) const
