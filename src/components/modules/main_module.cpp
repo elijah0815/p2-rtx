@@ -43,12 +43,6 @@ namespace components
 		std::uint64_t remix_debug_last_line_hash = 0u;
 		bool remix_debug_node_vis = false; // show/hide debug vis of bsp nodes/leafs
 
-		bool allow_api_portals = false;
-		bool disabled_portal_fade = false;
-
-		remixapi_LightHandle light_handle = nullptr;
-
-
 		// rayportal context
 		bool rayportal_show_debug_info = false;
 		rayportal_context rayportal_ctx {};
@@ -505,50 +499,12 @@ namespace components
 		model_render::m_benchmark.clear();
 #endif
 
-		// #TODO - fix portal fadein effect
-		//if (const auto& n = map_settings::get_loaded_map_name();
-		//	!n.empty() && n == "sp_a1_wakeup")
+		// needs portal fade-in effect fix:
+		// https://github.com/NVIDIAGameWorks/dxvk-remix/pull/83
 		if (!api::rayportal_ctx.empty())
 		{
-			remix_vars::set_option(remix_vars::get_option("rtx.enablePortalFadeInEffect"), { false });
-			api::disabled_portal_fade = true;
 			api::rayportal_ctx.draw_all_pairs();
-
 		}
-		else
-		{
-			if (api::disabled_portal_fade)
-			{
-				remix_vars::set_option(remix_vars::get_option("rtx.enablePortalFadeInEffect"), { false });
-				api::disabled_portal_fade = false;
-			}
-		}
-
-		/*if (!api::light_handle)
-		{
-			auto ext = remixapi_LightInfoSphereEXT
-			{
-				.sType = REMIXAPI_STRUCT_TYPE_LIGHT_INFO_SPHERE_EXT,
-				.pNext = nullptr,
-				.position = remixapi_Float3D {.x = -1550.0f, .y = 1590.0f, .z = -250.0f},
-				.radius = 1,
-				.shaping_hasvalue = false,
-				.shaping_value = {},
-			};
-
-			auto info = remixapi_LightInfo
-			{
-				.sType = REMIXAPI_STRUCT_TYPE_LIGHT_INFO,
-				.pNext = &ext,
-				.hash = 1234,
-				.radiance = remixapi_Float3D {100, 20, 20},
-			};
-			api::bridge.CreateLight(&info, &api::light_handle);
-		}
-		else
-		{
-			api::bridge.DrawLightInstance(api::light_handle);
-		}*/
 	}
 
 	/**
