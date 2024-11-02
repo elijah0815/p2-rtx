@@ -1502,39 +1502,46 @@ namespace components
 				{
 					//if (map_settings::get_map_name() == "sp_a1_wakeup")
 					{
+						// Spritecard -> Splinecard
 						if (ctx.info.material_name.starts_with("particle/beam_generic")) 
 						{
-							// this looks bad as color/alpha is per segment rn?
+							using namespace hlslpp;
+
 							ctx.save_tss(dev, D3DTSS_ALPHAARG1);
 							ctx.save_tss(dev, D3DTSS_ALPHAARG2);
 							ctx.save_tss(dev, D3DTSS_ALPHAOP);
-
 							dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
 							dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
 							dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
 
-							//ctx.modifiers.do_not_render = true; // Spritecard -> Splinecard
+							//ctx.modifiers.do_not_render = true; 
 							//lookat_vertex_decl(dev, primlist);
 
-							auto CatmullRomSpline = [](const Vector4D& a, const Vector4D& b, const Vector4D& c, const Vector4D& d, const float t)
-							{
-								return b + 0.5f * t * (c - a + t * (2.0f * a - 5.0f * b + 4.0f * c - d + t * (-a + 3.0f * b - 3.0f * c + d)));
-							};
+							auto CatmullRomSpline = [](const float4& a, const float4& b, const float4& c, const float4& d, const float t)
+								{
+									return b + 0.5f * t * (c - a + t * (2.0f * a - 5.0f * b + 4.0f * c - d + t * (-a + 3.0f * b - 3.0f * c + d)));
+								};
 
-							auto DCatmullRomSpline3 = [](const Vector& a, const Vector& b, const Vector& c, const Vector& d, const float t)
-							{
-								return 0.5f * (c - a + t * (2.0f * a - 5 * b + 4 * c - d + t * (3.0f * b - a - 3.0f * c + d))
+							auto DCatmullRomSpline3 = [](const float4& aa, const float4& bb, const float4& cc, const float4& dd, const float t)
+								{
+									float3 a = aa.xyz; float3 b = bb.xyz; float3 c = cc.xyz; float3 d = dd.xyz;
+									return 0.5f * (c - a + t * (2.0f * a - 5 * b + 4 * c - d + t * (3.0f * b - a - 3.0f * c + d))
 										+ t * (2.0f * a - 5.0f * b + 4 * c - d + 2.0f * (t * (3 * b - a - 3.0f * c + d))));
-							};
+								};
 
-							float SizeParms2[4] = {};
-							dev->GetVertexShaderConstantF(57, SizeParms2, 1);
-							const float ALPHATFADE = SizeParms2[2];
-							const float RADIUSTFADE = SizeParms2[3];
 
-							float eyePos[4] = {};
-							dev->GetVertexShaderConstantF(2, eyePos, 1);
+							float ALPHATFADE, RADIUSTFADE;
+							{
+								float v[4] = {}; dev->GetVertexShaderConstantF(57, v, 1);
+								ALPHATFADE = v[2];
+								RADIUSTFADE = v[3];
+							}
 
+							float3 eyePos;
+							{
+								float v[4] = {}; dev->GetVertexShaderConstantF(2, v, 1);
+								eyePos = float3(v[0], v[1], v[2]);
+							}
 #if 1
 							IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
 							if (SUCCEEDED(dev->GetStreamSource(0, &vb, &t_offset, &t_stride)))
@@ -1547,11 +1554,9 @@ namespace components
 									{
 										// add relevant indices without duplicates
 										std::unordered_set<std::uint16_t> indices; indices.reserve(primlist->m_NumIndices);
-										for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++)
-										{
+										for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++) {
 											indices.insert(static_cast<std::uint16_t*>(ib_data)[primlist->m_FirstIndex + i]);
-										}
-										ib->Unlock();
+										} ib->Unlock();
 
 										// get the range of vertices that we are going to work with
 										UINT min_vert = 0u, max_vert = 0u;
@@ -1560,15 +1565,16 @@ namespace components
 											min_vert = *min_it; max_vert = *max_it;
 										}
 
-										void* src_buffer_data;
-
-										// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
+										void* src_buffer_data; // lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
 										if (SUCCEEDED(vb->Lock(min_vert * t_stride, max_vert * t_stride, &src_buffer_data, 0)))
 										{
-											struct src_vert
-											{
-												Vector vParms; D3DCOLOR vTint;
-												Vector4D vSplinePt0; Vector4D vSplinePt1; Vector4D vSplinePt2; Vector4D vSplinePt3; Vector4D vTexCoordRange; Vector4D vEndPointColor;
+											// all hlslpp floats are 16 bytes :(
+											struct src_vert {
+												Vector vParms; D3DCOLOR vTint; float4 vSplinePt0; float4 vSplinePt1; float4 vSplinePt2; float4 vSplinePt3; float4 vTexCoordRange; float4 vEndPointColor;
+											};
+
+											struct dest_vert {
+												Vector pos; D3DCOLOR vTint; Vector2D tc;
 											};
 
 											for (auto i : indices)
@@ -1578,82 +1584,32 @@ namespace components
 
 												const auto v_pos_in_src_buffer = i * t_stride;
 												const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
+												const auto dest = reinterpret_cast<dest_vert*>(src);
 
-												// save points
-												const auto P0 = src->vSplinePt0;  
-												const auto P1 = src->vSplinePt1;
-												const auto P2 = src->vSplinePt2;
-												const auto P3 = src->vSplinePt3;
+												// save vParms (because we will be overriding them when writing pos)
+												const float parmsX = src->vParms.x;
+												const float parmsY = src->vParms.y;
+												const float parmsZ = src->vParms.z;
 
-												// save vParms
-												const auto parmsX = src->vParms.x;
-												const auto parmsY = src->vParms.y;
-												const auto parmsZ = src->vParms.z;
-
-												auto posrad = CatmullRomSpline(P0, P1, P2, P3, parmsX);
+												float4 posrad = CatmullRomSpline(src->vSplinePt0, src->vSplinePt1, src->vSplinePt2, src->vSplinePt3, parmsX);
 												posrad.w *= std::lerp(1.0f, RADIUSTFADE, parmsX);
 
-												//if (ORIENTATION == 0) v2p = posrad.xyz - cEyePos;	// screen aligned
-												Vector v2p = { posrad.x - eyePos[0], posrad.y - eyePos[1], posrad.z - eyePos[2]};
+												// screen aligned
+												float3 v2p = posrad.xyz - eyePos.xyz;
+												float3 tangent = DCatmullRomSpline3(src->vSplinePt0, src->vSplinePt1, src->vSplinePt2, src->vSplinePt3, parmsX);
+												float3 ofs = normalize(cross(v2p, normalize(tangent)));
 
-												Vector tangent = DCatmullRomSpline3(P0, P1, P2, P3, parmsX);
+												posrad.xyz += (ofs * (posrad.w * (parmsZ - 0.5f)));
+												posrad.w = 1.0f;
 
-												//float3 ofs = normalize(cross(v2p, normalize(tangent)));
-												tangent.NormalizeChecked();  
-												Vector ofs = v2p.Cross(tangent); // maybe switch these - no difference
-												ofs.NormalizeChecked();
+												// write position
+												dest->pos.FromFloat3(posrad.xyz);
 
-												//posrad.xyz += ofs * (posrad.w * (v.vParms.z - .5));
-												const auto add = ofs.Scale(posrad.w * (parmsZ - 0.5f));
-												posrad.x += add.x;
-												posrad.y += add.y;
-												posrad.z += add.z;
+												// write texcoords
+												dest->tc.FromFloat2(float2(lerp(src->vTexCoordRange.z, src->vTexCoordRange.x, parmsZ), lerp(src->vTexCoordRange.y, src->vTexCoordRange.w, parmsY)));
 
-												// -----
-
-												// pos
-												src->vParms[0] = posrad.x;
-												src->vParms[1] = posrad.y;
-												src->vParms[2] = posrad.z;
-												src->vParms[3] = 1.0f;
-
-												// o.texCoord0_1.wz = o.texCoord0_1.xy = float2( lerp( v.vTexCoordRange.z, v.vTexCoordRange.x, v.vParms.z ), lerp( v.vTexCoordRange.y, v.vTexCoordRange.w, v.vParms.y ) );
-												// calc tc in vertexshader
-
-												float tc_wx = std::lerp(src->vTexCoordRange.z, src->vTexCoordRange.x, parmsZ);
-												float tc_zy = std::lerp(src->vTexCoordRange.y, src->vTexCoordRange.w, parmsY);
-
-												// calc tc in pixelshader
-												src->vSplinePt0.x = tc_wx;
-												src->vSplinePt0.y = tc_zy;
-
-												// unpack color
-												Vector4D color;
-												color.x = static_cast<float>((src->vTint >> 16) & 0xFF) / 255.0f * 1.0f;
-												color.y = static_cast<float>((src->vTint >> 8) & 0xFF) / 255.0f * 1.0f;
-												color.z = static_cast<float>((src->vTint >> 0) & 0xFF) / 255.0f * 1.0f;
-												color.w = static_cast<float>((src->vTint >> 24) & 0xFF) / 255.0f * 0.1f;
-
-												// float3 GammaToLinear( const float3 gamma ) return pow(gamma, 2.2f);
-												//color.x = powf(color.x, 2.2f);
-												//color.y = powf(color.y, 2.2f);
-												//color.z = powf(color.z, 2.2f);
-
-												Vector4D color2; // float4 color2 = float4(GammaToLinear(v.vEndPointColor.rgb), v.vEndPointColor.a);
-												color2.x = src->vEndPointColor.x; //powf(src->vEndPointColor.x, 2.2f);
-												color2.y = src->vEndPointColor.y; //powf(src->vEndPointColor.y, 2.2f);
-												color2.z = src->vEndPointColor.z; //powf(src->vEndPointColor.z, 2.2f);
-												color2.w = src->vEndPointColor.w;
-
-												// o.argbcolor = lerp( color1, color2, v.vParms.x );			
-												// o.argbcolor.a *= lerp(1, ALPHATFADE, v.vParms.x);
-												color.x = std::lerp(color.x, color2.x, 1.0f); //parmsX);
-												color.y = std::lerp(color.y, color2.y, 1.0f); //parmsX);
-												color.z = std::lerp(color.z, color2.z, 1.0f); //parmsX); 
-												color.w = std::lerp(color.w, color2.w, 1.0f); //parmsX);
-												color.w *= std::lerp(1.0f, ALPHATFADE, parmsX); //parmsX); 
-
-												src->vTint = D3DCOLOR_COLORVALUE(color.x, color.y, color.z, color.w);
+												// write color
+												dest->vTint = D3DCOLOR_COLORVALUE(src->vEndPointColor.r, src->vEndPointColor.g, src->vEndPointColor.b, src->vEndPointColor.a * std::lerp(1.0f, ALPHATFADE, parmsX));
 											}
 
 											vb->Unlock();

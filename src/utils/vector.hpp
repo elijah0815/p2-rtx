@@ -29,6 +29,11 @@ public:
 		x = v[0]; y = v[1]; z = v[2]; w = v[3];
 	}
 
+	Vector4D(const hlslpp::float4& v)
+	{
+		x = v.x; y = v.y; z = v.z; w = v.w;
+	}
+
 	Vector4D operator+(const Vector4D& v) const
 	{
 		return Vector4D(x + v.x, y + v.y, z + v.z, w + v.w);
@@ -77,6 +82,11 @@ public:
 	Vector4D operator-() const
 	{
 		return Vector4D(-x, -y, -z, -w);
+	}
+
+	hlslpp::float4 ToFloat4()
+	{
+		return hlslpp::float4(x, y, z, w);
 	}
 
 	vec_t x, y, z, w;
@@ -241,6 +251,16 @@ public:
 			y > -0.01f && y < 0.01f);
 	}
 
+	Vector2D& FromFloat2(const hlslpp::float2& v)
+	{
+		x = v.x; y = v.y; return *this;
+	}
+
+	hlslpp::float2 ToFloat2()
+	{
+		return hlslpp::float2(x, y);
+	}
+
 public:
 	vec_t x, y;
 };
@@ -281,6 +301,11 @@ public:
 	Vector(const Vector2D& v)
 	{
 		x = v.x; y = v.y; z = 0.0f;
+	}
+
+	Vector(const hlslpp::float3& v)
+	{
+		x = v.x; y = v.y; z = v.z;
 	}
 
 	Vector& operator=(const Vector& v)
@@ -495,6 +520,16 @@ public:
 		x = (a.x + b.x);
 		y = (a.y + b.y);
 		z = (a.z + b.z);
+	}
+
+	Vector& FromFloat3(const hlslpp::float3& v)
+	{
+		x = v.x; y = v.y; z = v.z; return *this;
+	}
+
+	hlslpp::float3 ToFloat3()
+	{
+		return hlslpp::float3(x, y, z);
 	}
 
 public:

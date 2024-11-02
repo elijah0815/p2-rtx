@@ -19,6 +19,7 @@
 // Version number
 #include <version.hpp>
 
+#define NOMINMAX
 #include <windows.h>
 #include <functional>
 #include <stdio.h>
@@ -50,6 +51,8 @@
 #define XASSERT(x) if (x) MessageBoxA(HWND_DESKTOP, #x, "FATAL ERROR", MB_ICONERROR)
 
 #include "MinHook.h"
+#include "hlsl++.h"
+
 #include "bridge_remix_api.h"
 
 #include "utils/vector.hpp"
