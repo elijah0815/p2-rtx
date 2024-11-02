@@ -14,7 +14,7 @@ namespace components
 		if (api::m_initialized && !disable_map_configs)
 		{
 			// resets all modified variables back to rtx.conf level
-			remix_vars::reset_all_modified();
+			api::remix_vars::reset_all_modified();
 
 			// auto apply {map_name}.conf (if it exists)
 			open_and_set_var_config(m_map_settings.mapname + ".conf");
@@ -458,10 +458,10 @@ namespace components
 						continue;
 					}
 
-					if (const auto o = remix_vars::get_option(pair[0].c_str()); o)
+					if (const auto o = api::remix_vars::get_option(pair[0].c_str()); o)
 					{
-						const auto& v = remix_vars::string_to_option_value(o->second.type, pair[1]);
-						remix_vars::set_option(o, v, true);
+						const auto& v = api::remix_vars::string_to_option_value(o->second.type, pair[1]);
+						api::remix_vars::set_option(o, v, true);
 					}
 				}
 			}
@@ -490,7 +490,7 @@ namespace components
 
 	void map_settings::on_map_load(const std::string& map_name)
 	{
-		map_settings::get()->set_settings_for_map(map_name);
+		get()->set_settings_for_map(map_name);
 	}
 
 	ConCommand xo_mapsettings_update {};

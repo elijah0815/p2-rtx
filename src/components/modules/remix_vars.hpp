@@ -1,6 +1,6 @@
 #pragma once
 
-namespace components
+namespace components::api
 {
 	class remix_vars : public component
 	{

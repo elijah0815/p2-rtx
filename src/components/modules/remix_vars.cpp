@@ -1,7 +1,7 @@
 #include "std_include.hpp"
 #include "remix_vars.hpp"
 
-namespace components
+namespace components::api
 {
 	// checks if str is made up of numbers only
 	// ignores dot, comma, minus and whitespaces

@@ -302,7 +302,7 @@ namespace components
 		// #
 
 		// 'CSceneEntity::StartEvent'
-		void scene_ent_on_start_event_hk(CChoreoEvent* ev)
+		void scene_ent_on_start_event_hk([[maybe_unused]] CChoreoEvent* ev)
 		{
 #if 0		// not needed right now
 			if (ev->m_pScene && std::string_view(ev->m_Name.string) != "NULL")
@@ -392,7 +392,7 @@ namespace components
 	{
 		const auto dev = game::get_d3d_device();
 
-		remix_vars::on_client_frame();
+		api::remix_vars::on_client_frame();
 
 		events::on_client_frame();
 
@@ -629,37 +629,9 @@ namespace components
 	 */
 	void on_map_load_hk(const char* map_name)
 	{
-		remix_vars::on_map_load();
+		api::remix_vars::on_map_load();
 		map_settings::on_map_load(map_name);
 		main_module::setup_required_cvars();
-
-#if 0
-		Vector pos1 = { 6144.0, 3456.0f, 1662.0f };
-		Vector rot1 = { -90.0f, 0.0f, 0.0f };
-		Vector2D scale1 = { 127.0f, 127.0f };
-
-		Vector pos2 = { 10375.0f, 1216.0f, 290.0f };
-		Vector rot2 = { 90.0f, 0.0f, 0.0f };
-		Vector2D scale2 = { 350.0f, 350.0f };
-
-		api::rayportal_ctx.add_pair(api::PORTAL_PAIR::PORTAL_PAIR_1,
-			pos1, rot1, scale1, true,
-			pos2, rot2, scale2, false);
-
-
-
-		pos1 = { 6980.0f, 550.0f, 440.0f };
-		rot1 = { 0.0f, 0.0f, 0.0f };
-		scale1 = { 100.0f, 100.0f };
-
-		pos2 = { 6980.0f, 965.0f, 440.0f };
-		rot2 = { 0.0f, 0.0f, 0.0f };
-		scale2 = { 100.0f, 100.0f };
-
-		api::rayportal_ctx.add_pair(api::PORTAL_PAIR::PORTAL_PAIR_2,
-			pos1, rot1, scale1, true,
-			pos2, rot2, scale2, true);
-#endif
 
 		// reset portal vars
 		model_render::portal1_ptr = nullptr;
@@ -1343,7 +1315,7 @@ namespace components
 		}
 
 		// parse rtx.conf once
-		remix_vars::parse_rtx_options();
+		api::remix_vars::parse_rtx_options();
 
 		// init addon textures
 		model_render::init_texture_addons();
