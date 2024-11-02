@@ -482,9 +482,7 @@ namespace components
 		if (vb)
 		{
 			void* src_buffer_data;
-			//auto first_vert = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x17547C);
-			//auto num_verts_real = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x1754A0);
-
+			
 			// This can be pretty bad performance wise if used on a lot of individual surfaces
 			// > BSP is not rendered in batches so we would lock and unlock the VB for each surface
 			// > Brushmodels are rendered in batches -> waaaay less locks
@@ -573,8 +571,7 @@ namespace components
 				}
 			}
 
-			// this requires dxvk-remix modifications (that are not yet? on the main branch)
-			// same hash works for all the different gels
+			// this requires dxvk-remix modifications (https://github.com/NVIDIAGameWorks/dxvk-remix/pull/79)
 
 			// set remix texture categories
 			ctx.save_rs(dev, (D3DRENDERSTATETYPE)42);
@@ -1024,6 +1021,8 @@ namespace components
 					dev->SetVertexShader(nullptr);
 					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
 
+					// dirty hack to invert the portal direction in the spawn area on sp_a4_finale2 because
+					// the static overlays on portals (that we use to identify and render the rayportals) are rendered on the inside of the moving object
 					if (const auto& m = map_settings::get_map_name(); !m.empty())
 					{
 						if (m.ends_with("finale2"))
@@ -1049,14 +1048,14 @@ namespace components
 										WORD* ib_data;
 										if (SUCCEEDED(ib->Lock(0, 0, (void**)&ib_data, 0)))
 										{
-											{ // reverse triangle order
+											//{ // reverse triangle order
 												//if (primlist->m_NumIndices == 4)
 												//{
 												//	int start_index = primlist->m_FirstIndex;
 												//	std::swap(ib_data[start_index + 0], ib_data[start_index + 3]);
 												//	std::swap(ib_data[start_index + 1], ib_data[start_index + 2]);
 												//}
-											}
+											//}
 
 											// add relevant indices without duplicates
 											std::unordered_set<std::uint16_t> indices; indices.reserve(primlist->m_NumIndices);
@@ -1315,15 +1314,6 @@ namespace components
 					// do not render the original mesh
 					ctx.modifiers.do_not_render = true;
 				}
-				//else if (ctx.info.shader_name.starts_with("Occl"))
-				//{
-				//	ctx.save_vs(dev);
-				//	dev->SetVertexShader(nullptr);
-				//	//lookat_vertex_decl(dev, primlist);
-
-				//	dev->SetFVF(D3DFVF_XYZ | D3DFVF_TEX3 | D3DFVF_TEXCOORDSIZE1(2));
-				//	dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
-				//}
 #endif
 				//else 
 				//{
@@ -1548,23 +1538,7 @@ namespace components
 				// texcoord0 : base texcoord
 				// texcoord1 : lightmap texcoord
 				// texcoord2 : lightmap texcoord offset
-				
-#if 0			// can be used to look into the vertex buffer to figure out the layout
-				{
-					IDirect3DVertexBuffer9* buff = nullptr;
-					UINT t_stride = 0u, t_offset = 0u;
-					dev->GetStreamSource(0, &buff, &t_offset, &t_stride);
 
-					void* buffer_data;
-					if (buff)
-					{
-						if (const auto hr = buff->Lock(0, 48u * 100u, &buffer_data, D3DLOCK_READONLY); hr >= 0)
-						{
-							buff->Unlock(); // break here
-						}
-					}
-				}
-#endif
 				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr);
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_DIFFUSE | D3DFVF_TEX3 | D3DFVF_TEXCOORDSIZE1(2)); // tc @ 28
@@ -1577,7 +1551,6 @@ namespace components
 			else if (mesh->m_VertexFormat == 0x24900005)
 			{
 				ctx.modifiers.do_not_render = true; // they can freak out sometimes so just ignore them for now
-				
 #if 0
 				// do not set fvf
 				//dev->SetFVF(D3DFVF_XYZB5 | D3DFVF_NORMAL | D3DFVF_TEX2); // tc @ 28
@@ -1750,28 +1723,7 @@ namespace components
 			// Sprite shader
 			else if (mesh->m_VertexFormat == 0x914900005)
 			{
-				//ctx.modifiers.do_not_render = true; 
-
-#if 0			// can be used to look into the vertex buffer to figure out the layout
-				{
-					IDirect3DVertexBuffer9* buff = nullptr;
-					UINT t_stride = 0u, t_offset = 0u;
-					dev->GetStreamSource(0, &buff, &t_offset, &t_stride);
-
-					void* buffer_data;
-					if (buff)
-					{
-						if (const auto hr = buff->Lock(0, 48u * 100u, &buffer_data, D3DLOCK_READONLY); hr >= 0)
-						{
-							buff->Unlock(); // break here
-						}
-					}
-
-					//dev->SetStreamSource(0, buff, t_offset, 112 * 4); // times 48*4 is almost good lmao
-					//render_with_new_stride = true;
-				}
-#endif
-				//dev->SetTexture(0, tex_addons::portal_mask);
+				//ctx.modifiers.do_not_render = true;
 
 				//ctx.save_vs(dev);
 				//dev->SetVertexShader(nullptr);
