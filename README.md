@@ -65,6 +65,7 @@ for GEL rendering (`bin/.trex/d3d9.dll`)
 
   - `-xo_disable_map_conf` :: disable loading of map specific `.conf` files (remix variables)  
   - `-xo_disable_all_culling` :: disables culling completely (same as enabling `r_novis`) 
+  - `-xo_enable_pickup_beam` :: enables the portal gun pickup beam (might look wrong when far away from the map center)
 
 <br>
 

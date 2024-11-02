@@ -1500,19 +1500,21 @@ namespace components
 			// on portal open - spark fx (center)
 			// + portal clearing gate (blue sweeping beam)
 			// + portal gun pickup effect
-			// can be rendered but also requires vertexshader + position
+			// can be rendered but requires vertexshader + position
 			else if (mesh->m_VertexFormat == 0x924900005) // stride 0x70 - 112
 			{
-				// #TODO - remove when floating point perc. gets better with shaders
-				if (map_settings::get_map_name() == "sp_a1_wakeup") 
+				// disable the pickup beam by default until remix's shader handling (floating pt. imprecision) gets better
+				if (static bool enable_pickup_beam = components::flags::has_flag("xo_enable_pickup_beam"); !enable_pickup_beam)
 				{
-					if (ctx.info.material_name.starts_with("particle/beam_generic")) {
-						ctx.modifiers.do_not_render = true; 
+					//if (map_settings::get_map_name() == "sp_a1_wakeup")
+					{
+						if (ctx.info.material_name.starts_with("particle/beam_generic")) {
+							ctx.modifiers.do_not_render = true;
+						}
 					}
 				}
 
 				//ctx.modifiers.do_not_render = true;
-
 				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 				dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]); 
 				dev->SetTransform(D3DTS_PROJECTION, &ctx.info.buffer_state.m_Transform[2]);
