@@ -30,3 +30,4 @@ namespace components
 #include "modules/model_render.hpp"
 #include "modules/map_settings.hpp"
 #include "modules/remix_vars.hpp"
+#include "modules/remix_rayportal.hpp"

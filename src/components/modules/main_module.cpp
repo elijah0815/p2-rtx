@@ -43,11 +43,6 @@ namespace components
 		std::uint64_t remix_debug_last_line_hash = 0u;
 		bool remix_debug_node_vis = false; // show/hide debug vis of bsp nodes/leafs
 
-		// rayportal context
-		bool rayportal_show_debug_info = false;
-		rayportal_context rayportal_ctx {};
-
-
 		// forward declaration
 		void endscene_cb();
 
@@ -291,9 +286,9 @@ namespace components
 				{
 					if (s_ent.a4_f2_api_portal_spawn.has_elapsed(5.0f))
 					{
-						if (!api::rayportal_ctx.empty())
+						if (!api::remix_rayportal::get()->empty())
 						{
-							auto& p = api::rayportal_ctx.get_portal_pair(api::PORTAL_PAIR_1)->get_portal0();
+							auto& p = api::remix_rayportal::get()->get_portal_pair(api::remix_rayportal::PORTAL_PAIR_1)->get_portal0();
 							p.m_pos = { 2108.0f, 774.0f, -18.0f };
 							p.uncache();
 							s_ent.a4_f2_api_portal_spawn.reset();
@@ -501,9 +496,9 @@ namespace components
 
 		// needs portal fade-in effect fix:
 		// https://github.com/NVIDIAGameWorks/dxvk-remix/pull/83
-		if (!api::rayportal_ctx.empty())
+		if (!api::remix_rayportal::get()->empty())
 		{
-			api::rayportal_ctx.draw_all_pairs();
+			api::remix_rayportal::get()->draw_all_pairs();
 		}
 	}
 
@@ -1238,12 +1233,6 @@ namespace components
 		api::remix_debug_node_vis = !api::remix_debug_node_vis;
 	}
 
-	ConCommand xo_debug_toggle_rayportal_info_cmd {};
-	void xo_debug_toggle_rayportal_info_fn()
-	{
-		api::rayportal_show_debug_info = !api::rayportal_show_debug_info;
-	}
-
 #if defined(BENCHMARK)
 	ConCommand xo_debug_toggle_benchmark_cmd{};
 	void xo_debug_toggle_benchmark_fn()
@@ -1286,6 +1275,7 @@ namespace components
 		game::cvar_uncheat_and_set_int("mat_drawflat", 0);
 		game::cvar_uncheat_and_set_int("mat_normalmaps", 0);
 		game::cvar_uncheat_and_set_int("r_3dsky", 0);
+		game::cvar_uncheat_and_set_int("r_skybox_draw_last", 0);
 		game::cvar_uncheat_and_set_int("mat_fullbright", 1);
 		game::cvar_uncheat_and_set_int("mat_softwareskin", 1);
 		game::cvar_uncheat_and_set_int("mat_phong", 1);
@@ -1377,7 +1367,6 @@ namespace components
 		// commands
 
 		game::con_add_command(&xo_debug_toggle_node_vis_cmd, "xo_debug_toggle_node_vis", xo_debug_toggle_node_vis_fn, "Toggle bsp node/leaf debug visualization using the remix api");
-		game::con_add_command(&xo_debug_toggle_rayportal_info_cmd, "xo_debug_toggle_rayportal_info", xo_debug_toggle_rayportal_info_fn, "Toggle debug information for rayportals spawned via the remix api");
 
 #if defined(BENCHMARK)
 		game::con_add_command(&xo_debug_toggle_benchmark_cmd, "xo_debug_toggle_benchmark", xo_debug_toggle_benchmark_fn, "Toggle benchmark printing");

@@ -13,6 +13,7 @@ namespace components
 		_register(new model_render());
 		_register(new map_settings());
 		_register(new remix_vars());
+		_register(new api::remix_rayportal());
 
 		XASSERT(MH_EnableHook(MH_ALL_HOOKS) != MH_STATUS::MH_OK);
 	}

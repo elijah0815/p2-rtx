@@ -131,7 +131,7 @@ namespace components
 
 	void map_settings::on_map_exit()
 	{
-		api::rayportal_ctx.destroy_all_pairs();
+		api::remix_rayportal::get()->destroy_all_pairs();
 		clear_map_settings();
 	}
 
@@ -321,7 +321,7 @@ namespace components
 										const auto p1_mask = utils::try_stoi(p1_args[3], 1);
 
 										// finally add the pair
-										api::rayportal_ctx.add_pair((api::PORTAL_PAIR)pair_index,
+										api::remix_rayportal::get()->add_pair((api::remix_rayportal::PORTAL_PAIR)pair_index,
 											p0_pos, p0_rot, p0_scale, p0_mask,
 											p1_pos, p1_rot, p1_scale, p1_mask);
 									}
@@ -496,7 +496,7 @@ namespace components
 	ConCommand xo_mapsettings_update {};
 	void xo_mapsettings_update_fn()
 	{
-		api::rayportal_ctx.destroy_all_pairs();
+		api::remix_rayportal::get()->destroy_all_pairs();
 		map_settings::get()->destroy_markers();
 		map_settings::get()->set_settings_for_map("");
 	}
