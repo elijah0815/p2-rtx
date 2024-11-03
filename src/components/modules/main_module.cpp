@@ -1195,6 +1195,41 @@ namespace components
 		}
 	}
 
+	struct CViewRender
+	{
+		char pad[0x3E8];
+		FadeData_t m_FadeData;
+	};
+
+	// cpu_level + 1
+	FadeData_t g_aFadeData[] =
+	{
+		// pxmin  pxmax  width   scale
+		{  0.0,   0.0,  1280.0,  1.0 },
+		{ 10.0,  15.0,   800.0,  1.0 },
+		{  5.0,  10.0,  1024.0,  1.0 },
+		{  0.0,   0.0,  1280.0,  0.1 },
+		{ 36.0,  144.0,  720.0,  1.0 },
+		{  0.0,   0.0,  1280.0,  1.0 },
+	};
+
+	void init_fade_data_hk(CViewRender* view_render)
+	{
+		view_render->m_FadeData = g_aFadeData[3];
+	}
+
+	HOOK_RETN_PLACE_DEF(init_fade_data_retn);
+	__declspec(naked) void init_fade_data_stub()
+	{
+		__asm
+		{
+			push	esi; // CViewRender (this)
+			call	init_fade_data_hk;
+			add		esp, 4;
+			jmp		init_fade_data_retn;
+		}
+	}
+
 
 	// #
 	// Commands
@@ -1470,6 +1505,15 @@ namespace components
 		utils::hook::nop(CLIENT_BASE + USE_OFFSET(0x1D6669, 0x1D0FC9), 4);
 		utils::hook::nop(CLIENT_BASE + USE_OFFSET(0x1D6675, 0x1D0FD5), 2);
 		utils::hook::nop(CLIENT_BASE + USE_OFFSET(0x1D6679, 0x1D0FD9), 2);
+
+
+		// force some gpu_level 3 logic
+		// C_EnvProjectedTexture::ShouldUpdate :: always return true
+		utils::hook::set<WORD>(CLIENT_BASE + USE_OFFSET(0x9E50C, 0x9AF1C), 0x01B0); // 30 C0 -> B0 01
+
+		// CViewRender::InitFadeData :: manually set fade data and not rely on cpu_level
+		utils::hook(CLIENT_BASE + USE_OFFSET(0x1E51E3, 0x1DFC33), init_fade_data_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(init_fade_data_retn, CLIENT_BASE + USE_OFFSET(0x1E5209, 0x1DFC59));
 	}
 
 	main_module::~main_module()

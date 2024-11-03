@@ -2672,6 +2672,15 @@ namespace components
 	STATIC_ASSERT_OFFSET(CChoreoEvent, m_TagName, 0x94);
 	STATIC_ASSERT_OFFSET(CChoreoEvent, m_pSubScene, 0x120);
 	STATIC_ASSERT_OFFSET(CChoreoEvent, m_pScene, 0x128);
+
+	struct FadeData_t
+	{
+		float m_flPixelMin;
+		float m_flPixelMax;
+		float m_flWidth;
+		float m_flFadeDistScale;
+	};
+
 }
 
 
