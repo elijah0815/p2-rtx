@@ -1511,7 +1511,7 @@ namespace components
 		// C_EnvProjectedTexture::ShouldUpdate :: always return true
 		utils::hook::set<WORD>(CLIENT_BASE + USE_OFFSET(0x9E50C, 0x9AF1C), 0x01B0); // 30 C0 -> B0 01
 
-		// CViewRender::InitFadeData :: manually set fade data and not rely on cpu_level
+		// CViewRender::InitFadeData :: mandally set fade data and not rely on cpu_level
 		utils::hook(CLIENT_BASE + USE_OFFSET(0x1E51E3, 0x1DFC33), init_fade_data_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(init_fade_data_retn, CLIENT_BASE + USE_OFFSET(0x1E5209, 0x1DFC59));
 	}

@@ -1502,9 +1502,16 @@ namespace components
 					// do not render the original mesh
 					ctx.modifiers.do_not_render = true;
 				}
+
+				// Eye of Glados?
+				/*else if (ctx.info.material_name == "dev/fade_blur")  
+				{
+					add_light_to_texture_color_edit(0.8f, 50.7f, 0.05f, 0.1f);
+				}*/
 #endif
 				//else 
 				//{
+					
 					// dev/blurfilterx_nohdr
 					// dev/blurfiltery_nohdr
 					// dev/fade_blur
