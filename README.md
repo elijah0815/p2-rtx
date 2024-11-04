@@ -43,14 +43,14 @@ If you want to support my work, consider buying me some coffee:
 <br>
 
 #### ⚠️ Info: 
-- Current releases are shipping with a [custom build of the remix-dxvk runtime](https://github.com/NVIDIAGameWorks/dxvk-remix/actions/runs/11506022900) which includes necessary changes  
-for GEL rendering (`bin/.trex/d3d9.dll`) 
+- Current releases shipping with a [custom build of the remix-dxvk runtime](https://github.com/xoxor4d/dxvk-remix/tree/combine/pairs_mask_rs) which includes necessary changes  
+for Portal 2 (`bin/.trex/d3d9.dll`) 
 - For ease of use, releases ship with [Ultimate-ASI-Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases) (`bin/winmm.dll`)  
 
 
 #### ⚠️ Current issues:
-- Most effects are rendered using shaders. Remix has a floating point precision issue when it comes to shaders. Effects get glitchy the further away you are from the map center. Performance is not the best either (as I had do do some dirty hacks to get them to render).
-- ^ Disabled the portal gun viewmodel effects on sp_a1_wakeup because of that
+- Most effects are rendered using shaders. Effects can get glitchy the further away you are away from the map center. Performance is not the best either (as I had do do some dirty hacks to get them to render).
+- Just expect stuff to be a little broken
 
 <br>
 
@@ -76,23 +76,24 @@ for GEL rendering (`bin/.trex/d3d9.dll`)
     - `xo_mapsettings_update` :: Reload the map_settings.ini file + map.conf    
    
   #### Remix Variables:
-    - `xo_vars_parse_options` :: Re-parse the rtx.conf file    
-    - `xo_vars_reset_all_options` :: Reset all options to the rtx.conf level  
+    - `xo_vars_parse_options` :: Re-parse the rtx.conf and resets everything (incl. runtime settings - ignoring tex hashes)  
+    - `xo_vars_reset_all_options` :: Reset all options (modified by .conf files) to the rtx.conf level  
     - `xo_vars_clear_transitions` :: Clear all ongoing transitions  
 
 <br>
 
 ### Guides
 
-> #### Fix light bleed due to culling: 
-- Use cvar `r_lockPvs 1` to prevent vis (culling) updates
+> #### Fix light bleed / lights turning off due to culling: 
+- Go to spot where culling occurs and use cvar `r_lockPvs 1` to freeze vis updates
 - Use cmd `xo_debug_toggle_node_vis`
-- Find the leaf (green cube) that is getting culled
+- Move into the leaf (green cube) that is getting culled
 - Open the `map_settings.ini` file found in `root/portal2-rtx/`
 - Add the map name under `#CULL` followed by a comma + the __[AREA]__ you are in + the __(LEAF)__ number/s
 - EG: `sp_a1_intro1, [4](449 452)` (separate multiple leafs by a space)
 - Use cmd `xo_mapsettings_update` to reload the map_settings file
 - You might need to enter a new area for it to update
+- Disable `r_lockPvs` 
 
 This will always force __leaf 449 & 452__ to be visible if you are in __area 4__.
 
@@ -114,9 +115,8 @@ This will always force __leaf 449 & 452__ to be visible if you are in __area 4__
 <br>
 
 > #### Making changes to the rtx.conf
-- If you intent to tweak remix runtime settings (eg. mark textures) and want to save them afterwards, __make sure__ to use cmd's:
- `xo_vars_reset_all_options` and `xo_vars_parse_options` to restore all runtime settings  
-(so they match the rtx.conf settings on disk).
+- If you intent to tweak remix runtime settings (eg. mark textures) and want to save them afterwards, __make sure__ to use cmd:
+  `xo_vars_parse_options` to restore all runtime settings (so they match the rtx.conf settings on disk).
 - Why is this important? The map settings logic will tweak remix variables. If you save the runtime settings without resetting them first, you'll overwrite the rtx.conf settings with the per map settings.
 - You might want to start the game with the `-xo_disable_map_conf` commandline argument if you intend to, eg. tag a whole bunch of textures in a single session. This will disable map setting config loading.
 
@@ -126,6 +126,7 @@ This will always force __leaf 449 & 452__ to be visible if you are in __area 4__
 #  Credits
 - [Nvidia - RTX Remix](https://github.com/NVIDIAGameWorks/rtx-remix)
 - [People of the showcase discord](https://discord.gg/j6sh7JD3v9) - especially the nvidia engineers ✌️
+- All early access people for testing/bug reporting and for covering my electricity bill ⚡
 - Yosuke Nathan - Portal 2 Remix Logo
 
 <br>

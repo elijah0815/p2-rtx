@@ -626,6 +626,16 @@ namespace components::api
 		remix_vars::options.clear();
 		remix_vars::custom_options.clear();
 		remix_vars::parse_rtx_options();
+
+		// reset all settings to rtx.conf level (incl. runtime settings)
+		if (api::m_initialized)
+		{
+			for (auto& o : remix_vars::options)
+			{
+				o.second.current = o.second.reset_level;
+				remix_vars::set_option(&o, o.second.current);
+			}
+		}
 	}
 
 	ConCommand xo_vars_reset_all_options_cmd{};
@@ -644,10 +654,8 @@ namespace components::api
 	{
 		p_this = this;
 
-//#if DEBUG
-		game::con_add_command(&xo_vars_parse_options_cmd, "xo_vars_parse_options", xo_vars_parse_options_fn, "Re-parse the rtx.conf file");
-		game::con_add_command(&xo_vars_reset_all_options_cmd, "xo_vars_reset_all_options", xo_vars_reset_all_options_fn, "Reset all options to the rtx.conf level");
+		game::con_add_command(&xo_vars_parse_options_cmd, "xo_vars_parse_options", xo_vars_parse_options_fn, "Re-parse the rtx.conf and resets everything (incl. runtime settings - ignoring tex hashes)");
+		game::con_add_command(&xo_vars_reset_all_options_cmd, "xo_vars_reset_all_options", xo_vars_reset_all_options_fn, "Reset all options (modified by .conf files) to the rtx.conf level");
 		game::con_add_command(&xo_vars_clear_transitions_cmd, "xo_vars_clear_transitions", xo_vars_clear_transitions_fn, "Clear all ongoing transitions");
-//#endif
 	}
 }

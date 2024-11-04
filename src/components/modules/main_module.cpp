@@ -1204,13 +1204,13 @@ namespace components
 	// cpu_level + 1
 	FadeData_t g_aFadeData[] =
 	{
-		// pxmin  pxmax  width   scale
-		{  0.0,   0.0,  1280.0,  1.0 },
-		{ 10.0,  15.0,   800.0,  1.0 },
-		{  5.0,  10.0,  1024.0,  1.0 },
-		{  0.0,   0.0,  1280.0,  0.1 },
-		{ 36.0,  144.0,  720.0,  1.0 },
-		{  0.0,   0.0,  1280.0,  1.0 },
+		// pxmin  pxmax    width   scale
+		{  0.0f,   0.0f,  1280.0f,  1.0f },
+		{ 10.0f,  15.0f,   800.0f,  1.0f },
+		{  5.0f,  10.0f,  1024.0f,  1.0f },
+		{  0.0f,   0.0f,  1280.0f,  0.1f },
+		{ 36.0f, 144.0f,   720.0f,  1.0f },
+		{  0.0f,   0.0f,  1280.0f,  1.0f },
 	};
 
 	void init_fade_data_hk(CViewRender* view_render)
