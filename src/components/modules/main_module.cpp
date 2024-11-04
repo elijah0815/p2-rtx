@@ -629,6 +629,13 @@ namespace components
 	 */
 	void on_map_load_hk(const char* map_name)
 	{
+		// ALL RESETS first because 'on_host_disconnect_hk' is not reliable
+		map_settings::on_map_exit();
+		events::s_ent.reset();
+		model_render::linked_area_portals.clear();
+
+		// -------
+
 		api::remix_vars::on_map_load();
 		map_settings::on_map_load(map_name);
 		main_module::setup_required_cvars();
@@ -668,9 +675,11 @@ namespace components
 	 */
 	void on_host_disconnect_hk()
 	{
-		map_settings::on_map_exit(); 
+		// #TODO: not called when traversing maps via the elevator ...
+
+		/*map_settings::on_map_exit(); 
 		events::s_ent.reset();
-		model_render::linked_area_portals.clear();
+		model_render::linked_area_portals.clear();*/
 	}
 
 	HOOK_RETN_PLACE_DEF(on_host_disconnect_retn);
@@ -1445,6 +1454,8 @@ namespace components
 		// R_DrawLeaf :: backface check (emissive lamps) plane normal >= -0.00999f
 		utils::hook::nop(ENGINE_BASE + USE_OFFSET(0xE6F23, 0xE65C3), 6);
 
+		// CBrushBatchRender::DrawOpaqueBrushModel :: :: backface check - nop 'if ( bShadowDepth )' to disable culling
+		utils::hook::nop(ENGINE_BASE + USE_OFFSET(0x7196E, 0x7156E), 2);
 
 		// CClientLeafSystem::ExtractCulledRenderables :: disable 'engine->CullBox' check to disable entity culling in leafs
 		// needs r_PortalTestEnts to be 0 -> je to jmp (0xEB)

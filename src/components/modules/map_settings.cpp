@@ -129,12 +129,6 @@ namespace components
 		m_spawned_markers = false;
 	}
 
-	void map_settings::on_map_exit()
-	{
-		api::remix_rayportal::get()->destroy_all_pairs();
-		clear_map_settings();
-	}
-
 	bool map_settings::parse_ini()
 	{
 		std::ifstream file;
@@ -491,6 +485,12 @@ namespace components
 	void map_settings::on_map_load(const std::string& map_name)
 	{
 		get()->set_settings_for_map(map_name);
+	}
+
+	void map_settings::on_map_exit()
+	{
+		api::remix_rayportal::get()->destroy_all_pairs();
+		clear_map_settings();
 	}
 
 	ConCommand xo_mapsettings_update {};
