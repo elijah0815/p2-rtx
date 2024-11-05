@@ -1029,7 +1029,7 @@ namespace components
 			//}
 		}
 
-		/*if (ctx.info.material_name.contains("occlusionproxy"))
+		/*if (ctx.info.material_name.contains("occlu"))
 		{
 			int break_me = 1;   
 		}*/
@@ -1045,6 +1045,10 @@ namespace components
 			if (is_rendering_bmodel_paint) {
 				render_painted_surface(ctx, primlist);
 			}
+		}
+		else if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x80003 && ctx.info.material_name.starts_with("tools/"))
+		{
+			ctx.modifiers.do_not_render = true;
 		}
 
 		// player model - gun - grabable stuff - portal button - portal door - stairs
@@ -1976,11 +1980,20 @@ namespace components
 			}
 
 			// on portal open - outer ring effect
+			// transport beam emitter effect
 			else if (mesh->m_VertexFormat == 0x1b924900005) // stride 0x90 - 144
 			{
 #ifdef DEBUG
 				//ctx.modifiers.do_not_render = true;
-				int break_me = 0; 
+				int break_me = 0;
+
+				//lookat_vertex_decl(dev, primlist);
+				//model_render_hlslpp::fix_sprite_trail_particles(ctx, primlist); 
+
+				//ctx.save_vs(dev);
+				//dev->SetVertexShader(nullptr);
+				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX8); // 64 :: tc @ 24
+				//dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 #endif
 			}
 
@@ -2251,14 +2264,14 @@ namespace components
 			}
 			else if (ctx.modifiers.as_transport_beam)
 			{
-				//dev->GetRenderState(D3DRS_TEXTUREFACTOR, &og_texfactor);
-				//dev->GetTextureStageState(0, D3DTSS_ALPHAARG2, &og_colorarg2);
-				//dev->GetTextureStageState(0, D3DTSS_ALPHAOP, &og_colorop);
+				dev->GetRenderState(D3DRS_TEXTUREFACTOR, &og_texfactor);
+				dev->GetTextureStageState(0, D3DTSS_ALPHAARG2, &og_colorarg2);
+				dev->GetTextureStageState(0, D3DTSS_ALPHAOP, &og_colorop);
 
-				//// slightly increase the alpha so that the 'fog' becomes visible
-				//dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 10));
-				//dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
-				//dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_ADD);
+				// slightly increase the alpha so that the 'fog' becomes visible
+				dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 40));
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_ADD);
 			}
 
 			dev->DrawIndexedPrimitive(type, base_vert_index, min_vert_index, num_verts, start_index, prim_count);
@@ -2527,7 +2540,7 @@ namespace components
 	void __fastcall tbl_hk::bmodel_renderer::DrawBrushModelEx::Detour(void* ecx, void* o1, IClientEntity* baseentity, model_t* model, const Vector* origin, const QAngle* angles, DrawBrushModelMode_t mode)
 	{
 		const auto dev = game::get_d3d_device();
-		dev->GetVertexShader(&ff_bmodel::s_shader);
+		dev->GetVertexShader(&ff_bmodel::s_shader); 
 
 		tbl_hk::bmodel_renderer::table.original<FN>(Index)(ecx, o1, baseentity, model, origin, angles, mode);
 
