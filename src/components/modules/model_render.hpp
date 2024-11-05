@@ -303,6 +303,10 @@ namespace components
 			bool as_sky = false;
 			bool as_water = false;
 			bool as_transport_beam = false;
+			bool as_emancipation_grill = false;
+			Vector2D emancipation_offset = {};
+			Vector2D emancipation_scale = { 1.0f, 1.0f };
+			float emancipation_color_scale = 1.0f;
 			bool dual_render_with_basetexture2 = false; // render prim a second time with tex2 set as tex1
 			bool dual_render_with_specified_texture = false; // render prim a second time with tex defined in 'dual_render_texture'
 			bool dual_render_with_specified_texture_blend_add = false; // renders second prim using blend mode ADD
@@ -315,6 +319,10 @@ namespace components
 				as_sky = false;
 				as_water = false;
 				as_transport_beam = false;
+				as_emancipation_grill = false;
+				emancipation_offset = { 0.0f, 0.0f };
+				emancipation_scale = { 1.0f, 1.0f };
+				emancipation_color_scale = 1.0f;
 				dual_render_with_basetexture2 = false;
 				dual_render_with_specified_texture = false;
 				dual_render_texture = nullptr;
@@ -384,6 +392,8 @@ namespace components
 		extern LPDIRECT3DTEXTURE9 sky_gray_rt;
 		extern LPDIRECT3DTEXTURE9 sky_gray_up;
 		extern LPDIRECT3DTEXTURE9 sky_gray_dn;
+		extern LPDIRECT3DTEXTURE9 emancipation_grill;
+		extern LPDIRECT3DTEXTURE9 white;
 	}
 
 	class model_render : public component

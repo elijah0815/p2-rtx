@@ -54,6 +54,7 @@ namespace components
 		LPDIRECT3DTEXTURE9 sky_gray_rt;
 		LPDIRECT3DTEXTURE9 sky_gray_up;
 		LPDIRECT3DTEXTURE9 sky_gray_dn;
+		LPDIRECT3DTEXTURE9 emancipation_grill;
 		LPDIRECT3DTEXTURE9 white;
 	}
 
@@ -80,6 +81,7 @@ namespace components
 			if (tex_addons::sky_gray_rt) tex_addons::sky_gray_rt->Release();
 			if (tex_addons::sky_gray_up) tex_addons::sky_gray_up->Release();
 			if (tex_addons::sky_gray_dn) tex_addons::sky_gray_dn->Release();
+			if (tex_addons::emancipation_grill) tex_addons::emancipation_grill->Release();
 			if (tex_addons::white) tex_addons::white->Release();
 			return;
 		}
@@ -104,6 +106,7 @@ namespace components
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_rt.jpg", &tex_addons::sky_gray_rt);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_up.jpg", &tex_addons::sky_gray_up);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_dn.jpg", &tex_addons::sky_gray_dn);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\emancipation_grill.png", &tex_addons::emancipation_grill);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\white.dds", &tex_addons::white);
 	}
 
@@ -243,7 +246,7 @@ namespace components
 		vertex_decl->GetDeclaration((D3DVERTEXELEMENT9*)decl, &numElements);
 		int break_me = 1; // look into decl
 
-#if 1
+#if 0
 		if (primlist)
 		{
 			IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
@@ -401,7 +404,6 @@ namespace components
 	// #
 	// #
 
-
 	// This is a mid-hook function that's called when the vertex buffer used to render painted BSP is being build
 	// > Gets called right after the og function assigned the last uv coord
 	// > Doing this here saves a lot of performance - skipping the need to lock and unlock the VB for each surface in 'render_painted_surface' 
@@ -447,7 +449,7 @@ namespace components
 	// Helper function to draw portal gel's
 	// > will directly edit the vertex buffer when brushmodels are rendered
 	// > this currently alters all BSP vertices (but with one lock/unlock) and will f'up texcoords if mat_forcedynamic is NOT 1 (recreates VB each frame)
-	void render_painted_surface(prim_fvf_context& ctx, [[maybe_unused]] CPrimList* primlist = nullptr)
+	void render_painted_surface(prim_fvf_context& ctx, CPrimList* primlist)
 	{
 		/*	// vs
 			float3 vPos : POSITION;
@@ -768,123 +770,150 @@ namespace components
 	}
 #endif
 
-	// Fixes sprite trail verts by changing verts within the vertexbuffer
+	
+
+	// Fixes sprite texcoords
 	// Expensive - use with caution. A drawcall with lots of verts is okay. A lot of smaller ones are not
-	void fix_sprite_trail_particles(prim_fvf_context& ctx, [[maybe_unused]] CPrimList* primlist = nullptr)
+	void fix_sprite_particles(prim_fvf_context& ctx, CPrimList* primlist)
 	{
-		using namespace hlslpp;
 		const auto dev = game::get_d3d_device();
 
-		ctx.save_tss(dev, D3DTSS_ALPHAARG1);
-		ctx.save_tss(dev, D3DTSS_ALPHAARG2);
-		ctx.save_tss(dev, D3DTSS_ALPHAOP);
-		dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-		dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
-		dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
-
-		//ctx.modifiers.do_not_render = true; 
-		//lookat_vertex_decl(dev, primlist);
-
-#if 1
-		auto CatmullRomSpline = [](const float4& a, const float4& b, const float4& c, const float4& d, const float t)
-			{
-				return b + 0.5f * t * (c - a + t * (2.0f * a - 5.0f * b + 4.0f * c - d + t * (-a + 3.0f * b - 3.0f * c + d)));
-			};
-
-		auto DCatmullRomSpline3 = [](const float4& aa, const float4& bb, const float4& cc, const float4& dd, const float t)
-			{
-				float3 a = aa.xyz; float3 b = bb.xyz; float3 c = cc.xyz; float3 d = dd.xyz;
-				return 0.5f * (c - a + t * (2.0f * a - 5 * b + 4 * c - d + t * (3.0f * b - a - 3.0f * c + d))
-					+ t * (2.0f * a - 5.0f * b + 4 * c - d + 2.0f * (t * (3 * b - a - 3.0f * c + d))));
-			};
-
-		float ALPHATFADE, RADIUSTFADE;
-		{
-			float v[4] = {}; dev->GetVertexShaderConstantF(57, v, 1);
-			ALPHATFADE = v[2];
-			RADIUSTFADE = v[3];
-		}
-
-		float3 eyePos;
-		{
-			float v[4] = {}; dev->GetVertexShaderConstantF(2, v, 1);
-			eyePos = float3(v[0], v[1], v[2]);
-		}
-
 		IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
-		if (SUCCEEDED(dev->GetStreamSource(0, &vb, &t_offset, &t_stride)))
+		dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
+
+		//auto first_vert = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x17547C);
+		//auto num_verts_real = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x1754A0);
+
+		IDirect3DIndexBuffer9* ib = nullptr;
+		if (SUCCEEDED(dev->GetIndices(&ib)))
 		{
-			IDirect3DIndexBuffer9* ib = nullptr;
-			if (SUCCEEDED(dev->GetIndices(&ib)))
+			void* ib_data; // lock index buffer to retrieve the relevant vertex indices
+			if (SUCCEEDED(ib->Lock(0, 0, &ib_data, D3DLOCK_READONLY)))
 			{
-				void* ib_data; // lock index buffer to retrieve the relevant vertex indices
-				if (SUCCEEDED(ib->Lock(0, 0, &ib_data, D3DLOCK_READONLY)))
+				// add relevant indices without duplicates
+				std::unordered_set<std::uint16_t> indices; indices.reserve(primlist->m_NumIndices);
+
+				for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++) {
+					indices.insert(static_cast<std::uint16_t*>(ib_data)[primlist->m_FirstIndex + i]);
+				}
+
+				ib->Unlock();
+
+				// get the range of vertices that we are going to work with
+				UINT min_vert = 0u, max_vert = 0u;
 				{
-					// add relevant indices without duplicates
-					std::unordered_set<std::uint16_t> indices; indices.reserve(primlist->m_NumIndices);
-					for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++) {
-						indices.insert(static_cast<std::uint16_t*>(ib_data)[primlist->m_FirstIndex + i]);
-					} ib->Unlock();
+					auto [min_it, max_it] = std::minmax_element(indices.begin(), indices.end());
+					min_vert = *min_it;
+					max_vert = *max_it;
+				}
 
-					// get the range of vertices that we are going to work with
-					UINT min_vert = 0u, max_vert = 0u;
+				void* src_buffer_data;
+
+				// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
+				if (SUCCEEDED(vb->Lock(min_vert * t_stride, max_vert * t_stride, &src_buffer_data, 0)))
+				{
+					struct src_vert
 					{
-						auto [min_it, max_it] = std::minmax_element(indices.begin(), indices.end());
-						min_vert = *min_it; max_vert = *max_it;
+						Vector pos; D3DCOLOR color; Vector4D tc0; Vector4D tc1; Vector4D tc2; Vector2D tc3; Vector4D tc4;
+					};
+
+					for (auto i : indices)
+					{
+						// we need to subtract min_vert because we locked @ min_vert which is the start of our lock
+						i -= static_cast<std::uint16_t>(min_vert);
+
+						const auto v_pos_in_src_buffer = i * t_stride;
+						const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
+
+						src->tc0.x = std::lerp(src->tc0.z, src->tc0.x, src->tc3.x);
+						src->tc0.y = std::lerp(src->tc0.w, src->tc0.y, src->tc3.y);
 					}
 
-					void* src_buffer_data; // lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
-					if (SUCCEEDED(vb->Lock(min_vert * t_stride, max_vert * t_stride, &src_buffer_data, 0)))
-					{
-						// all hlslpp floats are 16 bytes :(
-						struct src_vert {
-							Vector vParms; D3DCOLOR vTint; float4 vSplinePt0; float4 vSplinePt1; float4 vSplinePt2; float4 vSplinePt3; float4 vTexCoordRange; float4 vEndPointColor;
-						};
-
-						struct dest_vert {
-							Vector pos; D3DCOLOR vTint; Vector2D tc;
-						};
-
-						for (auto i : indices)
-						{
-							// we need to subtract min_vert because we locked @ min_vert which is the start of our lock
-							i -= static_cast<std::uint16_t>(min_vert);
-
-							const auto v_pos_in_src_buffer = i * t_stride;
-							const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
-							const auto dest = reinterpret_cast<dest_vert*>(src);
-
-							// save vParms (because we will be overriding them when writing pos)
-							const float parmsX = src->vParms.x;
-							const float parmsY = src->vParms.y;
-							const float parmsZ = src->vParms.z;
-
-							float4 posrad = CatmullRomSpline(src->vSplinePt0, src->vSplinePt1, src->vSplinePt2, src->vSplinePt3, parmsX);
-							posrad.w *= std::lerp(1.0f, RADIUSTFADE, parmsX);
-
-							// screen aligned
-							float3 v2p = posrad.xyz - eyePos.xyz;
-							float3 tangent = DCatmullRomSpline3(src->vSplinePt0, src->vSplinePt1, src->vSplinePt2, src->vSplinePt3, parmsX);
-							float3 ofs = normalize(cross(v2p, normalize(tangent)));
-
-							posrad.xyz += (ofs * (posrad.w * (parmsZ - 0.5f)));
-							posrad.w = 1.0f;
-
-							// write position
-							dest->pos.FromFloat3(posrad.xyz);
-
-							// write texcoords
-							dest->tc.FromFloat2(float2(lerp(src->vTexCoordRange.z, src->vTexCoordRange.x, parmsZ), lerp(src->vTexCoordRange.y, src->vTexCoordRange.w, parmsY)));
-
-							// write color
-							dest->vTint = D3DCOLOR_COLORVALUE(src->vEndPointColor.r, src->vEndPointColor.g, src->vEndPointColor.b, src->vEndPointColor.a * std::lerp(1.0f, ALPHATFADE, parmsX));
-						}
-						vb->Unlock();
-					}
+					vb->Unlock();
 				}
 			}
 		}
-#endif
+	}
+
+	void render_emancipation_grill(prim_fvf_context& ctx)
+	{
+		const auto dev = game::get_d3d_device();
+
+		// ps
+		//const float4 g_vWriteDepthToAlpha_FlowParams : register(c3);
+		//#define g_bWriteDepthToAlpha			( g_vWriteDepthToAlpha_FlowParams.x )
+		//#define g_flTime						( g_vWriteDepthToAlpha_FlowParams.y )
+		//#define g_flPowerUp						( g_vWriteDepthToAlpha_FlowParams.z )
+		//#define g_flIntensity					( g_vWriteDepthToAlpha_FlowParams.w )
+
+		// const float4 g_vFlowParams1 : register( c6 );
+		// #define g_flWorldUvScale  ( g_vFlowParams1.x ) // 1.0f / 10.0f
+		// #define g_flOutputIntensity ( g_vFlowParams1.w ) 
+
+		//const float4 g_vFlowColor : register(c8);
+		
+
+		float g_vWriteDepthToAlpha_FlowParams[4] = {};
+		dev->GetPixelShaderConstantF(3, g_vWriteDepthToAlpha_FlowParams, 1);
+		const float g_flTime = g_vWriteDepthToAlpha_FlowParams[1];
+		const float g_flPowerUp = g_vWriteDepthToAlpha_FlowParams[2];//1
+		const float g_flIntensity = g_vWriteDepthToAlpha_FlowParams[3]; // 1
+
+		float g_vFlowParams1[4] = {};
+		dev->GetPixelShaderConstantF(8, g_vFlowParams1, 1);
+		const float g_flWorldUvScale = g_vWriteDepthToAlpha_FlowParams[0]; // 0
+		const float g_flOutputIntensity = g_vWriteDepthToAlpha_FlowParams[3]; // 1
+
+		float g_vFlowColor[4] = {};
+		dev->GetPixelShaderConstantF(8, g_vFlowColor, 1); // 0.025, 0.08, 0.1
+
+		
+		//ctx.modifiers.do_not_render = true;
+		ctx.save_vs(dev); 
+
+		ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+		ctx.save_tss(dev, D3DTSS_COLORARG1);
+		ctx.save_tss(dev, D3DTSS_COLORARG2);
+		ctx.save_tss(dev, D3DTSS_COLOROP);
+
+		ctx.save_tss(dev, D3DTSS_ALPHAOP);
+		ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+
+		dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(0.2f * g_flPowerUp, 0.4f * g_flPowerUp, 0.52f * g_flPowerUp, 0.05f * g_flPowerUp));
+		dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+		dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+		dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+
+		dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_ADD);
+		dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+
+		D3DXMATRIX current_transform = {};
+		dev->GetTransform(D3DTS_TEXTURE0, &current_transform);
+
+		D3DXMATRIX scale_matrix;
+		if (ctx.info.material_name.ends_with("_l") || ctx.info.material_name.ends_with("_r")) {
+			D3DXMatrixScaling(&scale_matrix, 0.25f - (std::sinf(g_flTime) * 0.0015f), 0.5f, 1.0f);
+			current_transform(3, 0) += 0.335f; // tc scroll
+			current_transform(3, 1) = g_flTime * 0.005f; // tc scroll
+		}
+		else {
+			D3DXMatrixScaling(&scale_matrix, 1.0f - (std::sinf(g_flTime) * 0.003f), 0.5f /*- (std::sinf(g_flTime) * 0.005f)*/, 1.0f);
+			current_transform(3, 1) = g_flTime * 0.005f; // tc scroll
+		}
+
+		current_transform *= scale_matrix;
+		ctx.modifiers.as_emancipation_grill = true;
+		ctx.modifiers.emancipation_scale = { 1.2f - (std::cosf(g_flTime * 0.01f) * 1.0f), 1.2f - (std::cosf(g_flTime * 0.01f) * 1.0f) };
+		ctx.modifiers.emancipation_offset = { g_flTime * 0.01f, g_flTime * -0.0015f };
+		ctx.modifiers.emancipation_color_scale = g_flPowerUp;
+
+		ctx.set_texture_transform(dev, &current_transform);
+		ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
+		dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
+
+		dev->SetVertexShader(nullptr);  
+		dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64 :: tc @ 24
+		dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 	}
 
 	// 
@@ -1460,7 +1489,7 @@ namespace components
 
 				// mat_fullbright 1 does not draw paint
 				if (is_rendering_paint) {
-					render_painted_surface(ctx);
+					render_painted_surface(ctx, primlist);
 				}
 			}
 
@@ -1803,7 +1832,8 @@ namespace components
 
 			// on portal open - spark fx (center)
 			// + portal clearing gate (blue sweeping beam)
-			// + portal gun pickup effect
+			// + portal gun pickup effect (beam)
+			// + laser emitter swirrl
 			// can be rendered but requires vertexshader + position
 			else if (mesh->m_VertexFormat == 0x924900005) // stride 0x70 - 112
 			{
@@ -1813,16 +1843,20 @@ namespace components
 				//if (has_materialvar(ctx.info.material, "$splinetype", &splinetype) // could fix other splines as well but performance is not great esp. when shooting portals
 				//	&& splinetype && splinetype->m_intVal > 0)
 
-				if (ctx.info.material_name.starts_with("particle/beam_generic")
-					|| ctx.info.material_name.ends_with("electricity_beam_01")
-					|| (g_player_current_area == 2 && map_settings::get_map_name() == "sp_a1_intro3"))
+				// only fix portal gun beams
+				if (ctx.info.buffer_state.m_Transform[2].m[3][2] > -2.0f)
 				{
-					fix_sprite_trail_particles(ctx, primlist);
+					if (ctx.info.material_name.starts_with("particle/beam_generic")
+						|| ctx.info.material_name.ends_with("electricity_beam_01")
+						|| (g_player_current_area == 2 && map_settings::get_map_name() == "sp_a1_intro3"))
+					{
+						model_render_hlslpp::fix_sprite_trail_particles(ctx, primlist);
 
-					ctx.save_vs(dev); 
-					dev->SetVertexShader(nullptr);
-					dev->SetPixelShader(nullptr); 
-					dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX8); // fill up to stride? - 112
+						ctx.save_vs(dev);
+						dev->SetVertexShader(nullptr);
+						dev->SetPixelShader(nullptr);
+						dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX8); // fill up to stride? - 112
+					}
 				}
 
 				//ctx.modifiers.do_not_render = true;
@@ -1887,84 +1921,9 @@ namespace components
 			// other particles like smoke - wakeup scene ring - water splash
 			else if (mesh->m_VertexFormat == 0x114900005) // stride 96 
 			{
-#ifdef DEBUG
 				//ctx.modifiers.do_not_render = true;
-				int break_me = 0;
-				//ctx.save_vs(dev);
-				//dev->SetVertexShader(nullptr);
-				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3); // vertex fmt looks like: pos - normal - 3x texcoord (float2) = 48 byte
-				//dev->SetTexture(0, tex_addons::portal_mask);
-#endif
-#
-				//lookat_vertex_decl(dev, primlist);
-				if (primlist)
-				{
-					IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
-					dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
 
-					//auto first_vert = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x17547C);
-					//auto num_verts_real = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x1754A0);
-
-					IDirect3DIndexBuffer9* ib = nullptr;
-					if (SUCCEEDED(dev->GetIndices(&ib)))
-					{
-						void* ib_data; // lock index buffer to retrieve the relevant vertex indices
-						if (SUCCEEDED(ib->Lock(0, 0, &ib_data, D3DLOCK_READONLY)))
-						{
-							// add relevant indices without duplicates
-							std::unordered_set<std::uint16_t> indices; indices.reserve(primlist->m_NumIndices);
-
-							for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++) {
-								indices.insert(static_cast<std::uint16_t*>(ib_data)[primlist->m_FirstIndex + i]);
-							}
-
-							ib->Unlock();
-
-							// get the range of vertices that we are going to work with
-							UINT min_vert = 0u, max_vert = 0u;
-							{
-								auto [min_it, max_it] = std::minmax_element(indices.begin(), indices.end());
-								min_vert = *min_it;
-								max_vert = *max_it;
-							}
-
-							void* src_buffer_data;
-
-							// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
-							if (SUCCEEDED(vb->Lock(min_vert * t_stride, max_vert * t_stride, &src_buffer_data, 0)))
-							{
-								struct src_vert
-								{
-									Vector pos;
-									D3DCOLOR color;
-									Vector4D tc0;
-									Vector4D tc1;
-									Vector4D tc2;
-									Vector2D tc3;
-									Vector4D tc4;
-									//Vector4D tc5;			 
-									//Vector4D tc6;
-									//Vector4D tc7;
-								};
-
-								for (auto i : indices)
-								{
-									// we need to subtract min_vert because we locked @ min_vert which is the start of our lock
-									i -= static_cast<std::uint16_t>(min_vert);
-
-									const auto v_pos_in_src_buffer = i * t_stride;
-									const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
-
-									src->tc0.x = std::lerp(src->tc0.z, src->tc0.x, src->tc3.x);
-									src->tc0.y = std::lerp(src->tc0.w, src->tc0.y, src->tc3.y);
-								}
-
-								vb->Unlock();
-							}
-						}
-					}
-				}
-
+				fix_sprite_particles(ctx, primlist);
 
 				// scale the projection matrix for viewmodel particles so that they match the scaled remix viewmodel (currently set to a scale of 0.4)
 				if (ctx.info.buffer_state.m_Transform[2].m[3][2] == -1.00003529f)
@@ -2020,15 +1979,29 @@ namespace components
 #endif
 			}
 
-			// portal clearing gate
+			// emancipation grill
 			// renders water $bottommaterial
 			else if (mesh->m_VertexFormat == 0x80033) //stride = 0x40 
 			{
+				/*
+				float flPowerUp = params[ info.m_nPowerUp ]->GetFloatValue();
+				float flIntensity = params[info.m_nFlowColorIntensity]->GetFloatValue();
+
+				bool bActive = (flIntensity > 0.0f);
+				if ((bHasFlowmap) && (flPowerUp <= 0.0f))
+				{
+					bActive = false;
+				}*/
+
 				//ctx.modifiers.do_not_render = true;
-				ctx.save_vs(dev);
-				dev->SetVertexShader(nullptr);
-				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64 :: tc @ 24
-				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
+
+				//lookat_vertex_decl(dev, primlist);
+				render_emancipation_grill(ctx);
+
+				//ctx.save_vs(dev);
+				//dev->SetVertexShader(nullptr);
+				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_NORMAL | D3DFVF_TEX5); // 64 :: tc @ 24
+				//dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 			}
 
 			// decals
@@ -2167,8 +2140,6 @@ namespace components
 										float a = static_cast<float>((src->color >> 24) & 0xFF) / 255.0f * 0.1f;
 										//src->color = D3DCOLOR_COLORVALUE(r, g, b, a);
 										src->color = (src->color & 0x00FFFFFF) | (static_cast<unsigned char>(a * 255.0f) << 24);
-
-										
 									}
 								}
 
@@ -2432,6 +2403,32 @@ namespace components
 				dev->SetTextureStageState(0, D3DTSS_COLORARG2, og_colorarg2);
 				dev->SetTextureStageState(0, D3DTSS_COLOROP, og_colorop);
 			}
+		}
+
+		if (ctx.modifiers.as_emancipation_grill)
+		{
+			D3DXMATRIX current_transform = {};
+			dev->GetTransform(D3DTS_TEXTURE0, &current_transform);
+
+			D3DXMATRIX scale_matrix;
+			D3DXMatrixScaling(&scale_matrix, ctx.modifiers.emancipation_scale.x, ctx.modifiers.emancipation_scale.y, 1.0f);
+
+			current_transform *= scale_matrix;
+			current_transform(3, 0) = ctx.modifiers.emancipation_offset.x;
+			current_transform(3, 1) = ctx.modifiers.emancipation_offset.y;
+
+			dev->SetTransform(D3DTS_TEXTURE0, &current_transform);
+
+			ctx.save_texture(dev, 0); 
+			dev->SetTexture(0, tex_addons::emancipation_grill);
+
+			const auto& cs = ctx.modifiers.emancipation_color_scale;
+			dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(0.2f * cs, 0.4f * cs, 0.52f * cs, 0.3f * cs));
+			dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+			dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+
+			// draw surface a second time
+			dev->DrawIndexedPrimitive(type, base_vert_index, min_vert_index, num_verts, start_index, prim_count);
 		}
 
 		if (ctx.modifiers.dual_render_with_specified_texture)

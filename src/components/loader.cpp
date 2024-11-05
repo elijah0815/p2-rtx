@@ -11,6 +11,7 @@ namespace components
 		_register(new flags());
 		_register(new main_module());
 		_register(new model_render());
+		_register(new model_render_hlslpp());
 		_register(new map_settings());
 		_register(new api::remix_vars());
 		_register(new api::remix_rayportal());
