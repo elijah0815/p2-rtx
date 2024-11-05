@@ -192,6 +192,14 @@ namespace components
 			saved_render_state_[state] = temp;
 		}
 
+		// save sampler state (D3DSAMPLERSTATETYPE)
+		void save_ss(IDirect3DDevice9* device, const D3DSAMPLERSTATETYPE& state)
+		{
+			DWORD temp;
+			device->GetSamplerState(0, state, &temp);
+			saved_sampler_state_[state] = temp;
+		}
+
 		// save texture stage 0 state (e.g. D3DTSS_ALPHAARG1)
 		void save_tss(IDirect3DDevice9* device, const D3DTEXTURESTAGESTATETYPE& type)
 		{
@@ -242,17 +250,23 @@ namespace components
 		// restore a specific render state (e.g. D3DRS_TEXTUREFACTOR)
 		void restore_render_state(IDirect3DDevice9* device, const D3DRENDERSTATETYPE& state)
 		{
-			if (saved_render_state_.contains(state))
-			{
+			if (saved_render_state_.contains(state)) {
 				device->SetRenderState(state, saved_render_state_[state]);
+			}
+		}
+
+		// restore a specific sampler state (D3DSAMPLERSTATETYPE)
+		void restore_sampler_state(IDirect3DDevice9* device, const D3DSAMPLERSTATETYPE& state)
+		{
+			if (saved_sampler_state_.contains(state)) {
+				device->SetSamplerState(0, state, saved_sampler_state_[state]);
 			}
 		}
 
 		// restore a specific texture stage 0 state (e.g. D3DTSS_ALPHAARG1)
 		void restore_texture_stage_state(IDirect3DDevice9* device, const D3DTEXTURESTAGESTATETYPE& type)
 		{
-			if (saved_texture_stage_state_.contains(type))
-			{
+			if (saved_texture_stage_state_.contains(type)) {
 				device->SetTextureStageState(0, type, saved_texture_stage_state_[type]);
 			}
 		}
@@ -272,13 +286,15 @@ namespace components
 			restore_texture(device, 1);
 			restore_texture_transform(device);
 
-			for (auto& rs : saved_render_state_)
-			{
+			for (auto& rs : saved_render_state_) {
 				device->SetRenderState(rs.first, rs.second);
 			}
 
-			for (auto& tss : saved_texture_stage_state_)
-			{
+			for (auto& ss : saved_sampler_state_) {
+				device->SetSamplerState(0, ss.first, ss.second);
+			}
+
+			for (auto& tss : saved_texture_stage_state_) {
 				device->SetTextureStageState(0, tss.first, tss.second);
 			}
 		}
@@ -367,6 +383,9 @@ namespace components
 
 		// store saved render states (with the type as the key)
 		std::unordered_map<D3DRENDERSTATETYPE, DWORD> saved_render_state_;
+
+		// store saved render states (with the type as the key)
+		std::unordered_map<D3DSAMPLERSTATETYPE, DWORD> saved_sampler_state_;
 
 		// store saved texture stage states (with type as the key)
 		std::unordered_map<D3DTEXTURESTAGESTATETYPE, DWORD> saved_texture_stage_state_;

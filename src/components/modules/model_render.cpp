@@ -1479,6 +1479,11 @@ namespace components
 					D3DXMATRIX scaleMatrix;
 					D3DXMatrixScaling(&scaleMatrix, 1.5f, 1.5f, 1.0f);
 
+					ctx.save_ss(dev, D3DSAMP_ADDRESSU);
+					ctx.save_ss(dev, D3DSAMP_ADDRESSV);
+					dev->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
+					dev->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_WRAP);
+
 					ctx.set_texture_transform(dev, &scaleMatrix); 
 					ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
 					dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
@@ -2246,14 +2251,14 @@ namespace components
 			}
 			else if (ctx.modifiers.as_transport_beam)
 			{
-				dev->GetRenderState(D3DRS_TEXTUREFACTOR, &og_texfactor);
-				dev->GetTextureStageState(0, D3DTSS_ALPHAARG2, &og_colorarg2);
-				dev->GetTextureStageState(0, D3DTSS_ALPHAOP, &og_colorop);
+				//dev->GetRenderState(D3DRS_TEXTUREFACTOR, &og_texfactor);
+				//dev->GetTextureStageState(0, D3DTSS_ALPHAARG2, &og_colorarg2);
+				//dev->GetTextureStageState(0, D3DTSS_ALPHAOP, &og_colorop);
 
-				// slightly increase the alpha so that the 'fog' becomes visible
-				dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 40));
-				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
-				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_ADD);
+				//// slightly increase the alpha so that the 'fog' becomes visible
+				//dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 10));
+				//dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+				//dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_ADD);
 			}
 
 			dev->DrawIndexedPrimitive(type, base_vert_index, min_vert_index, num_verts, start_index, prim_count);
