@@ -2575,10 +2575,16 @@ namespace components
 
 	// -----
 
-	// TODO - this fails when there are multiple portals on a level (static portal = separate prop, so there can be more then 2)
-	// need to find a way to match up the portals
 	void prop_portal_client_think_hk(const C_Prop_Portal* portal)
 	{
+		// reset first
+		model_render::portal1_ptr = nullptr;
+		model_render::portal1_is_linked = false;
+		//model_render::portal1_open_amount = 0.0f; // do not reset - can cause tiny portals
+		model_render::portal2_ptr = nullptr;
+		model_render::portal2_is_linked = false;
+		//model_render::portal2_open_amount = 0.0f; // do not reset - can cause tiny portals
+
 		if (portal && portal->m_bActivated)
 		{
 			if (!portal->m_bIsPortal2)
@@ -2630,7 +2636,6 @@ namespace components
 			retn;
 		}
 	}
-
 
 	// Grabs area portal - could be used to spawn api portals
 	// Could also be used to auto. set vis for area portals but performance can be really bad
@@ -2731,7 +2736,6 @@ namespace components
 
 		// C_Prop_Portal::ClientThink :: hook to get portal 1/2 m_fOpenAmount member var
 		utils::hook(CLIENT_BASE + USE_OFFSET(0x285AD2, 0x280012), prop_portal_client_think_stub, HOOK_JUMP).install()->quick();
-
 
 		// #
 		// Area portals
