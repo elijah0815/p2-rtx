@@ -448,7 +448,6 @@ namespace components
 
 	// Helper function to draw portal gel's
 	// > will directly edit the vertex buffer when brushmodels are rendered
-	// > this currently alters all BSP vertices (but with one lock/unlock) and will f'up texcoords if mat_forcedynamic is NOT 1 (recreates VB each frame)
 	void render_painted_surface(prim_fvf_context& ctx, CPrimList* primlist)
 	{
 		/*	// vs
@@ -564,11 +563,10 @@ namespace components
 			// assign paint map texture to texture slot 0
 			if (ctx.info.buffer_state.m_BoundTexture[9])
 			{
-				ctx.save_texture(dev, 0);
-
 				if (const auto  paint_map = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[9]);
 					paint_map)
 				{
+					ctx.save_texture(dev, 0);
 					dev->SetTexture(0, paint_map);
 				}
 			}
@@ -1029,7 +1027,7 @@ namespace components
 			//}
 		}
 
-		/*if (ctx.info.material_name.contains("occlu"))
+		/*if (ctx.info.material_name.contains("screen"))
 		{
 			int break_me = 1;   
 		}*/
@@ -1070,9 +1068,9 @@ namespace components
 			// models/player/chell/gambler_eyeball_ l/r
 			else if (ctx.info.material_name.contains("models/player/chell/gambler_eyeball"))
 			{
-				ctx.save_texture(dev, 0);
-
-				if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[1]); basemap2) {
+				if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[1]); basemap2) 
+				{
+					ctx.save_texture(dev, 0);
 					dev->SetTexture(0, basemap2);
 				}
 			}
@@ -1131,10 +1129,10 @@ namespace components
 				// glass/containerwindow_
 				else if (ctx.info.material_name.starts_with("glass/contain"))
 				{
-					ctx.save_texture(dev, 0);
 					if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[2]);
 						basemap2)
 					{
+						ctx.save_texture(dev, 0);
 						dev->SetTexture(0, basemap2);
 					}
 
@@ -1471,13 +1469,14 @@ namespace components
 			else if (mesh->m_VertexFormat == 0x2480033)
 			{
 				//ctx.modifiers.do_not_render = true;
+
 				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr);
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3); // tc @ 24
-				dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
+				dev->SetTransform(D3DTS_WORLD, &game::IDENTITY); 
 
 				// scale water uv's
-				if (ctx.modifiers.as_water)
+				if (ctx.modifiers.as_water)  
 				{
 					// create a scaling matrix
 					D3DXMATRIX scaleMatrix;
@@ -1495,12 +1494,11 @@ namespace components
 
 				// painted surfaces use the 2nd and 3rd set of texcoords (lightmap coords)
 				// -> so we need to edit the vertex buffer for each and every surface
-
 				// mat_fullbright 1 does not draw paint
 				if (is_rendering_paint) {
 					render_painted_surface(ctx, primlist);
 				}
-			}
+			} 
 
 			// transport tubes
 			// certain sprites and decals
@@ -1710,6 +1708,7 @@ namespace components
 					//ctx.modifiers.do_not_render = true;
 
 					// #TODO set unique texture
+					ctx.save_texture(dev, 0);
 					dev->SetTexture(0, tex_addons::portal_mask);
 				}
 				// unique textures for the white sky so they can be marked
@@ -1717,6 +1716,8 @@ namespace components
 				{
 					if (ctx.info.material_name.contains("_white"))
 					{
+						ctx.save_texture(dev, 0);
+
 						// sky_whiteft
 						if (ctx.info.material_name.contains("eft"))  {
 							dev->SetTexture(0, tex_addons::sky_gray_ft);
@@ -1750,7 +1751,7 @@ namespace components
 
 			// portal_draw_ghosting 0 disables this
 			// this normally shows portals through walls
-			else if (mesh->m_VertexFormat == 0xa0007) // portal fx 
+			else if (mesh->m_VertexFormat == 0xa0007) // portal fx  
 			{
 				//ctx.modifiers.do_not_render = true;
 				ctx.save_vs(dev); 
