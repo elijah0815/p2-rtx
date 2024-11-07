@@ -1566,26 +1566,30 @@ namespace components
 			{
 				//ctx.modifiers.do_not_render = true;
 
+				// also renders laser field on sp_a4_laser_platform
 				if (ctx.info.shader_name.starts_with("SolidEn")) // SolidEnergy_dx9
 				{
 					ctx.save_vs(dev);
-					dev->SetVertexShader(nullptr);
+					dev->SetVertexShader(nullptr); 
 
 					dev->SetFVF(D3DFVF_XYZ | D3DFVF_TEX2 | D3DFVF_TEXCOORDSIZE3(1)); // tc @ 12 - missing 4 bytes at the end here - fixed with tc2 size 3?
-					dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
+					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 
-					D3DXMATRIX ret = {};
-					dev->GetTransform(D3DTS_TEXTURE0, &ret);
+					if (ctx.info.material_name != "effects/laserplane")
+					{
+						D3DXMATRIX ret = {};
+						dev->GetTransform(D3DTS_TEXTURE0, &ret);
 
-					// tc scroll
-					ret(3, 1) = (float)main_module::framecount * 0.01f;
+						// tc scroll
+						ret(3, 1) = (float)main_module::framecount * 0.01f;
 
-					ctx.set_texture_transform(dev, &ret);
-					ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
-					dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
+						ctx.set_texture_transform(dev, &ret);
+						ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
+						dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
 
-					// slightly increase the alpha so that the 'fog' becomes visible
-					ctx.modifiers.as_transport_beam = true;
+						// slightly increase the alpha so that the 'fog' becomes visible
+						ctx.modifiers.as_transport_beam = true;
+					}
 				}
 
 
