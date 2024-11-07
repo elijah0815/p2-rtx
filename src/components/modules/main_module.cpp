@@ -304,22 +304,33 @@ namespace components
 		// 'CSceneEntity::StartEvent'
 		void scene_ent_on_start_event_hk([[maybe_unused]] CChoreoEvent* ev)
 		{
-#if 0		// not needed right now
-			if (ev->m_pScene && std::string_view(ev->m_Name.string) != "NULL")
+			if (ev && ev->m_Name.string && ev->m_pScene)
 			{
-				const auto& mapname = map_settings::get_loaded_map_name();
-				if (!mapname.empty())
+				const auto sname = std::string_view(ev->m_pScene->m_szFileName);
+				if (std::string_view(ev->m_Name.string) != "NULL")
 				{
-					if (mapname == "sp_a4_finale2")
+					const auto& mapname = map_settings::get_map_name();
+					if (!mapname.empty())
 					{
-						// scenes/npc/sphere03/bw_a4_finale02_trapintro02.vcd
-						if (std::string_view(ev->m_pScene->m_szFileName).ends_with("trapintro02.vcd")) {
-							s_ent.a4_f2_api_portal_spawn.trigger();
+						if (mapname.starts_with("sp_a4"))
+						{
+							// fix invisible world model (arms/pgun) after expl.
+							if (mapname.ends_with("le4")) // sp_a4_finale4
+							{
+								// bw_finale04_button_press01.vcd
+								if (sname.ends_with("button_press01.vcd")) { 
+									api::remix_vars::set_option(api::remix_vars::get_option("rtx.playerModel.enableInPrimarySpace"), { true });
+								}
+
+								// bw_finale04_button_press04.vcd
+								else if (sname.ends_with("button_press04.vcd")) {
+									api::remix_vars::set_option(api::remix_vars::get_option("rtx.playerModel.enableInPrimarySpace"), { false });
+								}
+							}
 						}
 					}
 				}
 			}
-#endif
 		}
 
 		HOOK_RETN_PLACE_DEF(scene_ent_on_start_event_retn);
@@ -351,19 +362,20 @@ namespace components
 		{
 			if (scene_name)
 			{
+				const auto sname = std::string_view(scene_name);
 				const auto& mapname = map_settings::get_map_name();
 				if (!mapname.empty())
 				{
-					if (mapname == "sp_a4_finale2")
+					if (mapname.starts_with("sp_a4"))
 					{
-						// scenes/npc/sphere03/bw_a4_finale02_trapintro02.vcd
-						if (std::string_view(scene_name).ends_with("trapintro02.vcd")) {
-							s_ent.a4_f2_api_portal_spawn.trigger();
+						if (mapname.ends_with("le2")) // sp_a4_finale2
+						{
+							// scenes/npc/sphere03/bw_a4_finale02_trapintro02.vcd
+							if (sname.ends_with("trapintro02.vcd")) {
+								s_ent.a4_f2_api_portal_spawn.trigger();
+							}
 						}
 					}
-
-					// start on 'bw_finale04_button_press01.vcd'
-					// end player detection on bw_finale04_button_press04.vcd
 				}
 			}
 		}
