@@ -174,22 +174,22 @@ namespace components
 		{
 			if (!stage)
 			{
-				if (tex0_set) 
-				{
-					OutputDebugStringA("save_texture:: tex0 was already saved");
-					return;
+#if DEBUG
+				if (tex0_set) {
+					OutputDebugStringA("save_texture:: tex0 was already saved\n"); return;
 				}
+#endif
 
 				device->GetTexture(0, &tex0_);
 				tex0_set = true;
 			}
 			else
 			{
-				if (tex1_set)
-				{
-					OutputDebugStringA("save_texture:: tex1 was already saved");
-					return;
+#if DEBUG
+				if (tex1_set) {
+					OutputDebugStringA("save_texture:: tex1 was already saved\n"); return;
 				}
+#endif
 
 				device->GetTexture(1, &tex1_);
 				tex1_set = true;
