@@ -345,6 +345,7 @@ namespace components
 		// #
 		// #
 
+		// cvar 'scene_print'
 		// 'CSceneEntity::OnSceneFinished' :: triggered right after the audio stops - ignores postdelay
 		void scene_ent_on_finish_event_hk(const char* scene_name)
 		{
@@ -360,6 +361,9 @@ namespace components
 							s_ent.a4_f2_api_portal_spawn.trigger();
 						}
 					}
+
+					// start on 'bw_finale04_button_press01.vcd'
+					// end player detection on bw_finale04_button_press04.vcd
 				}
 			}
 		}
@@ -1292,6 +1296,7 @@ namespace components
 		game::cvar_uncheat_and_set_int("mat_normalmaps", 0);
 		game::cvar_uncheat_and_set_int("r_3dsky", 0);
 		game::cvar_uncheat_and_set_int("r_skybox_draw_last", 0);
+		game::cvar_uncheat_and_set_int("r_flashlightrender", 0); // fix emissive "bug" when moon portal opens on finale4 
 		game::cvar_uncheat_and_set_int("mat_fullbright", 1);
 		game::cvar_uncheat_and_set_int("mat_softwareskin", 1);
 		game::cvar_uncheat_and_set_int("mat_phong", 1);
