@@ -1802,14 +1802,16 @@ namespace components
 				// early out if vgui_white
 				if (ctx.info.material_name != "vgui_white")
 				{
-					if (ctx.info.material_name == "vgui__fontpage")
-					{
-						// get rid of all world-rendered text as its using the same glyph as HUD elements?!
-						if (ctx.info.buffer_state.m_Transform[0].m[3][0] != 0.0f) {
-							ctx.modifiers.do_not_render = true;
-						}
-					}
-					else if (ctx.info.material_name.contains("vgui_coop_progress_board")
+					// should be fine now that engine_post is now considered the first hud elem
+					//if (ctx.info.material_name == "vgui__fontpage")
+					//{
+					//	// get rid of all world-rendered text as its using the same glyph as HUD elements?!
+					//	if (ctx.info.buffer_state.m_Transform[0].m[3][0] != 0.0f) {
+					//		ctx.modifiers.do_not_render = true;
+					//	}
+					//}
+					//else
+					if (ctx.info.material_name.contains("vgui_coop_progress_board")
 						|| ctx.info.material_name.contains("p2_lightboard_vgui")
 						|| ctx.info.material_name.contains("elevator_video_")) 
 					{
@@ -2023,12 +2025,15 @@ namespace components
 			}
 
 			// decals
+			// moon surface
 			else if (mesh->m_VertexFormat == 0x2480037)  // stride 0x50 - 80 
 			{
 				//ctx.modifiers.do_not_render = true;
 				ctx.save_vs(dev);
-				dev->SetVertexShader(nullptr);
-				dev->SetFVF(D3DFVF_XYZB4 | D3DFVF_TEX7 | D3DFVF_TEXCOORDSIZE1(4)); // 84 - 4 as last tc is one float :: tc at 28
+				dev->SetVertexShader(nullptr); 
+				//dev->SetFVF(D3DFVF_XYZB4 | D3DFVF_TEX7 | D3DFVF_TEXCOORDSIZE1(4)); // 84 - 4 as last tc is one float :: tc at 28
+				//lookat_vertex_decl(dev, primlist);
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_DIFFUSE | D3DFVF_TEX7 | D3DFVF_TEXCOORDSIZE1(4));
 				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 			}
 
