@@ -319,6 +319,7 @@ namespace components
 			tex1_ = nullptr; tex1_set = false;
 			tex0_transform_set = false;
 			saved_render_state_.clear();
+			saved_sampler_state_.clear();
 			saved_texture_stage_state_.clear();
 			modifiers.reset();
 			info.reset();
