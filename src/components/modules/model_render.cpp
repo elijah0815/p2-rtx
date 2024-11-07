@@ -2577,13 +2577,9 @@ namespace components
 
 	void prop_portal_client_think_hk(const C_Prop_Portal* portal)
 	{
-		// reset first
-		model_render::portal1_ptr = nullptr;
-		model_render::portal1_is_linked = false;
-		//model_render::portal1_open_amount = 0.0f; // do not reset - can cause tiny portals
-		model_render::portal2_ptr = nullptr;
-		model_render::portal2_is_linked = false;
-		//model_render::portal2_open_amount = 0.0f; // do not reset - can cause tiny portals
+		// portal pointers and settings are reset at the end of a frame (main_module::endscene_cb)
+		// resetting them here messes up the link to portal 2
+		// resetting them at the start of a frame does not work because client think is called after rendering the portals?
 
 		if (portal && portal->m_bActivated)
 		{
@@ -2614,7 +2610,7 @@ namespace components
 					int break_me = 1;
 				}
 #endif
-				model_render::portal2_is_linked = portal->m_pLinkedPortal ? true : false;
+				model_render::portal2_is_linked = portal->m_pLinkedPortal ? true : false; 
 				model_render::portal2_open_amount = portal->m_fOpenAmount;
 				model_render::portal2_ptr = portal;
 			}

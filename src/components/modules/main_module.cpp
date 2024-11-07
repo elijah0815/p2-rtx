@@ -262,6 +262,14 @@ namespace components
 					}
 				}
 			}
+
+			// reset first
+			model_render::portal1_ptr = nullptr;
+			model_render::portal1_is_linked = false;
+			//model_render::portal1_open_amount = 0.0f; // do not reset - can cause tiny portals
+			model_render::portal2_ptr = nullptr;
+			model_render::portal2_is_linked = false;
+			//model_render::portal2_open_amount = 0.0f; // do not reset - can cause tiny portals
 		}
 	}
 
