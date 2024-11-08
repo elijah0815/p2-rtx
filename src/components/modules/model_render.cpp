@@ -885,16 +885,13 @@ namespace components
 		const float g_flPowerUp = g_vWriteDepthToAlpha_FlowParams[2];//1
 		const float g_flIntensity = g_vWriteDepthToAlpha_FlowParams[3]; // 1
 
-		float g_vFlowParams1[4] = {};
-		dev->GetPixelShaderConstantF(8, g_vFlowParams1, 1);
-		const float g_flWorldUvScale = g_vWriteDepthToAlpha_FlowParams[0]; // 0
-		const float g_flOutputIntensity = g_vWriteDepthToAlpha_FlowParams[3]; // 1
-
 		float g_vFlowColor[4] = {};
 		dev->GetPixelShaderConstantF(8, g_vFlowColor, 1); // 0.025, 0.08, 0.1
 
-		
+
+		bool side_emitters = ctx.info.material_name.ends_with("side_emitters");
 		//ctx.modifiers.do_not_render = true;
+
 		ctx.save_vs(dev); 
 
 		ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
@@ -905,7 +902,22 @@ namespace components
 		ctx.save_tss(dev, D3DTSS_ALPHAOP);
 		ctx.save_tss(dev, D3DTSS_ALPHAARG2);
 
-		dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(0.2f * g_flPowerUp, 0.4f * g_flPowerUp, 0.52f * g_flPowerUp, 0.05f * g_flPowerUp));
+		if (side_emitters)
+		{
+			ctx.save_texture(dev, 0);
+			dev->SetTexture(0, tex_addons::emancipation_grill);
+
+			dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(
+				g_vFlowColor[0] * g_flPowerUp * 0.5f, 
+				g_vFlowColor[1] * g_flPowerUp * 0.5f, 
+				g_vFlowColor[2] * g_flPowerUp * 0.35f, 
+				0.7f * g_flPowerUp));
+		}
+		else
+		{
+			dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(0.2f * g_flPowerUp, 0.4f * g_flPowerUp, 0.52f * g_flPowerUp, 0.05f * g_flPowerUp));
+		}
+		
 		dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
 		dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
 		dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
@@ -916,19 +928,21 @@ namespace components
 		D3DXMATRIX current_transform = {};
 		dev->GetTransform(D3DTS_TEXTURE0, &current_transform);
 
-		D3DXMATRIX scale_matrix;
-		if (ctx.info.material_name.ends_with("_l") || ctx.info.material_name.ends_with("_r")) {
+		D3DXMATRIX scale_matrix; 
+		if (ctx.info.material_name.ends_with("_l") || ctx.info.material_name.ends_with("_r")) 
+		{
 			D3DXMatrixScaling(&scale_matrix, 0.25f - (std::sinf(g_flTime) * 0.0015f), 0.5f, 1.0f);
 			current_transform(3, 0) += 0.335f; // tc scroll
 			current_transform(3, 1) = g_flTime * 0.005f; // tc scroll
 		}
-		else {
-			D3DXMatrixScaling(&scale_matrix, 1.0f - (std::sinf(g_flTime) * 0.003f), 0.5f /*- (std::sinf(g_flTime) * 0.005f)*/, 1.0f);
+		else 
+		{
+			D3DXMatrixScaling(&scale_matrix, (side_emitters ? 0.7f : 1.0f) - (std::sinf(g_flTime) * 0.003f), (side_emitters ? 0.7f : 0.5f) /*- (std::sinf(g_flTime) * 0.005f)*/, 1.0f);
 			current_transform(3, 1) = g_flTime * 0.005f; // tc scroll
 		}
 
 		current_transform *= scale_matrix;
-		ctx.modifiers.as_emancipation_grill = true;
+		ctx.modifiers.as_emancipation_grill = !side_emitters;
 		ctx.modifiers.emancipation_scale = { 1.2f - (std::cosf(g_flTime * 0.01f) * 1.0f), 1.2f - (std::cosf(g_flTime * 0.01f) * 1.0f) };
 		ctx.modifiers.emancipation_offset = { g_flTime * 0.01f, g_flTime * -0.0015f };
 		ctx.modifiers.emancipation_color_scale = g_flPowerUp;
@@ -1294,13 +1308,13 @@ namespace components
 			} 
 
 			// transport tubes
-			// certain sprites and decals
+			// billboard spites and decals
 			// main menu bik background
 			else if (mesh->m_VertexFormat == 0x80005) // stride 0x20
 			{
 				//ctx.modifiers.do_not_render = true;
 				bool mod_shader = true;
-				
+
 				// transport tubes
 				if (ctx.info.material_name.starts_with("eff")) 
 				{
@@ -1348,7 +1362,8 @@ namespace components
 					ctx.save_vs(dev);
 					dev->SetVertexShader(nullptr);
 					dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX2);
-					dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
+					//dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
+					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 				}
 			}
 
@@ -2267,7 +2282,7 @@ namespace components
 
 			// emancipation grill
 			// renders water $bottommaterial
-			else if (mesh->m_VertexFormat == 0x80033) //stride = 0x40 
+			else if (mesh->m_VertexFormat == 0x80033) //stride = 0x40  
 			{
 				/*
 				float flPowerUp = params[ info.m_nPowerUp ]->GetFloatValue();
@@ -2282,12 +2297,18 @@ namespace components
 				//ctx.modifiers.do_not_render = true;
 
 				//lookat_vertex_decl(dev, primlist);
-				render_emancipation_grill(ctx);
 
-				//ctx.save_vs(dev);
-				//dev->SetVertexShader(nullptr);
-				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_NORMAL | D3DFVF_TEX5); // 64 :: tc @ 24
-				//dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
+				if (ctx.info.material_name.starts_with("nature/"))
+				{
+					ctx.save_vs(dev);
+					dev->SetVertexShader(nullptr);
+					dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64 :: tc @ 24
+					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
+				}
+				else
+				{
+					render_emancipation_grill(ctx);
+				}
 			}
 
 			// decals
