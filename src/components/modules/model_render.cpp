@@ -781,9 +781,23 @@ namespace components
 
 	// Fixes sprite texcoords
 	// Expensive - use with caution. A drawcall with lots of verts is okay. A lot of smaller ones are not
+	// TODO: handle '$CROPFACTOR'
 	void fix_sprite_particles([[maybe_unused]] prim_fvf_context& ctx, CPrimList* primlist)
 	{
 		const auto dev = game::get_d3d_device();
+
+		float g_vCropFactor[4] = {};
+		dev->GetVertexShaderConstantF(15, g_vCropFactor, 1);
+		bool use_crop = false; //g_vCropFactor[0] != 1.0f || g_vCropFactor[1] != 1.0f; // not save
+
+		IMaterialVar* var_out = nullptr;
+		if (has_materialvar(ctx.info.material, "$CROPFACTOR", &var_out))
+		{
+			if (var_out) {
+				auto xx = var_out->vftable->GetStringValue(var_out);
+				use_crop = var_out->vftable->GetVecValueInternal1(var_out)[0] != 1.0f || var_out->vftable->GetVecValueInternal1(var_out)[1] != 1.0f;
+			}
+		}
 
 		IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
 		dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
@@ -829,8 +843,16 @@ namespace components
 						const auto v_pos_in_src_buffer = i * t_stride;
 						const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
 
-						src->tc0.x = std::lerp(src->tc0.z, src->tc0.x, src->tc3.x);
-						src->tc0.y = std::lerp(src->tc0.w, src->tc0.y, src->tc3.y);
+						if (use_crop)
+						{
+							src->tc0.x = std::lerp(src->tc0.z, src->tc0.x, src->tc3.x * g_vCropFactor[0] + g_vCropFactor[2]);
+							src->tc0.y = std::lerp(src->tc0.w, src->tc0.y, src->tc3.y * g_vCropFactor[1] + g_vCropFactor[3]);
+						}
+						else
+						{
+							src->tc0.x = std::lerp(src->tc0.z, src->tc0.x, src->tc3.x);
+							src->tc0.y = std::lerp(src->tc0.w, src->tc0.y, src->tc3.y);
+						}
 					}
 
 					vb->Unlock();
@@ -1233,310 +1255,11 @@ namespace components
 			// CPortalRender -> m_portalIsOpening vector to check for portal openings
 			// C_Prop_Portal -> m_fOpenAmount ?
 
-			// r_portal_stencil_depth 0 heavy influence
-			if (ctx.info.material_name.contains("portal_stencil"))
-			{
-				was_portal_related = true; // prevent all other else's
-				ctx.modifiers.do_not_render = true;
-			}
-			else if (ctx.info.material_name.contains("portalstaticoverlay_1"))
-			{
-				if (tex_addons::portal_mask)
-				{
-					ctx.save_texture(dev, 1);
-					dev->SetTexture(1, tex_addons::portal_mask);
-				}
-
-				if (tex_addons::portal_blue)
-				{
-					// render static portal overlay - currently not visible through walls
-#if 0
-					ctx.modifiers.dual_render_with_specified_texture = true;
-					ctx.modifiers.dual_render_texture = tex_addons::portal_blue_overlay;
-					ctx.modifiers.dual_render_with_specified_texture_blend_add = true;
-#endif
-					ctx.save_texture(dev, 0);
-					dev->SetTexture(0, tex_addons::portal_blue);
-				}
-
-				// replace with wireframe (makes life much easier)
-				if (ctx.info.shader_name != "Wireframe_DX9")
-				{
-					ctx.info.material->vftable->SetShader(ctx.info.material, "Wireframe");
-				}
-
-				// #
-				// scale portal on opening
-
-				// portal opening value is eased in -> apply inverse ease-in
-				float s = std::sqrtf(model_render::portal1_open_amount); 
-
-				// ease out - but not really
-				s = 1 - (1 - s) * (1 - s);
-				s = 1 - (1 - s) * (1 - s);
-				s *= s * s;
-
-				// map to a different range because a scalar > 1 => smaller portal
-				// opening factor of 0 means that we start at with a 6x smaller portal
-				s = -4.0f * s + 5.0f;
-
-				// create a scaling matrix
-				D3DXMATRIX scaleMatrix;
-				D3DXMatrixScaling(&scaleMatrix, s, s, 1.0f);
-
-				// translate uv's to the center, scale from the center and translate back 
-				scaleMatrix = game::TC_TRANSLATE_TO_CENTER * scaleMatrix * game::TC_TRANSLATE_FROM_CENTER_TO_TOP_LEFT;
-
-				//dev->SetTransform(D3DTS_TEXTURE0, &scaleMatrix);
-				ctx.set_texture_transform(dev, &scaleMatrix);
-
-				ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
-				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
-
-
-				// #
-				// inactive / active portal state
-
-				ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
-				ctx.save_tss(dev, D3DTSS_ALPHAARG2);
-
-				if (!model_render::portal1_is_linked)
-				{
-					dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 255));
-					dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
-				}
-				else
-				{
-					// transition n
-					int t = static_cast<int>(std::roundf(((1.0f - std::sqrtf(model_render::portal2_open_amount)) - 0.1f) * (255.0f / 0.9f)));
-						t = static_cast<int>(std::clamp(t, 0, 255)) ;
-
-					dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, t));
-					dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
-				}
-
-
-				//ctx.modifiers.do_not_render = true;
-				was_portal_related = true;
-			}
-			else if (ctx.info.material_name.contains("portalstaticoverlay_2"))
-			{
-				{
-					if (tex_addons::portal_mask)
-					{
-						ctx.save_texture(dev, 1);
-						dev->SetTexture(1, tex_addons::portal_mask);
-					}
-
-					if (tex_addons::portal_orange)
-					{
-						// render static portal overlay - currently not visible through walls
-#if 0
-						ctx.modifiers.dual_render_with_specified_texture = true;
-						ctx.modifiers.dual_render_texture = tex_addons::portal_orange_overlay;
-						ctx.modifiers.dual_render_with_specified_texture_blend_add = true;
-#endif
-						ctx.save_texture(dev, 0);
-						dev->SetTexture(0, tex_addons::portal_orange);
-					}
-				}
-				
-				// replace with wireframe (makes life much easier)
-				if (ctx.info.shader_name != "Wireframe_DX9")
-				{
-					ctx.info.material->vftable->SetShader(ctx.info.material, "Wireframe");
-				}
-
-
-				// #
-				// scale portal on opening
-
-				// portal opening value is eased in -> apply inverse ease-in
-				float s = std::sqrtf(model_render::portal2_open_amount);
-
-				// ease out - but not really
-				s = 1 - (1 - s) * (1 - s);
-				s = 1 - (1 - s) * (1 - s);
-				s *= s * s;
-
-				// map to a different range because a scalar > 1 => smaller portal
-				// opening factor of 0 means that we start at with a 6x smaller portal
-				s = -5.0f * s + 6.0f;
-
-				// create a scaling matrix
-				D3DXMATRIX scaleMatrix;
-				D3DXMatrixScaling(&scaleMatrix, s, s, 1.0f);
-
-				// translate uv's to the center, scale from the center and translate back 
-				scaleMatrix = game::TC_TRANSLATE_TO_CENTER * scaleMatrix * game::TC_TRANSLATE_FROM_CENTER_TO_TOP_LEFT;
-
-				//dev->SetTransform(D3DTS_TEXTURE0, &scaleMatrix);
-				ctx.set_texture_transform(dev, &scaleMatrix);
-
-				ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
-				dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
-
-
-				// #
-				// inactive / active portal state
-
-				ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
-				ctx.save_tss(dev, D3DTSS_ALPHAARG2); 
-
-				if (!model_render::portal2_is_linked)
-				{
-					dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 255));
-					dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
-				}
-				else
-				{
-					// transition n
-					int t = static_cast<int>(std::roundf(((1.0f - std::sqrtf(model_render::portal1_open_amount)) - 0.1f) * (255.0f / 0.9f)));
-					t = static_cast<int>(std::clamp(t, 0, 255));
-
-					dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, t));
-					dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
-				}
-
-				//ctx.modifiers.do_not_render = true;
-				was_portal_related = true;
-			}
-
-			if (was_portal_related) 
-			{
-				// through wall overlays
-				/*if (mesh->m_VertexFormat == 0xa0007)
-				{
-					int break_me = 1;
-				}*/
-
-				// draws portal stencil hole
-				if (mesh->m_VertexFormat == 0x4a0003)
-				{
-					//ctx.modifiers.do_not_render = true;
-					ctx.save_vs(dev);
-					dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
-					dev->SetVertexShader(nullptr);
-					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
-				}
-
-				// if set to wireframe mode 
-				else if (mesh->m_VertexFormat == 0x80003)
-				{
-					//ctx.modifiers.do_not_render = true;
-					ctx.save_vs(dev);
-					dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1 | D3DFVF_TEXCOORDSIZE2(0));
-					dev->SetVertexShader(nullptr);
-					dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
-
-					// dirty hack to invert the portal direction in the spawn area on sp_a4_finale2 because
-					// the static overlays on portals (that we use to identify and render the rayportals) are rendered on the inside of the moving object
-					if (const auto& m = map_settings::get_map_name(); !m.empty())
-					{
-						if (m.ends_with("finale2"))
-						{
-							if (g_player_current_area == 4)
-							{
-								// invert along the x axis
-								mtx.m[0][0] = -1;
-								dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
-
-								//ctx.save_rs(dev, D3DRS_CULLMODE);
-								//dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
-
-								if (primlist)
-								{
-									IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
-									dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
-
-									IDirect3DIndexBuffer9* ib = nullptr;
-									if (SUCCEEDED(dev->GetIndices(&ib)))
-									{
-										//void* ib_data; // lock index buffer to retrieve the relevant vertex indices
-										WORD* ib_data;
-										if (SUCCEEDED(ib->Lock(0, 0, (void**)&ib_data, 0)))
-										{
-											//{ // reverse triangle order
-												//if (primlist->m_NumIndices == 4)
-												//{
-												//	int start_index = primlist->m_FirstIndex;
-												//	std::swap(ib_data[start_index + 0], ib_data[start_index + 3]);
-												//	std::swap(ib_data[start_index + 1], ib_data[start_index + 2]);
-												//}
-											//}
-
-											// add relevant indices without duplicates
-											std::unordered_set<std::uint16_t> indices; indices.reserve(primlist->m_NumIndices);
-
-											for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++) {
-												indices.insert(static_cast<std::uint16_t*>(ib_data)[primlist->m_FirstIndex + i]);
-											}
-
-											ib->Unlock();
-
-											// get the range of vertices that we are going to work with
-											UINT min_vert = 0u, max_vert = 0u;
-											{
-												auto [min_it, max_it] = std::minmax_element(indices.begin(), indices.end());
-												min_vert = *min_it;
-												max_vert = *max_it;
-											}
-
-											void* src_buffer_data;
-
-											// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
-											if (SUCCEEDED(vb->Lock(min_vert * t_stride, max_vert * t_stride, &src_buffer_data, 0)))
-											{
-												struct src_vert
-												{
-													Vector pos;
-													Vector normal;
-													Vector2D tc;
-												};
-
-												for (auto i : indices) 
-												{
-													// we need to subtract min_vert because we locked @ min_vert which is the start of our lock
-													i -= static_cast<std::uint16_t>(min_vert);
-
-													const auto v_pos_in_src_buffer = i * t_stride;
-													const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
-
-													// invert x coordinate as we scaled X by -1 using the world matrix
-													src->pos.x = src->pos.x * -1.0f - 0.5f;
-
-													// flip normal
-													src->normal *= -1.0f;
-												}
-
-#if 0
-												auto v = static_cast<src_vert*>(src_buffer_data);
-												int startIndex = 0; 
-												// Swap vertices for a quad
-												//std::swap(v[startIndex + 1], v[startIndex + 2]);
-												//std::swap(v[startIndex + 0], v[startIndex + 3]);
-												v[startIndex + 1].normal = v[startIndex + 1].normal.Scale(-1.0f);
-												v[startIndex + 2].normal = v[startIndex + 2].normal.Scale(-1.0f);
-												v[startIndex + 0].pos.x = v[startIndex + 0].pos.x * -1.0f - 10;
-												v[startIndex + 1].pos.x = v[startIndex + 1].pos.x * -1.0f - 10;
-												v[startIndex + 2].pos.x = v[startIndex + 2].pos.x * -1.0f - 10;
-												v[startIndex + 3].pos.x = v[startIndex + 3].pos.x * -1.0f - 10;
-#endif
-
-												vb->Unlock();
-											}
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
+			
 
 			// world geo - floor / walls --- "LightmappedGeneric"
 			// this renders water but not the $bottommaterial
-			else if (mesh->m_VertexFormat == 0x2480033)
+			if (mesh->m_VertexFormat == 0x2480033)
 			{
 				//ctx.modifiers.do_not_render = true;
 
@@ -1752,21 +1475,316 @@ namespace components
 			}
 
 			// lasers - indicator dots - some of the white light stripes
-			// renders the the wireframe portal if hook enabled to render wireframe for portals
-			// renders door portals
+			// portals
+			// area portal windows
 			// treeleaf shader
-			// + skybox
-			else if (mesh->m_VertexFormat == 0x80003)
+			// skybox
+			else if (mesh->m_VertexFormat == 0x4a0003 || mesh->m_VertexFormat == 0x80003)
 			{
 				//ctx.modifiers.do_not_render = true;
+
+				// r_portal_stencil_depth 0 heavy influence
+				// TODO: is this check still needed?
+				if (ctx.info.material_name.contains("portal_stencil"))
+				{
+					was_portal_related = true; // prevent all other else's
+					ctx.modifiers.do_not_render = true;
+				}
+				else if (ctx.info.material_name.ends_with("portalstaticoverlay_1"))
+				{
+					if (tex_addons::portal_mask)
+					{
+						ctx.save_texture(dev, 1);
+						dev->SetTexture(1, tex_addons::portal_mask);
+					}
+
+					if (tex_addons::portal_blue)
+					{
+						// render static portal overlay - currently not visible through walls
+#if 0
+						ctx.modifiers.dual_render_with_specified_texture = true;
+						ctx.modifiers.dual_render_texture = tex_addons::portal_blue_overlay;
+						ctx.modifiers.dual_render_with_specified_texture_blend_add = true;
+#endif
+						ctx.save_texture(dev, 0);
+						dev->SetTexture(0, tex_addons::portal_blue);
+					}
+
+					// replace with wireframe (makes life much easier)
+					if (ctx.info.shader_name != "Wireframe_DX9")
+					{
+						ctx.info.material->vftable->SetShader(ctx.info.material, "Wireframe");
+					}
+
+					// #
+					// scale portal on opening
+
+					// portal opening value is eased in -> apply inverse ease-in
+					float s = std::sqrtf(model_render::portal1_open_amount);
+
+					// ease out - but not really
+					s = 1 - (1 - s) * (1 - s);
+					s = 1 - (1 - s) * (1 - s);
+					s *= s * s;
+
+					// map to a different range because a scalar > 1 => smaller portal
+					// opening factor of 0 means that we start at with a 6x smaller portal
+					s = -4.0f * s + 5.0f;
+
+					// create a scaling matrix
+					D3DXMATRIX scaleMatrix;
+					D3DXMatrixScaling(&scaleMatrix, s, s, 1.0f);
+
+					// translate uv's to the center, scale from the center and translate back 
+					scaleMatrix = game::TC_TRANSLATE_TO_CENTER * scaleMatrix * game::TC_TRANSLATE_FROM_CENTER_TO_TOP_LEFT;
+
+					//dev->SetTransform(D3DTS_TEXTURE0, &scaleMatrix);
+					ctx.set_texture_transform(dev, &scaleMatrix);
+
+					ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
+					dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
+
+
+					// #
+					// inactive / active portal state
+
+					ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+					ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+
+					if (!model_render::portal1_is_linked)
+					{
+						dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 255));
+						dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+					}
+					else
+					{
+						// transition n
+						int t = static_cast<int>(std::roundf(((1.0f - std::sqrtf(model_render::portal2_open_amount)) - 0.1f) * (255.0f / 0.9f)));
+						t = static_cast<int>(std::clamp(t, 0, 255));
+
+						dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, t));
+						dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+					}
+
+
+					//ctx.modifiers.do_not_render = true;
+					was_portal_related = true;
+				}
+				else if (ctx.info.material_name.ends_with("portalstaticoverlay_2"))
+				{
+					if (tex_addons::portal_mask)
+					{
+						ctx.save_texture(dev, 1);
+						dev->SetTexture(1, tex_addons::portal_mask);
+					}
+
+					if (tex_addons::portal_orange)
+					{
+						// render static portal overlay - currently not visible through walls
+#if 0
+						ctx.modifiers.dual_render_with_specified_texture = true;
+						ctx.modifiers.dual_render_texture = tex_addons::portal_orange_overlay;
+						ctx.modifiers.dual_render_with_specified_texture_blend_add = true;
+#endif
+						ctx.save_texture(dev, 0);
+						dev->SetTexture(0, tex_addons::portal_orange);
+					}
+
+					// replace with wireframe (makes life much easier)
+					if (ctx.info.shader_name != "Wireframe_DX9")
+					{
+						ctx.info.material->vftable->SetShader(ctx.info.material, "Wireframe");
+					}
+
+
+					// #
+					// scale portal on opening
+
+					// portal opening value is eased in -> apply inverse ease-in
+					float s = std::sqrtf(model_render::portal2_open_amount);
+
+					// ease out - but not really
+					s = 1 - (1 - s) * (1 - s);
+					s = 1 - (1 - s) * (1 - s);
+					s *= s * s;
+
+					// map to a different range because a scalar > 1 => smaller portal
+					// opening factor of 0 means that we start at with a 6x smaller portal
+					s = -5.0f * s + 6.0f;
+
+					// create a scaling matrix
+					D3DXMATRIX scaleMatrix;
+					D3DXMatrixScaling(&scaleMatrix, s, s, 1.0f);
+
+					// translate uv's to the center, scale from the center and translate back 
+					scaleMatrix = game::TC_TRANSLATE_TO_CENTER * scaleMatrix * game::TC_TRANSLATE_FROM_CENTER_TO_TOP_LEFT;
+
+					//dev->SetTransform(D3DTS_TEXTURE0, &scaleMatrix);
+					ctx.set_texture_transform(dev, &scaleMatrix);
+
+					ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
+					dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
+
+
+					// #
+					// inactive / active portal state
+
+					ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+					ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+
+					if (!model_render::portal2_is_linked)
+					{
+						dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 255));
+						dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+					}
+					else
+					{
+						// transition n
+						int t = static_cast<int>(std::roundf(((1.0f - std::sqrtf(model_render::portal1_open_amount)) - 0.1f) * (255.0f / 0.9f)));
+						t = static_cast<int>(std::clamp(t, 0, 255));
+
+						dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, t));
+						dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+					}
+
+					//ctx.modifiers.do_not_render = true;
+					was_portal_related = true;
+				}
+
+				if (was_portal_related)
+				{
+					// draws portal stencil hole
+					if (mesh->m_VertexFormat == 0x4a0003)
+					{
+						//ctx.modifiers.do_not_render = true;
+						ctx.save_vs(dev);
+						dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
+						dev->SetVertexShader(nullptr);
+						dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+					}
+
+					// if set to wireframe mode 
+					else if (mesh->m_VertexFormat == 0x80003)
+					{
+						//ctx.modifiers.do_not_render = true;
+						ctx.save_vs(dev);
+						dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1 | D3DFVF_TEXCOORDSIZE2(0));
+						dev->SetVertexShader(nullptr);
+						dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+
+						// dirty hack to invert the portal direction in the spawn area on sp_a4_finale2 because
+						// the static overlays on portals (that we use to identify and render the rayportals) are rendered on the inside of the moving object
+						if (const auto& m = map_settings::get_map_name(); !m.empty())
+						{
+							if (m.ends_with("finale2"))
+							{
+								if (g_player_current_area == 4)
+								{
+									// invert along the x axis
+									mtx.m[0][0] = -1;
+									dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+
+									//ctx.save_rs(dev, D3DRS_CULLMODE);
+									//dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+
+									if (primlist)
+									{
+										IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
+										dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
+
+										IDirect3DIndexBuffer9* ib = nullptr;
+										if (SUCCEEDED(dev->GetIndices(&ib)))
+										{
+											//void* ib_data; // lock index buffer to retrieve the relevant vertex indices
+											WORD* ib_data;
+											if (SUCCEEDED(ib->Lock(0, 0, (void**)&ib_data, 0)))
+											{
+												//{ // reverse triangle order
+													//if (primlist->m_NumIndices == 4)
+													//{
+													//	int start_index = primlist->m_FirstIndex;
+													//	std::swap(ib_data[start_index + 0], ib_data[start_index + 3]);
+													//	std::swap(ib_data[start_index + 1], ib_data[start_index + 2]);
+													//}
+												//}
+
+												// add relevant indices without duplicates
+												std::unordered_set<std::uint16_t> indices; indices.reserve(primlist->m_NumIndices);
+
+												for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++) {
+													indices.insert(static_cast<std::uint16_t*>(ib_data)[primlist->m_FirstIndex + i]);
+												}
+
+												ib->Unlock();
+
+												// get the range of vertices that we are going to work with
+												UINT min_vert = 0u, max_vert = 0u;
+												{
+													auto [min_it, max_it] = std::minmax_element(indices.begin(), indices.end());
+													min_vert = *min_it;
+													max_vert = *max_it;
+												}
+
+												void* src_buffer_data;
+
+												// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
+												if (SUCCEEDED(vb->Lock(min_vert * t_stride, max_vert * t_stride, &src_buffer_data, 0)))
+												{
+													struct src_vert
+													{
+														Vector pos;
+														Vector normal;
+														Vector2D tc;
+													};
+
+													for (auto i : indices)
+													{
+														// we need to subtract min_vert because we locked @ min_vert which is the start of our lock
+														i -= static_cast<std::uint16_t>(min_vert);
+
+														const auto v_pos_in_src_buffer = i * t_stride;
+														const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
+
+														// invert x coordinate as we scaled X by -1 using the world matrix
+														src->pos.x = src->pos.x * -1.0f - 0.5f;
+
+														// flip normal
+														src->normal *= -1.0f;
+													}
+
+#if 0
+													auto v = static_cast<src_vert*>(src_buffer_data);
+													int startIndex = 0;
+													// Swap vertices for a quad
+													//std::swap(v[startIndex + 1], v[startIndex + 2]);
+													//std::swap(v[startIndex + 0], v[startIndex + 3]);
+													v[startIndex + 1].normal = v[startIndex + 1].normal.Scale(-1.0f);
+													v[startIndex + 2].normal = v[startIndex + 2].normal.Scale(-1.0f);
+													v[startIndex + 0].pos.x = v[startIndex + 0].pos.x * -1.0f - 10;
+													v[startIndex + 1].pos.x = v[startIndex + 1].pos.x * -1.0f - 10;
+													v[startIndex + 2].pos.x = v[startIndex + 2].pos.x * -1.0f - 10;
+													v[startIndex + 3].pos.x = v[startIndex + 3].pos.x * -1.0f - 10;
+#endif
+
+													vb->Unlock();
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
 
 				/*if (ctx.info.material_name.contains("light_panel_"))
 				{
 					add_nocull_materialvar(ctx.info.material); // no longer needed
 					//ctx.modifiers.do_not_render = true;
-				}
+				}*/
+
 				// side beams of light bridges - effects/projected_wall_rail
-				else*/ if (ctx.info.material_name.contains("ed_wall_ra"))
+				else if (ctx.info.material_name.contains("ed_wall_ra"))
 				{
 					//ctx.modifiers.do_not_render = true;
 					if (tex_addons::blue_laser_dualrender)
@@ -1845,17 +1863,6 @@ namespace components
 				dev->SetFVF(D3DFVF_XYZB1 | D3DFVF_TEX5); // stride 48
 			}
 
-			// this would draw the portal1 and portal2 mesh (but we already do that way above)
-			// can still be used on some levels (eg sp_a2_bridge_intro)
-			// portal refract texture
-			else if (mesh->m_VertexFormat == 0x4a0003)
-			{
-				ctx.modifiers.do_not_render = true;
-				ctx.save_vs(dev);
-				dev->SetVertexShader(nullptr);
-				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
-			}
-
 			// engine/shadowbuild
 			else if (mesh->m_VertexFormat == 0xa0003)
 			{
@@ -1867,6 +1874,7 @@ namespace components
 
 			// HUD
 			// Video decals
+			// rain
 			else if (mesh->m_VertexFormat == 0x80007) 
 			{
 				//ctx.modifiers.do_not_render = true;
@@ -1895,6 +1903,22 @@ namespace components
 						dev->SetVertexShader(nullptr);
 						dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 						//dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_TEX4); // no need to set fvf here!
+					}
+
+					// fix rain by making it slightly emissive
+					else if (ctx.info.material_name.ends_with("/rain"))
+					{
+						ctx.modifiers.with_high_gamma = false;
+						ctx.save_rs(dev, D3DRS_DESTBLEND);
+						dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+
+						ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+						ctx.save_tss(dev, D3DTSS_COLOROP);
+						ctx.save_tss(dev, D3DTSS_COLORARG2);
+
+						dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(100, 100, 100, 255));
+						dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+						dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
 					}
 
 					/* // --- render using shaders
@@ -2009,7 +2033,7 @@ namespace components
 			{
 				//ctx.modifiers.do_not_render = true;
 
-				fix_sprite_particles(ctx, primlist); 
+				fix_sprite_particles(ctx, primlist);  
 
 				// scale the projection matrix for viewmodel particles so that they match the scaled remix viewmodel (currently set to a scale of 0.4)
 				if (ctx.info.buffer_state.m_Transform[2].m[3][2] == -1.00003529f)
@@ -2094,6 +2118,26 @@ namespace components
 						api::remix_lights::bts3_set_flashlight_end_pos(flashlight_pos);
 					}
 				}
+				else if (map_settings::get_map_name() == "sp_a4_finale4")
+				{
+					DWORD dstblend;
+					dev->GetRenderState(D3DRS_DESTBLEND, &dstblend);
+
+					// fix emissive smoke near end
+					if (dstblend == D3DBLEND_ONE)
+					{
+						if (!ctx.info.material_name.contains("fire") && !ctx.info.material_name.contains("glow"))
+						{
+							ctx.save_rs(dev, D3DRS_DESTBLEND);
+							dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+						}
+					}
+					/*else if (dstblend == D3DBLEND_INVSRCALPHA && ctx.info.material_name.ends_with("spray1_addself"))
+					{
+						ctx.save_rs(dev, D3DRS_DESTBLEND);
+						dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+					}*/
+				}
 
 				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);  
 				dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);
@@ -2101,7 +2145,7 @@ namespace components
 			}
 
 			// on portal open - blob in the middle (impact)
-			else if (mesh->m_VertexFormat == 0x80037) // TODO - test with buffer_state transforms 
+			else if (mesh->m_VertexFormat == 0x80037) // TODO - test with buffer_state transforms  
 			{
 #ifdef DEBUG
 				//ctx.modifiers.do_not_render = true; // this needs a position as it spawns on 0 0 0 // stride 0x40
