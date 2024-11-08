@@ -459,6 +459,9 @@ namespace components
 
 		static inline benchmark_data m_benchmark = {};
 #endif
+
+		static inline float vgui_progress_board_scalar = 1.0f;
+
 		static inline float portal1_open_amount = 0.0f;
 		static inline bool  portal1_is_linked = false;
 		static inline const C_Prop_Portal* portal1_ptr = nullptr;

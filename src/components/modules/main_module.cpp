@@ -520,6 +520,8 @@ namespace components
 		// ALL RESETS first because 'on_host_disconnect_hk' is not reliable
 		map_settings::on_map_exit();
 		choreo_events::reset_all();
+
+		model_render::vgui_progress_board_scalar = 1.0f;
 		model_render::linked_area_portals.clear();
 
 		// -------

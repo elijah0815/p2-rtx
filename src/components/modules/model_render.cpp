@@ -1894,15 +1894,105 @@ namespace components
 					//	}
 					//}
 					//else
-					if (ctx.info.material_name.contains("vgui_coop_progress_board")
-						|| ctx.info.material_name.contains("p2_lightboard_vgui")
-						|| ctx.info.material_name.contains("elevator_video_")) 
+
+					// vgui/screens/vgui_coop_progress_board
+					if (ctx.info.material_name.ends_with("progress_board"))
+					{
+						//lookat_vertex_decl(dev, primlist);
+						float vcol_r = 0.0f;
+						float vcol_g = 0.0f;
+						float vcol_b = 0.0f;
+
+						// cant get vertex color to work here? -> grab vertex color and use tfactor instead
+						{ 
+							IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
+							dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
+
+							IDirect3DIndexBuffer9* ib = nullptr;
+							if (SUCCEEDED(dev->GetIndices(&ib)))
+							{
+								void* ib_data; // retrieve a single vertex index (*2 because WORD)
+								if (SUCCEEDED(ib->Lock(primlist->m_FirstIndex * 2, 2, &ib_data, D3DLOCK_READONLY)))
+								{
+									const auto first_index = *static_cast<std::uint16_t*>(ib_data);
+									ib->Unlock();
+
+									void* src_buffer_data; // retrieve single indexed vertex
+									if (SUCCEEDED(vb->Lock(first_index * t_stride, t_stride, &src_buffer_data, D3DLOCK_READONLY)))
+									{
+										struct src_vert { Vector pos; Vector normal;  D3DCOLOR color; Vector2D tc0; };
+										const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data));
+
+										// unpack color
+										vcol_r = static_cast<float>((src->color >> 16) & 0xFF) / 255.0f * 1.0f;
+										vcol_g = static_cast<float>((src->color >> 8) & 0xFF) / 255.0f * 1.0f;
+										vcol_b = static_cast<float>((src->color >> 0) & 0xFF) / 255.0f * 1.0f;
+										vb->Unlock();
+									}
+								}
+							}
+						}
+
+						ctx.save_vs(dev);
+						dev->SetVertexShader(nullptr);
+						dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_DIFFUSE | D3DFVF_TEX1);
+						dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
+
+						ctx.save_tss(dev, D3DTSS_COLORARG1);
+						ctx.save_tss(dev, D3DTSS_COLORARG2);
+						ctx.save_tss(dev, D3DTSS_COLOROP);
+						dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+						dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+						dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+
+						float scalar = 1.0f;
+						if (vcol_r <= 0.4f) {
+							scalar = std::powf(vcol_r / 0.4f, 2.5f) * 0.4f; // crush values closer to 0 as even 0.01 is bright af
+						}
+
+						// save val for screen overlays
+						model_render::vgui_progress_board_scalar = std::clamp(vcol_r * scalar, 0.0f, 0.15f);
+						model_render::vgui_progress_board_scalar /= 0.15f;
+
+						dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(
+							vcol_r * scalar, 
+							vcol_g * scalar, 
+							vcol_b * scalar, 1.0f));
+					}
+
+					// vgui/screens/vgui_coop_progress_board_numbers
+					// vgui/screens/vgui_coop_progress_board_bar
+					// vgui/screens/p2_lightboard_vgui
+					else if (ctx.info.material_name.ends_with("board_numbers")
+						|| ctx.info.material_name.ends_with("board_bar")
+						|| ctx.info.material_name.ends_with("board_vgui"))
+					{
+						ctx.save_vs(dev);
+						dev->SetVertexShader(nullptr);
+						dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_DIFFUSE | D3DFVF_TEX1);
+						dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
+
+						ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+						ctx.save_rs(dev, D3DRS_SRCBLEND);
+						ctx.save_rs(dev, D3DRS_DESTBLEND);
+						ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+						ctx.save_tss(dev, D3DTSS_ALPHAOP);
+
+						dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+						dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+						dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+						dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+						dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+						dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(1.0f, 1.0f, 1.0f, model_render::vgui_progress_board_scalar));
+					}
+
+					else if (ctx.info.material_name.contains("elevator_video_")) 
 					{
 						//ctx.modifiers.do_not_render = true;
 						ctx.save_vs(dev);
 						dev->SetVertexShader(nullptr);
 						dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
-						//dev->SetFVF(D3DFVF_XYZB3 | D3DFVF_TEX4); // no need to set fvf here!
+						//dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_DIFFUSE | D3DFVF_TEX1); // no need to set fvf here
 					}
 
 					// fix rain by making it slightly emissive
