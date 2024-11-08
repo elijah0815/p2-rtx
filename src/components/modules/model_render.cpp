@@ -332,11 +332,12 @@ namespace components
 		D3DMATRIX saved_view = {};
 		D3DMATRIX saved_proj = {};
 
+		// get origin of wheatly for flashlight calc. on bts3
 		if (pInfo.flags == 0x9 && pInfo.pModel->radius == 19.3280182f &&
 			map_settings::get_map_name().ends_with("bts3"))
 		{
 			if (std::string_view(pInfo.pModel->szPathName).contains("sphere")) {
-				api::bts3_wheatly_pos = pInfo.origin;
+				api::remix_lights::bts3_set_flashlight_start_pos(pInfo.origin);
 			}
 		}
 
@@ -2035,6 +2036,7 @@ namespace components
 #endif
 				}
 
+				// get flashlight end pos (wheatly) on bts3
 				if (map_settings::get_map_name().ends_with("bts3"))
 				{
 					if (ctx.info.material_name == "particle/flashlight_glow")
@@ -2092,18 +2094,9 @@ namespace components
 								}
 							}
 						}
-
-						api::bts3_flashlight_pos = flashlight_pos;
+						api::remix_lights::bts3_set_flashlight_end_pos(flashlight_pos);
 					}
 				}
-				
-
-				/*if (ctx.info.material_name.ends_with("noz_minmax")) 
-				{
-					ctx.save_vs(dev);
-					dev->SetVertexShader(nullptr);
-					dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX6);
-				}*/
 
 				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);  
 				dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);

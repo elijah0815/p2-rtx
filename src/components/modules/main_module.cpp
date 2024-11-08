@@ -43,11 +43,7 @@ namespace components
 		std::uint64_t remix_debug_last_line_hash = 0u;
 		bool remix_debug_node_vis = false; // show/hide debug vis of bsp nodes/leafs
 
-		// flashlight fix for bts3
-		remixapi_LightHandle bts3_flashlight_handle = nullptr;
-		remixapi_LightHandle bts3_flashlight_sphere_handle = nullptr;
-		Vector bts3_flashlight_pos = {};
-		Vector bts3_wheatly_pos = {};
+		
 
 		// forward declaration
 		void endscene_cb();
@@ -412,19 +408,55 @@ namespace components
 				jmp		scene_ent_on_finish_event_retn;
 			}
 		}
-	}
+	} // events END
 
 
 	// #
 	// #
 
-	void once_per_frame_cb()
+
+	/**
+	 * Called from CViewRender::RenderView
+	 * - Pass world, view, projection to D3D
+	 * - Other misc. that runs once per frame
+	 */
+	void on_renderview()
 	{
+		auto enginerender = game::get_engine_renderer();
 		const auto dev = game::get_d3d_device();
 
-		api::remix_vars::on_client_frame();
+		// setup main camera
+		{
+			float colView[4][4] = {};
+			utils::row_major_to_column_major(enginerender->m_matrixView.m[0], colView[0]);
+
+			float colProj[4][4] = {};
+			utils::row_major_to_column_major(enginerender->m_matrixProjection.m[0], colProj[0]);
+
+			dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
+			dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(colView));
+			dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(colProj));
+
+			// set a default material with diffuse set to a warm white
+			// so that add light to texture works and does not require rtx.effectLightPlasmaBall (animated)
+			D3DMATERIAL9 dmat = {};
+			dmat.Diffuse.r = 1.0f;
+			dmat.Diffuse.g = 0.8f;
+			dmat.Diffuse.b = 0.8f;
+			dev->SetMaterial(&dmat);
+		}
+
+		if (!game::is_paused()) {
+			main_module::framecount++; // used for debug anim
+		}
+
+
+		// ----
+		// ----
 
 		events::on_client_frame();
+		api::remix_vars::on_client_frame();
+		api::remix_lights::on_client_frame();
 
 		// force cvars per frame just to make sure
 		main_module::setup_required_cvars();
@@ -479,7 +511,7 @@ namespace components
 				ext.roughnessTexture = L"";
 				ext.metallicTexture = L"";
 				ext.heightTexture = L"";
-			}
+		}
 
 			info.pNext = &ext;
 
@@ -492,7 +524,7 @@ namespace components
 			info.hash = utils::string_hash64("linemat3");
 			info.emissiveColorConstant = { 0.0f, 1.0f, 1.0f };
 			api::bridge.CreateMaterial(&info, &api::remix_debug_line_materials[2]);
-		}
+	}
 
 		// destroy all lines added the prev. frame
 		if (api::remix_debug_line_amount)
@@ -512,7 +544,7 @@ namespace components
 #if defined(BENCHMARK)
 		if (model_render::m_benchmark.enabled && !model_render::m_benchmark.material_name.empty())
 		{
-			printf("[ %.3f ms ]\t vertex format [ 0x%llx ] using material [ %s ]\n", 
+			printf("[ %.3f ms ]\t vertex format [ 0x%llx ] using material [ %s ]\n",
 				model_render::m_benchmark.ms, model_render::m_benchmark.vertex_format, model_render::m_benchmark.material_name.c_str());
 
 			const auto con = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -531,127 +563,7 @@ namespace components
 			api::remix_rayportal::get()->draw_all_pairs();
 		}
 
-		// bts3 flashlight fix
-
-		if (map_settings::get_map_name().ends_with("bts3"))
-		{
-			if (!api::bts3_flashlight_pos.IsZero(0.0001f) && !api::bts3_wheatly_pos.IsZero(0.0001f))
-			{
-				auto dir = api::bts3_flashlight_pos - api::bts3_wheatly_pos;
-				dir.Normalize();
-
-				auto pos = api::bts3_wheatly_pos + dir * 10.0f;
-
-				auto ext = remixapi_LightInfoSphereEXT
-				{
-					.sType = REMIXAPI_STRUCT_TYPE_LIGHT_INFO_SPHERE_EXT,
-					.pNext = nullptr,
-					.position = remixapi_Float3D { pos.x, pos.y, pos.z },
-					.radius = 1.2f,
-					.shaping_hasvalue = TRUE,
-					.shaping_value = {},
-				};
-
-				if (ext.shaping_hasvalue)
-				{
-					// ensure the direction is normalized
-					ext.shaping_value.direction = { dir.x, dir.y, dir.z };
-					ext.shaping_value.coneAngleDegrees = 45.0f;
-					ext.shaping_value.coneSoftness = 0.2f;
-					ext.shaping_value.focusExponent = 0;
-				}
-
-				const float lscale = 15.0f;
-
-				auto info = remixapi_LightInfo
-				{
-					.sType = REMIXAPI_STRUCT_TYPE_LIGHT_INFO,
-					.pNext = &ext,
-					.hash = utils::string_hash64("bts3fl"),
-					.radiance = remixapi_Float3D { 150 * lscale, 140 * lscale, 130 * lscale },
-				};
-
-				if (api::bts3_flashlight_handle) 
-				{
-					api::bridge.DestroyLight(api::bts3_flashlight_handle);
-					api::bts3_flashlight_handle = nullptr;
-				}
-
-				api::bridge.CreateLight(&info, &api::bts3_flashlight_handle);
-
-				if (api::bts3_flashlight_handle) {
-					api::bridge.DrawLightInstance(api::bts3_flashlight_handle);
-				}
-
-				// ---
-				// sphere light at start of spotlight
-
-				// bts3_flashlight_sphere_handle
-				pos = api::bts3_wheatly_pos + dir * 9.0f;
-				ext.position = { pos.x, pos.y, pos.z };
-				ext.radius = 1.5f;
-				ext.shaping_hasvalue = FALSE;
-				info.hash = utils::string_hash64("bts3flsp");
-				info.radiance = { info.radiance.x * 0.2f, info.radiance.y * 0.25f, info.radiance.z * 0.35f };
-
-				if (api::bts3_flashlight_sphere_handle)
-				{
-					api::bridge.DestroyLight(api::bts3_flashlight_sphere_handle);
-					api::bts3_flashlight_sphere_handle = nullptr;
-				}
-
-				api::bridge.CreateLight(&info, &api::bts3_flashlight_sphere_handle);
-
-				if (api::bts3_flashlight_sphere_handle) {
-					api::bridge.DrawLightInstance(api::bts3_flashlight_sphere_handle);
-				}
-
-				// ---
-
-				api::bts3_flashlight_pos = { 0, 0, 0 };
-				api::bts3_wheatly_pos = { 0, 0, 0 };
-			}
-		}
-	}
-
-	/**
-	 * Called from CViewRender::RenderView
-	 * - Pass world, view, projection to D3D
-	 * - Other misc. that runs once per frame
-	 */
-	void on_renderview()
-	{
-		once_per_frame_cb();
-
-		auto enginerender = game::get_engine_renderer();
-
-		// old - works
-		//const VMatrix* view = call_virtual<12, const VMatrix*>((void*)enginerender);
-		//const VMatrix* pProjectionMatrix = view + 1; // Increment the pointer to get to the projectionMatrix
-
-		const auto dev = game::get_d3d_device();
-
-		float colView[4][4] = {};
-		utils::row_major_to_column_major(enginerender->m_matrixView.m[0], colView[0]);
-
-		float colProj[4][4] = {};
-		utils::row_major_to_column_major(enginerender->m_matrixProjection.m[0], colProj[0]);
-
-		dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
-		dev->SetTransform(D3DTS_VIEW, reinterpret_cast<const D3DMATRIX*>(colView));
-		dev->SetTransform(D3DTS_PROJECTION, reinterpret_cast<const D3DMATRIX*>(colProj));
-
-		if (!game::is_paused()) {
-			main_module::framecount++; // used for debug anim
-		}
-
-		// set a default material with diffuse set to a warm white
-		// so that add light to texture works and does not require rtx.effectLightPlasmaBall (animated)
-		D3DMATERIAL9 dmat = {};
-		dmat.Diffuse.r = 1.0f;
-		dmat.Diffuse.g = 0.8f;
-		dmat.Diffuse.b = 0.8f;
-		dev->SetMaterial(&dmat);
+		api::remix_lights::on_client_frame();
 	}
 
 	HOOK_RETN_PLACE_DEF(cviewrenderer_renderview_retn);
