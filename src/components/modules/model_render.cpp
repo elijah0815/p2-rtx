@@ -797,7 +797,7 @@ namespace components
 		if (has_materialvar(ctx.info.material, "$CROPFACTOR", &var_out))
 		{
 			if (var_out) {
-				auto xx = var_out->vftable->GetStringValue(var_out);
+				//auto xx = var_out->vftable->GetStringValue(var_out);
 				use_crop = var_out->vftable->GetVecValueInternal1(var_out)[0] != 1.0f || var_out->vftable->GetVecValueInternal1(var_out)[1] != 1.0f;
 			}
 		}
@@ -886,7 +886,7 @@ namespace components
 		dev->GetPixelShaderConstantF(3, g_vWriteDepthToAlpha_FlowParams, 1);
 		const float g_flTime = g_vWriteDepthToAlpha_FlowParams[1];
 		const float g_flPowerUp = g_vWriteDepthToAlpha_FlowParams[2];//1
-		const float g_flIntensity = g_vWriteDepthToAlpha_FlowParams[3]; // 1
+		//const float g_flIntensity = g_vWriteDepthToAlpha_FlowParams[3]; // 1
 
 		float g_vFlowColor[4] = {};
 		dev->GetPixelShaderConstantF(8, g_vFlowColor, 1); // 0.025, 0.08, 0.1
@@ -1072,10 +1072,10 @@ namespace components
 			//}
 		}
 
-		if (ctx.info.material_name.contains("warp_alpha"))
+		/*if (ctx.info.material_name.contains("warp_alpha"))
 		{
 			int break_me = 1;   
-		}
+		}*/
 
 		if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x2480033)
 		{
@@ -2410,6 +2410,7 @@ namespace components
 
 				float scale_parms[4] = {};
 				dev->GetVertexShaderConstantF(55, scale_parms, 1);
+#if 0
 				const float OLDFRM_SCALE_START = scale_parms[0];
 				const float OLDFRM_SCALE_END = scale_parms[1];
 
@@ -2419,6 +2420,7 @@ namespace components
 						l_in *= std::lerp(s0, s1, ts);
 						return 0.5f + 0.5f * l_in;
 					};
+#endif
 
 #if 1
 				IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u; 
@@ -2545,10 +2547,10 @@ namespace components
 											src->tc0.y = std::lerp(src->tc6.w, src->tc6.y, src->tc3.y);
 										}
 									}
-									else
+									/*else
 									{
 										int x = 1;
-									}
+									}*/
 
 									//src->tc0.x = std::lerp(src->tc5.z, src->tc5.x, src->tc3.x);
 									//src->tc0.y = std::lerp(src->tc5.w, src->tc5.y, src->tc3.y);

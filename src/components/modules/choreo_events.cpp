@@ -98,7 +98,6 @@ namespace components
 
 			if (!mapname.empty())
 			{
-				auto ce = choreo_events::get();
 				if (mapname.starts_with("sp_a4"))
 				{
 					if (mapname.ends_with("le2")) // sp_a4_finale2
