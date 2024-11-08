@@ -55,6 +55,7 @@ namespace components
 		LPDIRECT3DTEXTURE9 sky_gray_up;
 		LPDIRECT3DTEXTURE9 sky_gray_dn;
 		LPDIRECT3DTEXTURE9 emancipation_grill;
+		LPDIRECT3DTEXTURE9 water_drip;
 		LPDIRECT3DTEXTURE9 white;
 	}
 
@@ -82,6 +83,7 @@ namespace components
 			if (tex_addons::sky_gray_up) tex_addons::sky_gray_up->Release();
 			if (tex_addons::sky_gray_dn) tex_addons::sky_gray_dn->Release();
 			if (tex_addons::emancipation_grill) tex_addons::emancipation_grill->Release();
+			if (tex_addons::water_drip) tex_addons::water_drip->Release();
 			if (tex_addons::white) tex_addons::white->Release();
 			return;
 		}
@@ -107,6 +109,7 @@ namespace components
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_up.jpg", &tex_addons::sky_gray_up);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_dn.jpg", &tex_addons::sky_gray_dn);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\emancipation_grill.png", &tex_addons::emancipation_grill);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\water_drip.png", &tex_addons::water_drip);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\white.dds", &tex_addons::white);
 	}
 
@@ -1069,10 +1072,10 @@ namespace components
 			//}
 		}
 
-		/*if (ctx.info.material_name.contains("screen"))
+		if (ctx.info.material_name.contains("warp_alpha"))
 		{
 			int break_me = 1;   
-		}*/
+		}
 
 		if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x2480033)
 		{
@@ -1848,6 +1851,15 @@ namespace components
 						ctx.modifiers.as_sky = true;
 					}
 				}
+				else if (ctx.info.material_name.ends_with("warp_alpha"))
+				{
+					ctx.save_texture(dev, 0);
+					dev->SetTexture(0, tex_addons::water_drip);
+
+					ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+					dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+				}
+
 				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr);
 
@@ -2250,11 +2262,17 @@ namespace components
 			}
 
 			// on portal open - blob in the middle (impact)
+			// water drops on glados wakeup
 			else if (mesh->m_VertexFormat == 0x80037) // TODO - test with buffer_state transforms  
 			{
 #ifdef DEBUG
 				//ctx.modifiers.do_not_render = true; // this needs a position as it spawns on 0 0 0 // stride 0x40
 				int break_me = 0;
+
+				if (ctx.info.shader_name != "Wireframe_DX9")
+				{
+					ctx.info.material->vftable->SetShader(ctx.info.material, "Wireframe");
+				}
 
 				//ctx.save_vs(dev);
 				//dev->SetVertexShader(nullptr);
@@ -2344,8 +2362,36 @@ namespace components
 				//ctx.modifiers.do_not_render = true;
 				// maybe edit vert texcoords directly within Client :: C_OP_RenderSprites::Render
 
-				//float g_vCropFactor[4] = {};
-				//dev->GetVertexShaderConstantF(15, g_vCropFactor, 1);
+				float g_vCropFactor[4] = {};
+				dev->GetVertexShaderConstantF(15, g_vCropFactor, 1);
+				bool use_crop = false; //g_vCropFactor[0] != 1.0f || g_vCropFactor[1] != 1.0f; // not save
+
+				IMaterialVar* var_out = nullptr;
+				if (has_materialvar(ctx.info.material, "$CROPFACTOR", &var_out))
+				{
+					if (var_out) {
+						//auto xx = var_out->vftable->GetStringValue(var_out);
+						use_crop = var_out->vftable->GetVecValueInternal1(var_out)[0] != 1.0f || var_out->vftable->GetVecValueInternal1(var_out)[1] != 1.0f;
+					}
+				}
+
+				bool use_dualsequence = false;
+				if (has_materialvar(ctx.info.material, "$DUALSEQUENCE", &var_out))
+				{
+					if (var_out) {
+						//auto xx = var_out->vftable->GetStringValue(var_out);
+						use_dualsequence = var_out->vftable->GetIntValueInternal(var_out) != 0;
+					}
+				}
+
+				bool bZoomSeq2 = false;
+				if (has_materialvar(ctx.info.material, "$ZOOMANIMATESEQ2", &var_out))
+				{
+					if (var_out) {
+						//auto xx = var_out->vftable->GetStringValue(var_out);
+						bZoomSeq2 = var_out->vftable->GetFloatValueInternal(var_out) > 1.0f;
+					}
+				}
 
 				ctx.save_tss(dev, D3DTSS_ALPHAOP);
 				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
@@ -2359,6 +2405,21 @@ namespace components
 						modulate_alpha = true;
 					}
 				}
+
+				// ---
+
+				float scale_parms[4] = {};
+				dev->GetVertexShaderConstantF(55, scale_parms, 1);
+				const float OLDFRM_SCALE_START = scale_parms[0];
+				const float OLDFRM_SCALE_END = scale_parms[1];
+
+				auto getlerpscaled = [](float l_in, float s0, float s1, float ts)
+					{
+						l_in = 2.0f * (l_in - 0.5f);
+						l_in *= std::lerp(s0, s1, ts);
+						return 0.5f + 0.5f * l_in;
+					};
+
 #if 1
 				IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u; 
 				if (SUCCEEDED(dev->GetStreamSource(0, &vb, &t_offset, &t_stride)))
@@ -2435,8 +2496,62 @@ namespace components
 										o.vSeq2TexCoord0_1.wz	= lerp( v.vSeq2TexCoord1.zw, v.vSeq2TexCoord1.xy, lerpnew.xy );
 									 */
 
-									src->tc0.x = std::lerp(src->tc5.z, src->tc5.x, src->tc3.x);
-									src->tc0.y = std::lerp(src->tc5.w, src->tc5.y, src->tc3.y);
+									if (use_crop)
+									{
+										src->tc0.x = std::lerp(src->tc0.z, src->tc0.x, src->tc3.x * g_vCropFactor[0] + g_vCropFactor[2]);
+										src->tc0.y = std::lerp(src->tc0.w, src->tc0.y, src->tc3.y * g_vCropFactor[1] + g_vCropFactor[3]);
+									}
+									else
+									{
+										src->tc0.x = std::lerp(src->tc0.z, src->tc0.x, src->tc3.x);
+										src->tc0.y = std::lerp(src->tc0.w, src->tc0.y, src->tc3.y);
+									}
+
+									if (use_dualsequence)
+									{
+#if 0
+										Vector2D lerpold = { src->tc3.x, src->tc3.y };
+										Vector2D lerpnew = { src->tc3.x, src->tc3.y };
+
+										if (bZoomSeq2)
+										{
+											lerpold.x = getlerpscaled(src->tc3.x, OLDFRM_SCALE_START, OLDFRM_SCALE_END, src->tc7.x);
+											lerpold.y = getlerpscaled(src->tc3.y, OLDFRM_SCALE_START, OLDFRM_SCALE_END, src->tc7.x);
+											lerpnew.x = getlerpscaled(src->tc3.x, 1.0f, OLDFRM_SCALE_START, src->tc7.x);
+											lerpnew.y = getlerpscaled(src->tc3.y, 1.0f, OLDFRM_SCALE_START, src->tc7.x);
+										}
+
+										// src->tc7.x = blendfactor between tc5 lerpold and tc6 lerpnew
+										if (src->tc7.x < 0.5f)
+										{
+											src->tc0.x = std::lerp(src->tc5.z, src->tc5.x, lerpold.x);
+											src->tc0.y = std::lerp(src->tc5.w, src->tc5.y, lerpold.y);
+										}
+										else
+										{
+											src->tc0.x = std::lerp(src->tc6.z, src->tc6.x, lerpnew.x);
+											src->tc0.y = std::lerp(src->tc6.w, src->tc6.y, lerpnew.y);
+										}
+#endif
+
+										if (src->tc7.x < 1.0f)
+										{
+											src->tc0.x = std::lerp(src->tc5.z, src->tc5.x, src->tc3.x);
+											src->tc0.y = std::lerp(src->tc5.w, src->tc5.y, src->tc3.y);
+										}
+										else
+										{
+											src->tc0.x = std::lerp(src->tc6.z, src->tc6.x, src->tc3.x);
+											src->tc0.y = std::lerp(src->tc6.w, src->tc6.y, src->tc3.y);
+										}
+									}
+									else
+									{
+										int x = 1;
+									}
+
+									//src->tc0.x = std::lerp(src->tc5.z, src->tc5.x, src->tc3.x);
+									//src->tc0.y = std::lerp(src->tc5.w, src->tc5.y, src->tc3.y);
 
 									// 2nd tex
 									//src->tc0.x = std::lerp(src->tc6.z, src->tc6.x, src->tc3.x); 
