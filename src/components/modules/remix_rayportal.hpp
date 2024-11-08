@@ -6,7 +6,6 @@ namespace components::api
 	{
 	public:
 		remix_rayportal();
-		const char* get_name() override { return "remix_rayportal"; }
 
 		static inline remix_rayportal* p_this = nullptr;
 		static remix_rayportal* get() { return p_this; }

@@ -15,6 +15,7 @@ namespace components
 		_register(new map_settings());
 		_register(new api::remix_vars());
 		_register(new api::remix_rayportal());
+		_register(new api::remix_lights());
 
 		XASSERT(MH_EnableHook(MH_ALL_HOOKS) != MH_STATUS::MH_OK);
 	}
@@ -34,15 +35,12 @@ namespace components
 
 	void loader::_register(component* component)
 	{
-		if (component)
-		{
-			game::loaded_modules.push_back("component registered: "s + component->get_name() + "\n");
+		if (component) {
 			components_.push_back(component);
 		}
 	}
 
-	utils::memory::allocator* loader::get_alloctor()
-	{
+	utils::memory::allocator* loader::get_alloctor() {
 		return &loader::mem_allocator_;
 	}
 }

@@ -433,7 +433,6 @@ namespace components
 	public:
 		model_render();
 		~model_render() = default;
-		const char* get_name() override { return "model_render"; }
 
 		static void init_texture_addons(bool release = false);
 

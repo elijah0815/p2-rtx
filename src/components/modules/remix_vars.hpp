@@ -7,7 +7,6 @@ namespace components::api
 	public:
 		remix_vars();
 		~remix_vars() = default;
-		const char* get_name() override { return "remix_vars"; }
 
 		static inline remix_vars* p_this = nullptr;
 		static remix_vars* get() { return p_this; }

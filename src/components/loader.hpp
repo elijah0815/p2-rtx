@@ -7,7 +7,6 @@ namespace components
 	public:
 		component() {};
 		virtual ~component() {};
-		virtual const char* get_name() { return "unknown"; };
 	};
 
 	class loader
@@ -32,3 +31,4 @@ namespace components
 #include "modules/map_settings.hpp"
 #include "modules/remix_vars.hpp"
 #include "modules/remix_rayportal.hpp"
+#include "modules/remix_lights.hpp"
