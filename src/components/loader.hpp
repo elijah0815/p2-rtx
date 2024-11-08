@@ -25,6 +25,7 @@ namespace components
 }
 
 #include "modules/flags.hpp"
+#include "modules/choreo_events.hpp"
 #include "modules/main_module.hpp"
 #include "modules/model_render.hpp"
 #include "modules/model_render_hlslpp.hpp"

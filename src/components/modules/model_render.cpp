@@ -781,15 +781,12 @@ namespace components
 
 	// Fixes sprite texcoords
 	// Expensive - use with caution. A drawcall with lots of verts is okay. A lot of smaller ones are not
-	void fix_sprite_particles(prim_fvf_context& ctx, CPrimList* primlist)
+	void fix_sprite_particles([[maybe_unused]] prim_fvf_context& ctx, CPrimList* primlist)
 	{
 		const auto dev = game::get_d3d_device();
 
 		IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
 		dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
-
-		//auto first_vert = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x17547C);
-		//auto num_verts_real = *reinterpret_cast<std::uint32_t*>(RENDERER_BASE + 0x1754A0);
 
 		IDirect3DIndexBuffer9* ib = nullptr;
 		if (SUCCEEDED(dev->GetIndices(&ib)))

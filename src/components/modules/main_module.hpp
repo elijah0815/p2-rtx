@@ -28,58 +28,6 @@ namespace components
 		extern std::uint64_t remix_debug_last_line_hash;
 	}
 
-	namespace events
-	{
-		struct scene_entity_event_s
-		{
-			class event_single
-			{
-			public:
-				void trigger()
-				{
-					m_triggered = true;
-					m_time_point = std::chrono::steady_clock::now();
-				}
-
-				/**
-				 * Can be used to check if a specified time frame has passed since the event was triggered
-				 * @param seconds	Amount of seconds - Use 0 to only check if the event was triggered
-				 * @return			False if event was not triggered or elapsed time smaller then specified amount of seconds
-				 */
-				bool has_elapsed(const float seconds = 0.0f) const
-				{
-					if (!m_triggered) {
-						return false;
-					}
-
-					if (utils::float_equal(seconds, 0.0f)) {
-						return m_triggered;
-					}
-
-					const auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - m_time_point).count();
-					return static_cast<float>(elapsed) > seconds;
-				}
-
-				void reset() {
-					m_triggered = false;
-				}
-
-			private:
-				bool m_triggered = false;
-				std::chrono::steady_clock::time_point m_time_point;
-			};
-
-			event_single a4_f2_api_portal_spawn = {};
-
-			void reset()
-			{
-				a4_f2_api_portal_spawn.reset();
-			}
-		};
-
-		extern scene_entity_event_s s_ent;
-	}
-
 	class main_module : public component
 	{
 	public:
