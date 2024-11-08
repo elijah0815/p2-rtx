@@ -26,6 +26,10 @@ namespace components
 		extern remixapi_MeshHandle remix_debug_line_list[128];
 		extern std::uint32_t remix_debug_line_amount;
 		extern std::uint64_t remix_debug_last_line_hash;
+
+		extern remixapi_LightHandle bts3_flashlight_handle;
+		extern Vector bts3_flashlight_pos;
+		extern Vector bts3_wheatly_pos;
 	}
 
 	namespace events

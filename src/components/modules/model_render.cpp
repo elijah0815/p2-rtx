@@ -332,8 +332,16 @@ namespace components
 		D3DMATRIX saved_view = {};
 		D3DMATRIX saved_proj = {};
 
+		if (pInfo.flags == 0x9 && pInfo.pModel->radius == 19.3280182f &&
+			map_settings::get_map_name().ends_with("bts3"))
+		{
+			if (std::string_view(pInfo.pModel->szPathName).contains("sphere")) {
+				api::bts3_wheatly_pos = pInfo.origin;
+			}
+		}
+
 		// MODELFLAG_MATERIALPROXY | MODELFLAG_STUDIOHDR_AMBIENT_BOOST
-		if (pInfo.flags == 0x80000011 || pInfo.flags == 0x11)
+		else if (pInfo.flags == 0x80000011 || pInfo.flags == 0x11)
 		{
 			VMatrix mat = {};
 			mat.m[0][0] = pInfo.pModelToWorld->m_flMatVal[0][0];
@@ -1054,7 +1062,7 @@ namespace components
 		{
 			//ctx.modifiers.do_not_render = true;
 		
-			if (ctx.info.material_name.contains("models/props_destruction/glass_"))
+			if (ctx.info.material_name.contains("models/props_destruction/glass_")) 
 			{
 				//ctx.modifiers.do_not_render = true;
 				if (tex_addons::glass_shards)
@@ -1078,6 +1086,70 @@ namespace components
 			{
 				ctx.modifiers.do_not_render = true;
 			}*/
+
+			// models/npcs/personality_sphere/personality_sphere_light_damaged
+			//else if (ctx.info.material_name.ends_with("y_sphere_light_damaged"))
+			//{
+			//	if (map_settings::get_map_name().ends_with("bts3"))
+			//	{
+			//		Vector sphere_pos = {};
+
+			//		IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
+			//		dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
+
+			//		IDirect3DIndexBuffer9* ib = nullptr;
+			//		if (SUCCEEDED(dev->GetIndices(&ib)))
+			//		{
+			//			void* ib_data; // lock index buffer to retrieve the relevant vertex indices
+			//			if (SUCCEEDED(ib->Lock(0, 0, &ib_data, D3DLOCK_READONLY)))
+			//			{
+			//				// add relevant indices without duplicates
+			//				std::unordered_set<std::uint16_t> indices; indices.reserve(primlist->m_NumIndices);
+
+			//				for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++) {
+			//					indices.insert(static_cast<std::uint16_t*>(ib_data)[primlist->m_FirstIndex + i]);
+			//				}
+
+			//				ib->Unlock();
+
+			//				// get the range of vertices that we are going to work with
+			//				UINT min_vert = 0u, max_vert = 0u;
+			//				{
+			//					auto [min_it, max_it] = std::minmax_element(indices.begin(), indices.end());
+			//					min_vert = *min_it;
+			//					max_vert = *max_it;
+			//				}
+
+			//				void* src_buffer_data;
+
+			//				// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
+			//				if (SUCCEEDED(vb->Lock(min_vert * t_stride, max_vert * t_stride, &src_buffer_data, D3DLOCK_READONLY)))
+			//				{
+			//					struct src_vert {
+			//						Vector pos;
+			//					};
+
+			//					for (auto i : indices)
+			//					{
+			//						// we need to subtract min_vert because we locked @ min_vert which is the start of our lock
+			//						i -= static_cast<std::uint16_t>(min_vert);
+
+			//						const auto v_pos_in_src_buffer = i * t_stride;
+			//						const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
+
+			//						sphere_pos += src->pos;
+			//					}
+
+			//					sphere_pos /= static_cast<float>(indices.size());
+			//					vb->Unlock();
+			//				}
+			//			}
+			//		}
+
+			//		api::bts3_wheatly_pos = sphere_pos;
+			//		int x = 1;
+			//	}
+			//}
 
 			//if (!is_portalgun_viewmodel)
 			{
@@ -1939,7 +2011,7 @@ namespace components
 			{
 				//ctx.modifiers.do_not_render = true;
 
-				fix_sprite_particles(ctx, primlist);
+				fix_sprite_particles(ctx, primlist); 
 
 				// scale the projection matrix for viewmodel particles so that they match the scaled remix viewmodel (currently set to a scale of 0.4)
 				if (ctx.info.buffer_state.m_Transform[2].m[3][2] == -1.00003529f)
@@ -1963,10 +2035,75 @@ namespace components
 #endif
 				}
 
+				if (map_settings::get_map_name().ends_with("bts3"))
+				{
+					if (ctx.info.material_name == "particle/flashlight_glow")
+					{
+						Vector flashlight_pos = {};
 
-				//ctx.save_vs(dev);
-				//dev->SetVertexShader(nullptr);
-				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX6);
+						IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
+						dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
+
+						IDirect3DIndexBuffer9* ib = nullptr;
+						if (SUCCEEDED(dev->GetIndices(&ib)))
+						{
+							void* ib_data; // lock index buffer to retrieve the relevant vertex indices
+							if (SUCCEEDED(ib->Lock(0, 0, &ib_data, D3DLOCK_READONLY)))
+							{
+								// add relevant indices without duplicates
+								std::unordered_set<std::uint16_t> indices; indices.reserve(primlist->m_NumIndices);
+
+								for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++) {
+									indices.insert(static_cast<std::uint16_t*>(ib_data)[primlist->m_FirstIndex + i]);
+								}
+
+								ib->Unlock();
+
+								// get the range of vertices that we are going to work with
+								UINT min_vert = 0u, max_vert = 0u;
+								{
+									auto [min_it, max_it] = std::minmax_element(indices.begin(), indices.end());
+									min_vert = *min_it;
+									max_vert = *max_it;
+								}
+
+								void* src_buffer_data;
+
+								// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
+								if (SUCCEEDED(vb->Lock(min_vert * t_stride, max_vert * t_stride, &src_buffer_data, D3DLOCK_READONLY)))
+								{
+									struct src_vert {
+										Vector pos;
+									};
+
+									for (auto i : indices)
+									{
+										// we need to subtract min_vert because we locked @ min_vert which is the start of our lock
+										i -= static_cast<std::uint16_t>(min_vert);
+
+										const auto v_pos_in_src_buffer = i * t_stride;
+										const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
+
+										flashlight_pos += src->pos;
+									}
+
+									flashlight_pos /= static_cast<float>(indices.size());
+									vb->Unlock();
+								}
+							}
+						}
+
+						api::bts3_flashlight_pos = flashlight_pos;
+					}
+				}
+				
+
+				/*if (ctx.info.material_name.ends_with("noz_minmax")) 
+				{
+					ctx.save_vs(dev);
+					dev->SetVertexShader(nullptr);
+					dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX6);
+				}*/
 
 				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);  
 				dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);

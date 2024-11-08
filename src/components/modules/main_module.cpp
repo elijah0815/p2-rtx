@@ -43,6 +43,12 @@ namespace components
 		std::uint64_t remix_debug_last_line_hash = 0u;
 		bool remix_debug_node_vis = false; // show/hide debug vis of bsp nodes/leafs
 
+		// flashlight fix for bts3
+		remixapi_LightHandle bts3_flashlight_handle = nullptr;
+		remixapi_LightHandle bts3_flashlight_sphere_handle = nullptr;
+		Vector bts3_flashlight_pos = {};
+		Vector bts3_wheatly_pos = {};
+
 		// forward declaration
 		void endscene_cb();
 
@@ -523,6 +529,88 @@ namespace components
 		if (!api::remix_rayportal::get()->empty())
 		{
 			api::remix_rayportal::get()->draw_all_pairs();
+		}
+
+		// bts3 flashlight fix
+
+		if (map_settings::get_map_name().ends_with("bts3"))
+		{
+			if (!api::bts3_flashlight_pos.IsZero(0.0001f) && !api::bts3_wheatly_pos.IsZero(0.0001f))
+			{
+				auto dir = api::bts3_flashlight_pos - api::bts3_wheatly_pos;
+				dir.Normalize();
+
+				auto pos = api::bts3_wheatly_pos + dir * 10.0f;
+
+				auto ext = remixapi_LightInfoSphereEXT
+				{
+					.sType = REMIXAPI_STRUCT_TYPE_LIGHT_INFO_SPHERE_EXT,
+					.pNext = nullptr,
+					.position = remixapi_Float3D { pos.x, pos.y, pos.z },
+					.radius = 1.2f,
+					.shaping_hasvalue = TRUE,
+					.shaping_value = {},
+				};
+
+				if (ext.shaping_hasvalue)
+				{
+					// ensure the direction is normalized
+					ext.shaping_value.direction = { dir.x, dir.y, dir.z };
+					ext.shaping_value.coneAngleDegrees = 45.0f;
+					ext.shaping_value.coneSoftness = 0.2f;
+					ext.shaping_value.focusExponent = 0;
+				}
+
+				const float lscale = 15.0f;
+
+				auto info = remixapi_LightInfo
+				{
+					.sType = REMIXAPI_STRUCT_TYPE_LIGHT_INFO,
+					.pNext = &ext,
+					.hash = utils::string_hash64("bts3fl"),
+					.radiance = remixapi_Float3D { 150 * lscale, 140 * lscale, 130 * lscale },
+				};
+
+				if (api::bts3_flashlight_handle) 
+				{
+					api::bridge.DestroyLight(api::bts3_flashlight_handle);
+					api::bts3_flashlight_handle = nullptr;
+				}
+
+				api::bridge.CreateLight(&info, &api::bts3_flashlight_handle);
+
+				if (api::bts3_flashlight_handle) {
+					api::bridge.DrawLightInstance(api::bts3_flashlight_handle);
+				}
+
+				// ---
+				// sphere light at start of spotlight
+
+				// bts3_flashlight_sphere_handle
+				pos = api::bts3_wheatly_pos + dir * 9.0f;
+				ext.position = { pos.x, pos.y, pos.z };
+				ext.radius = 1.5f;
+				ext.shaping_hasvalue = FALSE;
+				info.hash = utils::string_hash64("bts3flsp");
+				info.radiance = { info.radiance.x * 0.2f, info.radiance.y * 0.25f, info.radiance.z * 0.35f };
+
+				if (api::bts3_flashlight_sphere_handle)
+				{
+					api::bridge.DestroyLight(api::bts3_flashlight_sphere_handle);
+					api::bts3_flashlight_sphere_handle = nullptr;
+				}
+
+				api::bridge.CreateLight(&info, &api::bts3_flashlight_sphere_handle);
+
+				if (api::bts3_flashlight_sphere_handle) {
+					api::bridge.DrawLightInstance(api::bts3_flashlight_sphere_handle);
+				}
+
+				// ---
+
+				api::bts3_flashlight_pos = { 0, 0, 0 };
+				api::bts3_wheatly_pos = { 0, 0, 0 };
+			}
 		}
 	}
 
