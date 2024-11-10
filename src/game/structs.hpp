@@ -2330,9 +2330,16 @@ namespace components
 		float m_fOpenAmount; //0x3518 
 	}; //Size=0x351C
 
+	struct C_Prop_Portal_vtbl;
 	struct C_Prop_Portal
 	{
-		char pad1[4100];
+		//C_Prop_Portal_vtbl* vtbl;
+		//char pad1[4096];
+		char pad01[0xE0];
+		int team_num;
+		char pad02[0x2EC];
+		int portal_index;
+		char pad03[0xC30];
 		CPortalRenderable_FlatBasic* m_pLinkedPortal; //0x1004 
 		Vector m_ptOrigin; //0x1008 
 		Vector m_vForward; //0x1014 
@@ -2354,9 +2361,40 @@ namespace components
 		char pad_0x34F1[0x13]; //0x34F1
 		float m_fStaticAmount; //0x3504 
 		float m_fSecondaryStaticAmount; //0x3508 
-		float m_fOpenAmount; //0x350C 
-	}; //Size=0x3510
+		float m_fOpenAmount; //0x350C
+		C_BaseEntity* m_hFiredByPlayer;
+	};
+	
+	STATIC_ASSERT_OFFSET(C_Prop_Portal, portal_index, 0x3D0);
 	STATIC_ASSERT_OFFSET(C_Prop_Portal, m_fOpenAmount, 0x350C);
+
+	struct C_Team : C_BaseEntity
+	{
+		char pad[0xC]; // CUtlVector<int, CUtlMemory<int, int> > m_aPlayers;
+		int m_aPlayers_Size;
+		int* m_aPlayers;
+		char m_szTeamname[32];
+		int m_iScore;
+		int m_iRoundsWon;
+		int m_iDeaths;
+		int m_iPing;
+		int m_iPacketloss;
+		int m_iTeamNum;
+	};
+
+	struct C_Prop_Portal_vtbl
+	{
+		char pad_base[67 * 4];
+		char pad[85 * 4];
+		C_Team* (__thiscall* GetTeam)(C_Prop_Portal*); // 85
+		int(__thiscall* GetTeamNumber)(C_Prop_Portal*);
+		void(__thiscall* ChangeTeam)(C_Prop_Portal*, int);
+		int(__thiscall* GetRenderTeamNumber)(C_Prop_Portal*);
+		bool(__thiscall* InSameTeam)(C_Prop_Portal*, C_Prop_Portal*);
+		bool(__thiscall* InLocalTeam)(C_Prop_Portal*);
+		bool(__thiscall* IsValidIDTarget)(C_Prop_Portal*);
+		char* (__thiscall* GetIDString)(C_Prop_Portal*);
+	};
 
 	enum RemixInstanceCategories : uint32_t
 	{

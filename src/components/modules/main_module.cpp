@@ -43,8 +43,6 @@ namespace components
 		std::uint64_t remix_debug_last_line_hash = 0u;
 		bool remix_debug_node_vis = false; // show/hide debug vis of bsp nodes/leafs
 
-		
-
 		// forward declaration
 		void endscene_cb();
 
@@ -266,12 +264,13 @@ namespace components
 			}
 
 			// reset first
-			model_render::portal1_ptr = nullptr;
-			model_render::portal1_is_linked = false;
-			//model_render::portal1_open_amount = 0.0f; // do not reset - can cause tiny portals
-			model_render::portal2_ptr = nullptr;
-			model_render::portal2_is_linked = false;
-			//model_render::portal2_open_amount = 0.0f; // do not reset - can cause tiny portals
+			for (auto i = 0u; i < 4; i++)
+			{
+				auto& p = model_render::game_portals[i];
+				p.portal = nullptr;
+				p.portal_owner = nullptr;
+				p.is_linked = false;
+			}
 		}
 	}
 
@@ -531,12 +530,14 @@ namespace components
 		main_module::setup_required_cvars();
 
 		// reset portal vars
-		model_render::portal1_ptr = nullptr;
-		model_render::portal1_is_linked = false;
-		model_render::portal1_open_amount = 0.0f;
-		model_render::portal2_ptr = nullptr;
-		model_render::portal2_is_linked = false;
-		model_render::portal2_open_amount = 0.0f;
+		for (auto i = 0u; i < 4; i++)
+		{
+			auto* p = &model_render::game_portals[i];
+			p->portal = nullptr;
+			p->open_amount = 0.0f;
+			p->portal_owner = nullptr;
+			p->is_linked = false;
+		}
 	}
 
 	HOOK_RETN_PLACE_DEF(on_map_load_stub_retn);
@@ -598,11 +599,28 @@ namespace components
 	// #TODO: fixme when remix virtual instances work?
 	C_BaseEntity* cportalghost_should_draw(C_BaseEntity* ent)
 	{
+		int player_team_num = 0;
+
+		const auto base_player = utils::hook::call<C_BaseEntity*(__cdecl)()>(CLIENT_BASE + USE_OFFSET(0x17B5F0, 0x176460))(); // GetSplitScreenViewPlayer
+		if (base_player)
+		{
+			const auto portal_player = utils::hook::call<void* (__cdecl)(C_BaseEntity*)>(CLIENT_BASE + USE_OFFSET(0x3FDD0, 0x14BF30))(base_player); // ToPortalPlayer
+			if (portal_player)
+			{
+				player_team_num = base_player->m_iTeamNum;
+			}
+		}
+
+		// teamnum 2 = eggbot
+		// teamnum 3 = ballbot
+
 		if (ent && ent->model)
 		{
-			//const auto mdl_name = std::string_view(ent->model->szPathName);
-			//if (mdl_name.contains("chell") || mdl_name.contains("portalgun"))
-			if (ent->model->radius == 0.0f || ent->model->radius == 24.6587677f) {
+			if (ent->model->radius == 0.0f // chell
+				|| ent->model->radius == 24.6587677f // portalgun
+				|| (ent->model->radius == 74.0151749f && ent->m_iTeamNum == player_team_num) // models/player/ballbot/ballbot.mdl
+				|| (ent->model->radius == 82.9798126f && ent->m_iTeamNum == player_team_num) // models/player/eggbot/eggbot.mdl
+				) {
 				return nullptr; 
 			}
 		}
@@ -939,7 +957,38 @@ namespace components
 		bool is_using_custom_vis = false;
 		bool added_player_view_vis = false;
 
-		if (model_render::portal1_ptr && model_render::portal1_ptr->m_pLinkedPortal && model_render::portal1_ptr->m_fOpenAmount != 0.0f)
+		// #
+		auto portal_vis = [](model_render::game_portal_info_s* p, const CViewSetup* view, ViewCustomVisibility_t* vis, bool* set_view_org)
+			{
+				if (p->portal && p->portal->m_pLinkedPortal && p->portal->m_fOpenAmount != 0.0f)
+				{
+					// check if player view was added already
+					if (!*set_view_org)
+					{
+						// add the main scene view first if setting custom portal vis
+						vis->m_rgVisOrigins[vis->m_nNumVisOrigins++] = view->origin;
+						*set_view_org = true;
+					}
+
+					//CPortalRenderable_FlatBasic::AddToVisAsExitPortal(CPortalRenderable_FlatBasic * this, ViewCustomVisibility_t * pCustomVisibility)
+					utils::hook::call<void(__fastcall)(void* this_ptr, void* null, ViewCustomVisibility_t*)>(CLIENT_BASE + USE_OFFSET(0x2C2830, 0x2BBDA0))
+						(p->portal->m_pLinkedPortal, nullptr, vis);
+
+					return true;
+				}
+
+				return false;
+			};
+
+		is_using_custom_vis = portal_vis(&model_render::game_portals[0], view, &customVisibility, &added_player_view_vis) ? true : is_using_custom_vis;
+		is_using_custom_vis = portal_vis(&model_render::game_portals[1], view, &customVisibility, &added_player_view_vis) ? true : is_using_custom_vis;
+		is_using_custom_vis = portal_vis(&model_render::game_portals[2], view, &customVisibility, &added_player_view_vis) ? true : is_using_custom_vis;
+		is_using_custom_vis = portal_vis(&model_render::game_portals[3], view, &customVisibility, &added_player_view_vis) ? true : is_using_custom_vis;
+
+		/*
+		auto* p = &model_render::game_portals[0];
+		//if (model_render::portal1_ptr && model_render::portal1_ptr->m_pLinkedPortal && model_render::portal1_ptr->m_fOpenAmount != 0.0f)
+		if (p->portal && p->portal->m_pLinkedPortal && p->portal->m_fOpenAmount != 0.0f)
 		{
 			// add the main scene view first if setting custom portal vis
 			customVisibility.m_rgVisOrigins[customVisibility.m_nNumVisOrigins++] = view->origin;
@@ -947,12 +996,14 @@ namespace components
 
 			//CPortalRenderable_FlatBasic::AddToVisAsExitPortal(CPortalRenderable_FlatBasic * this, ViewCustomVisibility_t * pCustomVisibility)
 			utils::hook::call<void(__fastcall)(void* this_ptr, void* null, ViewCustomVisibility_t*)>(CLIENT_BASE + USE_OFFSET(0x2C2830, 0x2BBDA0))
-				(model_render::portal1_ptr->m_pLinkedPortal, nullptr, &customVisibility);
+				(p->portal->m_pLinkedPortal, nullptr, &customVisibility);
 
 			is_using_custom_vis = true;
 		}
 
-		if (model_render::portal2_ptr && model_render::portal2_ptr->m_pLinkedPortal && model_render::portal2_ptr->m_fOpenAmount != 0.0f)
+		//if (model_render::portal2_ptr && model_render::portal2_ptr->m_pLinkedPortal && model_render::portal2_ptr->m_fOpenAmount != 0.0f)
+		p = &model_render::game_portals[1];
+		if (p->portal && p->portal->m_pLinkedPortal && p->portal->m_fOpenAmount != 0.0f)
 		{
 			// check if player view was added already
 			if (!added_player_view_vis)
@@ -964,10 +1015,48 @@ namespace components
 
 			//CPortalRenderable_FlatBasic::AddToVisAsExitPortal(CPortalRenderable_FlatBasic * this, ViewCustomVisibility_t * pCustomVisibility)
 			utils::hook::call<void(__fastcall)(void* this_ptr, void* null, ViewCustomVisibility_t*)>(CLIENT_BASE + USE_OFFSET(0x2C2830, 0x2BBDA0))
-				(model_render::portal2_ptr->m_pLinkedPortal, nullptr, &customVisibility);
+				(p->portal->m_pLinkedPortal, nullptr, &customVisibility);
 
 			is_using_custom_vis = true;
 		}
+
+		// second pair
+		p = &model_render::game_portals[2];
+		if (p->portal && p->portal->m_pLinkedPortal && p->portal->m_fOpenAmount != 0.0f)
+		{
+			// check if player view was added already
+			if (!added_player_view_vis)
+			{
+				// add the main scene view first if setting custom portal vis
+				customVisibility.m_rgVisOrigins[customVisibility.m_nNumVisOrigins++] = view->origin;
+				added_player_view_vis = true;
+			}
+
+			//CPortalRenderable_FlatBasic::AddToVisAsExitPortal(CPortalRenderable_FlatBasic * this, ViewCustomVisibility_t * pCustomVisibility)
+			utils::hook::call<void(__fastcall)(void* this_ptr, void* null, ViewCustomVisibility_t*)>(CLIENT_BASE + USE_OFFSET(0x2C2830, 0x2BBDA0))
+				(p->portal->m_pLinkedPortal, nullptr, &customVisibility);
+
+			is_using_custom_vis = true;
+		}
+
+		p = &model_render::game_portals[3];
+		if (p->portal && p->portal->m_pLinkedPortal && p->portal->m_fOpenAmount != 0.0f)
+		{
+			// check if player view was added already
+			if (!added_player_view_vis)
+			{
+				// add the main scene view first if setting custom portal vis
+				customVisibility.m_rgVisOrigins[customVisibility.m_nNumVisOrigins++] = view->origin;
+				added_player_view_vis = true;
+			}
+
+			//CPortalRenderable_FlatBasic::AddToVisAsExitPortal(CPortalRenderable_FlatBasic * this, ViewCustomVisibility_t * pCustomVisibility)
+			utils::hook::call<void(__fastcall)(void* this_ptr, void* null, ViewCustomVisibility_t*)>(CLIENT_BASE + USE_OFFSET(0x2C2830, 0x2BBDA0))
+				(p->portal->m_pLinkedPortal, nullptr, &customVisibility);
+
+			is_using_custom_vis = true;
+		}
+		*/
 
 		// custom vis for area portals that were added in the previous frame (portal views are rendered after the main scene)
 		// >> this can be kinda bad as it potentially makes the whole map visible when the area is on the other side of the map and thus
@@ -992,13 +1081,6 @@ namespace components
 #endif
 		// remove all area portals that were added in the previous frame
 		model_render::linked_area_portals.clear();  
-
-
-
-
-
-		// do not allow api portals if the game has already spawned portals
-		//api::allow_api_portals = !is_using_custom_vis;
 
 #if 0
 		//if (/*api::allow_api_portals &&*/ api::portal0_mesh && api::portal1_mesh)

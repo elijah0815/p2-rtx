@@ -413,6 +413,8 @@ namespace components
 		extern LPDIRECT3DTEXTURE9 portal_orange;
 		extern LPDIRECT3DTEXTURE9 portal_orange_overlay;
 		extern LPDIRECT3DTEXTURE9 portal_orange_closed;
+		extern LPDIRECT3DTEXTURE9 portal_red;
+		extern LPDIRECT3DTEXTURE9 portal_purple;
 		extern LPDIRECT3DTEXTURE9 glass_shards;
 		extern LPDIRECT3DTEXTURE9 glass_window_lamps;
 		extern LPDIRECT3DTEXTURE9 glass_window_observ;
@@ -463,13 +465,31 @@ namespace components
 
 		static inline float vgui_progress_board_scalar = 1.0f;
 
-		static inline float portal1_open_amount = 0.0f;
+		struct game_portal_info_s
+		{
+			float open_amount = 0.0f;
+			const C_Prop_Portal* portal = nullptr;
+			const C_BaseEntity* portal_owner = nullptr;
+			bool is_linked = false;
+		};
+
+		static inline game_portal_info_s game_portals[4] = {};
+
+		/*static inline float portal1_open_amount = 0.0f;
 		static inline bool  portal1_is_linked = false;
 		static inline const C_Prop_Portal* portal1_ptr = nullptr;
 
 		static inline float portal2_open_amount = 0.0f;
 		static inline bool  portal2_is_linked = false;
 		static inline const C_Prop_Portal* portal2_ptr = nullptr;
+
+		static inline float portal3_open_amount = 0.0f;
+		static inline bool  portal3_is_linked = false;
+		static inline const C_Prop_Portal* portal3_ptr = nullptr;
+
+		static inline float portal4_open_amount = 0.0f;
+		static inline bool  portal4_is_linked = false;
+		static inline const C_Prop_Portal* portal4_ptr = nullptr;*/
 
 		static inline std::vector<CPortalRenderable_FlatBasic*> linked_area_portals;
 	};

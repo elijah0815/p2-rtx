@@ -43,6 +43,8 @@ namespace components
 		LPDIRECT3DTEXTURE9 portal_orange;
 		LPDIRECT3DTEXTURE9 portal_orange_overlay;
 		LPDIRECT3DTEXTURE9 portal_orange_closed;
+		LPDIRECT3DTEXTURE9 portal_red;
+		LPDIRECT3DTEXTURE9 portal_purple;
 		LPDIRECT3DTEXTURE9 glass_shards;
 		LPDIRECT3DTEXTURE9 glass_window_lamps;
 		LPDIRECT3DTEXTURE9 glass_window_observ;
@@ -71,6 +73,8 @@ namespace components
 			if (tex_addons::portal_orange) tex_addons::portal_orange->Release();
 			if (tex_addons::portal_orange_overlay) tex_addons::portal_orange_overlay->Release();
 			if (tex_addons::portal_orange_closed) tex_addons::portal_orange_closed->Release();
+			if (tex_addons::portal_red) tex_addons::portal_red->Release();
+			if (tex_addons::portal_purple) tex_addons::portal_purple->Release();
 			if (tex_addons::glass_shards) tex_addons::glass_shards->Release();
 			if (tex_addons::glass_window_lamps) tex_addons::glass_window_lamps->Release();
 			if (tex_addons::glass_window_observ) tex_addons::glass_window_observ->Release();
@@ -97,6 +101,8 @@ namespace components
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_orange.png", &tex_addons::portal_orange);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_orange_overlay.png", &tex_addons::portal_orange_overlay);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_orange_closed.png", &tex_addons::portal_orange_closed);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_red.png", &tex_addons::portal_red);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\portal_purple.png", &tex_addons::portal_purple);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_shards.png", &tex_addons::glass_shards);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_window_refract.png", &tex_addons::glass_window_lamps);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\glass_window_observ.png", &tex_addons::glass_window_observ);
@@ -959,6 +965,163 @@ namespace components
 		dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 	}
 
+	void handle_portal_mesh(prim_fvf_context& ctx, std::uint32_t portal_index, bool is_tinted_portal = false)
+	{
+		const auto dev = game::get_d3d_device();
+
+		if (tex_addons::portal_mask)
+		{
+			ctx.save_texture(dev, 1);
+			//dev->SetTexture(1, tex_addons::portal_mask); // does not work on coop for some reason
+			dev->SetTexture(1, nullptr); // so let remix estimate the portal
+		}
+
+		float open_amount = 0.0f;
+		float open_amount_linked = 0.0f;
+		bool is_linked = false;
+		const auto& p = model_render::game_portals;
+
+		// cba to refactor rn
+		// todo: fix portal colors on coop if possible
+		switch (portal_index)
+		{
+			default:
+			case 0:
+			{
+				open_amount = p[0].open_amount;
+				open_amount_linked = p[1].open_amount;
+				is_linked = p[0].is_linked;
+				if (tex_addons::portal_blue)
+				{
+					// render static portal overlay - currently not visible through walls
+#if 0
+					ctx.modifiers.dual_render_with_specified_texture = true;
+					ctx.modifiers.dual_render_texture = tex_addons::portal_blue_overlay;
+					ctx.modifiers.dual_render_with_specified_texture_blend_add = true;
+#endif
+					ctx.save_texture(dev, 0);
+					dev->SetTexture(0, tex_addons::portal_blue);
+				}
+				break;
+			}
+
+			case 1:
+			{
+				open_amount = p[1].open_amount;
+				open_amount_linked = p[0].open_amount;
+				is_linked = p[1].is_linked;
+				if (tex_addons::portal_orange)
+				{
+					// render static portal overlay - currently not visible through walls
+#if 0
+					ctx.modifiers.dual_render_with_specified_texture = true;
+					ctx.modifiers.dual_render_texture = tex_addons::portal_orange_overlay;
+					ctx.modifiers.dual_render_with_specified_texture_blend_add = true;
+#endif
+					ctx.save_texture(dev, 0);
+					dev->SetTexture(0, tex_addons::portal_orange);
+				}
+				break;
+			}
+
+			case 2:
+			{
+				open_amount = p[2].open_amount;
+				open_amount_linked = p[3].open_amount;
+				is_linked = p[2].is_linked;
+				if (tex_addons::portal_purple)
+				{
+					ctx.save_texture(dev, 0);
+					dev->SetTexture(0, tex_addons::portal_purple);
+				}
+				break;
+			}
+
+			case 3:
+			{
+				open_amount = p[3].open_amount;
+				open_amount_linked = p[2].open_amount;
+				is_linked = p[3].is_linked;
+				if (tex_addons::portal_red)
+				{
+					ctx.save_texture(dev, 0);
+					dev->SetTexture(0, tex_addons::portal_red);
+				}
+				break;
+			}
+		}
+
+		// replace with wireframe (makes life much easier)
+		if (!is_tinted_portal && ctx.info.shader_name != "Wireframe_DX9")
+		{
+			const auto cmat = ctx.info.material;
+			cmat->vftable->SetShader(ctx.info.material, "Wireframe");
+
+			//bool found = false;
+			//auto var = cmat->vftable->FindVar(cmat, nullptr, "$nocull", &found, false);
+			////auto varname = cullvar->vftable->GetName(cullvar);
+
+			//if (!found)
+			//{
+			//	utils::function<IMaterialVar* (IMaterialInternal* pMaterial, const char* pKey, int val)> IMaterialVar_Create = MATERIALSTYSTEM_BASE + 0x1A2F0;
+			//	auto var = IMaterialVar_Create(cmat, "$PortalColorGradientLight", 1);
+
+			//	cmat->vftable->AddMaterialVar(cmat, nullptr, var);
+			//	var = cmat->vftable->FindVar(cmat, nullptr, "$nocull", &found, false);
+			//}
+		}
+
+		// #
+		// scale portal on opening
+
+		// portal opening value is eased in -> apply inverse ease-in
+		float s = std::sqrtf(open_amount);
+
+		// ease out - but not really
+		s = 1 - (1 - s) * (1 - s);
+		s = 1 - (1 - s) * (1 - s);
+		s *= s * s;
+
+		// map to a different range because a scalar > 1 => smaller portal
+		// opening factor of 0 means that we start at with a 6x smaller portal
+		s = -4.0f * s + 5.0f;
+
+		// create a scaling matrix
+		D3DXMATRIX scaleMatrix;
+		D3DXMatrixScaling(&scaleMatrix, s, s, 1.0f);
+
+		// translate uv's to the center, scale from the center and translate back 
+		scaleMatrix = game::TC_TRANSLATE_TO_CENTER * scaleMatrix * game::TC_TRANSLATE_FROM_CENTER_TO_TOP_LEFT;
+
+		//dev->SetTransform(D3DTS_TEXTURE0, &scaleMatrix);
+		ctx.set_texture_transform(dev, &scaleMatrix);
+
+		ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
+		dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
+
+
+		// #
+		// inactive / active portal state
+
+		ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+		ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+
+		if (!is_linked)
+		{
+			dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 255));
+			dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+		}
+		else
+		{
+			// transition n
+			int t = static_cast<int>(std::roundf(((1.0f - std::sqrtf(open_amount_linked)) - 0.1f) * (255.0f / 0.9f)));
+			t = static_cast<int>(std::clamp(t, 0, 255));
+
+			dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, t));
+			dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+		}
+	}
+
 	// 
 	// main render path for every surface
 
@@ -1501,6 +1664,72 @@ namespace components
 			{
 				//ctx.modifiers.do_not_render = true;
 
+				if (ctx.info.material_name.ends_with("overlay_tinted"))
+				{
+					// var: $portalopenamount
+
+					//"$PortalCoopColorPlayerOnePortalOne" "[0.125 0.500 0.824]"
+					//"$PortalCoopColorPlayerOnePortalTwo" "[0.075 0.000 0.824]"
+					
+					//"$PortalCoopColorPlayerTwoPortalOne" "[1.000 0.705 0.125]"
+					//"$PortalCoopColorPlayerTwoPortalTwo" "[0.225 0.010 0.010]"
+
+					IMaterialVar* var_out = nullptr;
+					if (has_materialvar(ctx.info.material, "$PortalColorGradientLight", &var_out)) 
+					{
+						if (var_out)
+						{
+							const auto portal_color = var_out->vftable->GetVecValueInternal1(var_out);
+
+							bool is_p1p1 = false, is_p1p2 = false, is_p2p1 = false, is_p2p2 = false;
+							is_p1p1 =  utils::float_equal(portal_color[0], 0.125f, 0.01f)
+									&& utils::float_equal(portal_color[1], 0.500f, 0.01f)
+									&& utils::float_equal(portal_color[2], 0.824f, 0.01f);
+
+							if (!is_p1p1)
+							{
+								is_p1p2 =  utils::float_equal(portal_color[0], 0.075f, 0.01f)
+										&& utils::float_equal(portal_color[1], 0.000f, 0.01f)
+										&& utils::float_equal(portal_color[2], 0.824f, 0.01f);
+
+								if (!is_p1p2)
+								{
+									is_p2p1 =  utils::float_equal(portal_color[0], 1.000f, 0.01f)
+											&& utils::float_equal(portal_color[1], 0.705f, 0.01f)
+											&& utils::float_equal(portal_color[2], 0.125f, 0.01f);
+
+									if (!is_p2p1)
+									{
+										is_p2p2 =  utils::float_equal(portal_color[0], 0.225f, 0.01f)
+												&& utils::float_equal(portal_color[1], 0.010f, 0.01f)
+												&& utils::float_equal(portal_color[2], 0.010f, 0.01f);
+									}
+								}
+							}
+
+							if (is_p1p1 || is_p1p2 || is_p2p1 || is_p2p2)
+							{
+								handle_portal_mesh(ctx, is_p1p1 ? 0 : is_p1p2 ? 1 : is_p2p1 ? 2 : is_p2p2 ? 3 : 0, true);
+								was_portal_related = true;
+							}
+							
+							//const auto str = var_out->vftable->GetStringValue(var_out); 
+							//int yy = 0;
+						}
+					}
+
+					/*const auto parms = ctx.info.material->vftable->GetShaderParams(ctx.info.material);
+					const auto parm_count = ctx.info.material->vftable->ShaderParamCount(ctx.info.material);
+
+					for (auto p = 0u; p < parm_count; p++)
+					{
+						const auto x = parms[p];
+						const auto name = x->vftable->GetName(x);
+						const auto str = x->vftable->GetStringValue(x);
+						auto yy = 0;
+					}*/
+				}
+
 				// r_portal_stencil_depth 0 heavy influence
 				// TODO: is this check still needed?
 				if (ctx.info.material_name.contains("portal_stencil"))
@@ -1510,160 +1739,14 @@ namespace components
 				}
 				else if (ctx.info.material_name.ends_with("portalstaticoverlay_1"))
 				{
-					if (tex_addons::portal_mask)
-					{
-						ctx.save_texture(dev, 1);
-						dev->SetTexture(1, tex_addons::portal_mask);
-					}
-
-					if (tex_addons::portal_blue)
-					{
-						// render static portal overlay - currently not visible through walls
-#if 0
-						ctx.modifiers.dual_render_with_specified_texture = true;
-						ctx.modifiers.dual_render_texture = tex_addons::portal_blue_overlay;
-						ctx.modifiers.dual_render_with_specified_texture_blend_add = true;
-#endif
-						ctx.save_texture(dev, 0);
-						dev->SetTexture(0, tex_addons::portal_blue);
-					}
-
-					// replace with wireframe (makes life much easier)
-					if (ctx.info.shader_name != "Wireframe_DX9")
-					{
-						ctx.info.material->vftable->SetShader(ctx.info.material, "Wireframe");
-					}
-
-					// #
-					// scale portal on opening
-
-					// portal opening value is eased in -> apply inverse ease-in
-					float s = std::sqrtf(model_render::portal1_open_amount);
-
-					// ease out - but not really
-					s = 1 - (1 - s) * (1 - s);
-					s = 1 - (1 - s) * (1 - s);
-					s *= s * s;
-
-					// map to a different range because a scalar > 1 => smaller portal
-					// opening factor of 0 means that we start at with a 6x smaller portal
-					s = -4.0f * s + 5.0f;
-
-					// create a scaling matrix
-					D3DXMATRIX scaleMatrix;
-					D3DXMatrixScaling(&scaleMatrix, s, s, 1.0f);
-
-					// translate uv's to the center, scale from the center and translate back 
-					scaleMatrix = game::TC_TRANSLATE_TO_CENTER * scaleMatrix * game::TC_TRANSLATE_FROM_CENTER_TO_TOP_LEFT;
-
-					//dev->SetTransform(D3DTS_TEXTURE0, &scaleMatrix);
-					ctx.set_texture_transform(dev, &scaleMatrix);
-
-					ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
-					dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
-
-
-					// #
-					// inactive / active portal state
-
-					ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
-					ctx.save_tss(dev, D3DTSS_ALPHAARG2);
-
-					if (!model_render::portal1_is_linked)
-					{
-						dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 255));
-						dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
-					}
-					else
-					{
-						// transition n
-						int t = static_cast<int>(std::roundf(((1.0f - std::sqrtf(model_render::portal2_open_amount)) - 0.1f) * (255.0f / 0.9f)));
-						t = static_cast<int>(std::clamp(t, 0, 255));
-
-						dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, t));
-						dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
-					}
-
+					handle_portal_mesh(ctx, 0);
 
 					//ctx.modifiers.do_not_render = true;
 					was_portal_related = true;
 				}
 				else if (ctx.info.material_name.ends_with("portalstaticoverlay_2"))
 				{
-					if (tex_addons::portal_mask)
-					{
-						ctx.save_texture(dev, 1);
-						dev->SetTexture(1, tex_addons::portal_mask);
-					}
-
-					if (tex_addons::portal_orange)
-					{
-						// render static portal overlay - currently not visible through walls
-#if 0
-						ctx.modifiers.dual_render_with_specified_texture = true;
-						ctx.modifiers.dual_render_texture = tex_addons::portal_orange_overlay;
-						ctx.modifiers.dual_render_with_specified_texture_blend_add = true;
-#endif
-						ctx.save_texture(dev, 0);
-						dev->SetTexture(0, tex_addons::portal_orange);
-					}
-
-					// replace with wireframe (makes life much easier)
-					if (ctx.info.shader_name != "Wireframe_DX9")
-					{
-						ctx.info.material->vftable->SetShader(ctx.info.material, "Wireframe");
-					}
-
-
-					// #
-					// scale portal on opening
-
-					// portal opening value is eased in -> apply inverse ease-in
-					float s = std::sqrtf(model_render::portal2_open_amount);
-
-					// ease out - but not really
-					s = 1 - (1 - s) * (1 - s);
-					s = 1 - (1 - s) * (1 - s);
-					s *= s * s;
-
-					// map to a different range because a scalar > 1 => smaller portal
-					// opening factor of 0 means that we start at with a 6x smaller portal
-					s = -5.0f * s + 6.0f;
-
-					// create a scaling matrix
-					D3DXMATRIX scaleMatrix;
-					D3DXMatrixScaling(&scaleMatrix, s, s, 1.0f);
-
-					// translate uv's to the center, scale from the center and translate back 
-					scaleMatrix = game::TC_TRANSLATE_TO_CENTER * scaleMatrix * game::TC_TRANSLATE_FROM_CENTER_TO_TOP_LEFT;
-
-					//dev->SetTransform(D3DTS_TEXTURE0, &scaleMatrix);
-					ctx.set_texture_transform(dev, &scaleMatrix);
-
-					ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
-					dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
-
-
-					// #
-					// inactive / active portal state
-
-					ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
-					ctx.save_tss(dev, D3DTSS_ALPHAARG2);
-
-					if (!model_render::portal2_is_linked)
-					{
-						dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, 255));
-						dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
-					}
-					else
-					{
-						// transition n
-						int t = static_cast<int>(std::roundf(((1.0f - std::sqrtf(model_render::portal1_open_amount)) - 0.1f) * (255.0f / 0.9f)));
-						t = static_cast<int>(std::clamp(t, 0, 255));
-
-						dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(0, 0, 0, t));
-						dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
-					}
+					handle_portal_mesh(ctx, 1);
 
 					//ctx.modifiers.do_not_render = true;
 					was_portal_related = true;
@@ -2978,17 +3061,20 @@ namespace components
 
 	// -----
 
-	void prop_portal_client_think_hk(const C_Prop_Portal* portal)
+	void prop_portal_client_think_hk(C_Prop_Portal* portal)
 	{
 		// portal pointers and settings are reset at the end of a frame (main_module::endscene_cb)
 		// resetting them here messes up the link to portal 2
 		// resetting them at the start of a frame does not work because client think is called after rendering the portals?
 
+		auto& p = model_render::game_portals;
+
 		if (portal && portal->m_bActivated)
 		{
-			if (!portal->m_bIsPortal2)
+			// portal 0 or 2
+			if (!portal->m_bIsPortal2) 
 			{
-#ifdef DEBUG
+#/*ifdef DEBUG
 				if (portal->m_pLinkedPortal) {
 					int break_me = 1;
 				}
@@ -2997,14 +3083,42 @@ namespace components
 					int break_me = 1;
 				}
 #endif
-				
-				model_render::portal1_is_linked = portal->m_pLinkedPortal ? true : false;
+				if (portal->portal_index != 0 && portal->portal_index != 2 || portal->portal_index > 3)
+				{
+					__debugbreak();
+				}
+
+				p[portal->portal_index].portal = portal;
+				p[portal->portal_index].portal_owner = portal->m_hFiredByPlayer;
+				p[portal->portal_index].index = portal->portal_index;
+				p[portal->portal_index].open_amount = portal->m_fOpenAmount;
+				p[portal->portal_index].is_linked = portal->m_pLinkedPortal ? true : false;*/
+
+				/*model_render::portal1_is_linked = portal->m_pLinkedPortal ? true : false;
 				model_render::portal1_open_amount = portal->m_fOpenAmount;
-				model_render::portal1_ptr = portal;
+				model_render::portal1_ptr = portal;*/
+
+				// first pair (can be player 1 or 2)
+				if (!portal->team_num  || portal->team_num == 3)
+				{
+					p[0].portal = portal;
+					p[0].portal_owner = portal->m_hFiredByPlayer;
+					p[0].open_amount = portal->m_fOpenAmount;
+					p[0].is_linked = portal->m_pLinkedPortal ? true : false;
+				}
+
+				// second pair
+				else // if second portal of pair is matching owning player
+				{
+					p[2].portal = portal;
+					p[2].portal_owner = portal->m_hFiredByPlayer;
+					p[2].open_amount = portal->m_fOpenAmount;
+					p[2].is_linked = portal->m_pLinkedPortal ? true : false;
+				}
 			}
 			else
 			{
-#ifdef DEBUG
+/*#ifdef DEBUG
 				if (portal->m_pLinkedPortal) {
 					int break_me = 1;
 				}
@@ -3013,9 +3127,62 @@ namespace components
 					int break_me = 1;
 				}
 #endif
-				model_render::portal2_is_linked = portal->m_pLinkedPortal ? true : false; 
+				if (portal->portal_index != 1 && portal->portal_index != 3 || portal->portal_index > 3)
+				{
+					__debugbreak();
+				}
+
+				p[portal->portal_index].portal = portal;
+				p[portal->portal_index].portal_owner = portal->m_hFiredByPlayer;
+				p[portal->portal_index].index = portal->portal_index;
+				p[portal->portal_index].open_amount = portal->m_fOpenAmount;
+				p[portal->portal_index].is_linked = portal->m_pLinkedPortal ? true : false;*/
+
+				// first pair (can be player 1 or 2)
+				if (!portal->team_num || portal->team_num == 3) // if second portal of pair is matching owning player
+				{
+					p[1].portal = portal;
+					p[1].portal_owner = portal->m_hFiredByPlayer;
+					p[1].open_amount = portal->m_fOpenAmount;
+					p[1].is_linked = portal->m_pLinkedPortal ? true : false;
+				}
+
+				// second pair
+				else // if second portal of pair is matching owning player
+				{
+					p[3].portal = portal;
+					p[3].portal_owner = portal->m_hFiredByPlayer;
+					p[3].open_amount = portal->m_fOpenAmount;
+					p[3].is_linked = portal->m_pLinkedPortal ? true : false;
+				}
+
+				//// first pair (can be player 1 or 2)
+				//if ((!parr[0].portal_owner && !parr[1].portal_owner) // first nor second portal set
+				//	|| parr[0].portal_owner == portal->m_hFiredByPlayer // if first portal of pair is matching owning player
+				//	|| parr[1].portal_owner == portal->m_hFiredByPlayer) // if second portal of pair is matching owning player
+				//{
+				//	parr[1].portal = portal;
+				//	parr[1].portal_owner = portal->m_hFiredByPlayer;
+				//	parr[1].index = 1;
+				//	parr[1].open_amount = portal->m_fOpenAmount;
+				//	parr[1].is_linked = portal->m_pLinkedPortal ? true : false;
+				//}
+
+				//// second pair
+				//else if ((!parr[2].portal_owner && !parr[3].portal_owner) // first nor second portal of set
+				//	|| parr[2].portal_owner == portal->m_hFiredByPlayer // if first portal of pair is matching owning player
+				//	|| parr[3].portal_owner == portal->m_hFiredByPlayer) // if second portal of pair is matching owning player
+				//{
+				//	parr[3].portal = portal;
+				//	parr[3].portal_owner = portal->m_hFiredByPlayer;
+				//	parr[3].index = 3;
+				//	parr[3].open_amount = portal->m_fOpenAmount;
+				//	parr[3].is_linked = portal->m_pLinkedPortal ? true : false;
+				//}
+
+				/*model_render::portal2_is_linked = portal->m_pLinkedPortal ? true : false; 
 				model_render::portal2_open_amount = portal->m_fOpenAmount;
-				model_render::portal2_ptr = portal;
+				model_render::portal2_ptr = portal;*/
 			}
 		}
 	}
