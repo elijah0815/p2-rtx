@@ -1176,6 +1176,49 @@ namespace components
 		}
 	}
 
+
+	int override_entity_vis(C_BaseEntity* ent)
+	{
+		if (ent && ent->model && std::string_view(ent->model->szPathName).contains("mapmarker"))
+		{
+			return 1;
+		}
+
+		return 0; 
+	}
+
+	HOOK_RETN_PLACE_DEF(base_ent_update_vis_draw_retn);
+	HOOK_RETN_PLACE_DEF(base_ent_update_vis_skip_retn);
+	__declspec(naked) void base_ent_update_vis_stub()
+	{
+		__asm
+		{
+			push	ebp;
+			pushad;
+			push	edi; // C_BaseEntity*
+			call	override_entity_vis;
+			add		esp, 4;
+			cmp		eax, 1;
+			jne		SKIP; // jump if eax = 0
+			popad;
+			pop		ebp;
+			mov     byte ptr[ebp - 1], 1 // bDraw
+			jmp		base_ent_update_vis_draw_retn;
+
+		SKIP:
+			popad;
+			pop		ebp;
+			// og code without overrides
+			cmp     byte ptr[ebp - 1], 0; // bDraw check
+			jz		SKIP_OG;
+			jmp		base_ent_update_vis_draw_retn;
+
+		SKIP_OG:
+			jmp		base_ent_update_vis_skip_retn;
+		}
+	}
+
+
 	struct CViewRender
 	{
 		char pad[0x3E8];
@@ -1462,6 +1505,12 @@ namespace components
 		utils::hook(CLIENT_BASE + USE_OFFSET(0x1F2504, 0x1ECF04), viewdrawscene_push_args_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(viewdrawscene_push_args_retn, CLIENT_BASE + USE_OFFSET(0x1F2509, 0x1ECF09));
 
+
+		// C_BaseEntity::UpdateVisibility
+		utils::hook::nop(CLIENT_BASE + USE_OFFSET(0x76406, 0x73076), 10);
+		utils::hook(CLIENT_BASE + USE_OFFSET(0x76406, 0x73076), base_ent_update_vis_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(base_ent_update_vis_draw_retn, CLIENT_BASE + USE_OFFSET(0x76410, 0x73080));
+		HOOK_RETN_PLACE(base_ent_update_vis_skip_retn, CLIENT_BASE + USE_OFFSET(0x76495, 0x73105));
 
 		// #
 
