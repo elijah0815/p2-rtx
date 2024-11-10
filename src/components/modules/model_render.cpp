@@ -1235,7 +1235,7 @@ namespace components
 			//}
 		}
 
-		/*if (ctx.info.material_name.contains("warp_alpha"))
+		/*if (ctx.info.material_name.contains("marker"))
 		{
 			int break_me = 1;   
 		}*/
@@ -2156,11 +2156,11 @@ namespace components
 				//	&& splinetype && splinetype->m_intVal > 0)
 
 				// only fix portal gun beams
-				if (ctx.info.buffer_state.m_Transform[2].m[3][2] > -2.0f)
+				if (ctx.info.buffer_state.m_Transform[2].m[3][2] > -2.0f
+					|| (g_player_current_area == 2 && map_settings::get_map_name() == "sp_a1_intro3")) // allow in this area
 				{
 					if (ctx.info.material_name.starts_with("particle/beam_generic")
-						|| ctx.info.material_name.ends_with("electricity_beam_01")
-						|| (g_player_current_area == 2 && map_settings::get_map_name() == "sp_a1_intro3"))
+						|| ctx.info.material_name.ends_with("electricity_beam_01"))
 					{
 						model_render_hlslpp::fix_sprite_trail_particles(ctx, primlist);
 
@@ -2217,13 +2217,15 @@ namespace components
 			// hanging cables - requires vertex shader - verts not modified on the cpu
 			else if (mesh->m_VertexFormat == 0x24900005)
 			{
-				ctx.modifiers.do_not_render = true; // they can freak out sometimes so just ignore them for now
+				//ctx.modifiers.do_not_render = true; // they can freak out sometimes so just ignore them for now
+				ctx.save_texture(dev, 0);
+				dev->SetTexture(0, tex_addons::black_shader);
 #if 0
 				// do not set fvf
 				//dev->SetFVF(D3DFVF_XYZB5 | D3DFVF_NORMAL | D3DFVF_TEX2); // tc @ 28
-				ctx.save_vs(dev);
-				dev->SetPixelShader(nullptr);
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&buffer_state.m_Transform[0]));
+				//ctx.save_vs(dev);
+				//dev->SetPixelShader(nullptr);
+				//dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 #endif
 			}
 
