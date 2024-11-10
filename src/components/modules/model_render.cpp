@@ -2059,7 +2059,7 @@ namespace components
 
 						float scalar = 1.0f;
 						if (vcol_r <= 0.4f) {
-							scalar = std::powf(vcol_r / 0.4f, 2.5f) * 0.4f; // crush values closer to 0 as even 0.01 is bright af
+							scalar = std::powf(vcol_r / 0.4f, 1.5f) * 0.4f; // crush values closer to 0 as even 0.01 is bright af
 						}
 
 						// save val for screen overlays
@@ -2070,6 +2070,70 @@ namespace components
 							vcol_r * scalar, 
 							vcol_g * scalar, 
 							vcol_b * scalar, 1.0f));
+					}
+
+					else if (ctx.info.material_name.ends_with("board_vgui"))
+					{
+						//lookat_vertex_decl(dev, primlist);
+						float vcol_r = 0.0f;
+						float vcol_g = 0.0f;
+						float vcol_b = 0.0f;
+						float vcol_a = 1.0f;
+
+						// cant get vertex color to work here? -> grab vertex color and use tfactor instead
+						{
+							IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
+							dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
+
+							IDirect3DIndexBuffer9* ib = nullptr;
+							if (SUCCEEDED(dev->GetIndices(&ib)))
+							{
+								void* ib_data; // retrieve a single vertex index (*2 because WORD)
+								if (SUCCEEDED(ib->Lock(primlist->m_FirstIndex * 2, 2, &ib_data, D3DLOCK_READONLY)))
+								{
+									const auto first_index = *static_cast<std::uint16_t*>(ib_data);
+									ib->Unlock();
+
+									void* src_buffer_data; // retrieve single indexed vertex
+									if (SUCCEEDED(vb->Lock(first_index * t_stride, t_stride, &src_buffer_data, D3DLOCK_READONLY)))
+									{
+										struct src_vert { Vector pos; Vector normal;  D3DCOLOR color; Vector2D tc0; };
+										const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data));
+
+										// unpack color
+										vcol_r = static_cast<float>((src->color >> 16) & 0xFF) / 255.0f * 1.0f;
+										vcol_g = static_cast<float>((src->color >> 8) & 0xFF) / 255.0f * 1.0f;
+										vcol_b = static_cast<float>((src->color >> 0) & 0xFF) / 255.0f * 1.0f;
+										vcol_a = static_cast<float>((src->color >> 24) & 0xFF) / 255.0f * 0.1f;
+										vb->Unlock();
+									}
+								}
+							}
+						}
+
+						ctx.save_vs(dev);
+						dev->SetVertexShader(nullptr);
+						dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_DIFFUSE | D3DFVF_TEX1);
+						dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
+
+						ctx.save_tss(dev, D3DTSS_COLORARG1);
+						ctx.save_tss(dev, D3DTSS_COLORARG2);
+						ctx.save_tss(dev, D3DTSS_COLOROP);
+						ctx.save_tss(dev, D3DTSS_ALPHAOP);
+						dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+						dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+						dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+						dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+
+						float scalar = 1.0f;
+						if (vcol_r <= 0.4f) {
+							scalar = std::powf(vcol_r / 0.4f, 1.5f) * 0.4f; // crush values closer to 0 as even 0.01 is bright af
+						}
+
+						dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(
+							vcol_r * scalar,
+							vcol_g * scalar,
+							vcol_b * scalar, vcol_a));
 					}
 
 					// vgui/screens/vgui_coop_progress_board_numbers
@@ -2146,8 +2210,9 @@ namespace components
 			// + portal clearing gate (blue sweeping beam)
 			// + portal gun pickup effect (beam)
 			// + laser emitter swirrl
+			// + portal cleanser
 			// can be rendered but requires vertexshader + position
-			else if (mesh->m_VertexFormat == 0x924900005) // stride 0x70 - 112
+			else if (mesh->m_VertexFormat == 0x924900005) // stride 0x70 - 112 
 			{
 				// Spritecard -> Splinecard
 
@@ -2155,11 +2220,16 @@ namespace components
 				//if (has_materialvar(ctx.info.material, "$splinetype", &splinetype) // could fix other splines as well but performance is not great esp. when shooting portals
 				//	&& splinetype && splinetype->m_intVal > 0)
 
+				bool is_cleanser = ctx.info.material_name == "effects/portal_cleanser"
+					|| ctx.info.material_name == "effects/cleanser_edge";
+
 				// only fix portal gun beams
 				if (ctx.info.buffer_state.m_Transform[2].m[3][2] > -2.0f
-					|| (g_player_current_area == 2 && map_settings::get_map_name() == "sp_a1_intro3")) // allow in this area
+					|| (g_player_current_area == 2 && map_settings::get_map_name() == "sp_a1_intro3") // allow in this area
+					|| is_cleanser)
 				{
-					if (ctx.info.material_name.starts_with("particle/beam_generic")
+					if (is_cleanser
+						|| ctx.info.material_name.starts_with("particle/beam_generic")
 						|| ctx.info.material_name.ends_with("electricity_beam_01"))
 					{
 						model_render_hlslpp::fix_sprite_trail_particles(ctx, primlist);
@@ -2387,7 +2457,7 @@ namespace components
 
 			// emancipation grill
 			// renders water $bottommaterial
-			else if (mesh->m_VertexFormat == 0x80033) //stride = 0x40  
+			else if (mesh->m_VertexFormat == 0x80033) //stride = 0x40   
 			{
 				/*
 				float flPowerUp = params[ info.m_nPowerUp ]->GetFloatValue();

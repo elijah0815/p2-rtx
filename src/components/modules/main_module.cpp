@@ -1179,8 +1179,7 @@ namespace components
 
 	int override_entity_vis(C_BaseEntity* ent)
 	{
-		if (ent && ent->model && std::string_view(ent->model->szPathName).contains("mapmarker"))
-		{
+		if (ent && ent->model && std::string_view(ent->model->szPathName).contains("mapmarker")) {
 			return 1;
 		}
 
