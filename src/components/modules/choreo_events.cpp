@@ -13,7 +13,7 @@ namespace components
 		{
 			if (mapname.starts_with("sp_a4"))
 			{
-				if (mapname.ends_with("le4")) // sp_a4_finale4
+				if (mapname.ends_with("le2")) // sp_a4_finale2
 				{
 					if (ev_a4_f2_api_portal_spawn.has_elapsed(5.0f))
 					{

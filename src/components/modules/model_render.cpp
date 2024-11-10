@@ -1876,79 +1876,81 @@ namespace components
 							}
 						}
 					}
-				}
-
-				/*if (ctx.info.material_name.contains("light_panel_"))
+				} // end 'was_portal_related'
+				else
 				{
-					add_nocull_materialvar(ctx.info.material); // no longer needed
-					//ctx.modifiers.do_not_render = true;
-				}*/
-
-				// side beams of light bridges - effects/projected_wall_rail
-				else if (ctx.info.material_name.contains("ed_wall_ra"))
-				{
-					//ctx.modifiers.do_not_render = true;
-					if (tex_addons::blue_laser_dualrender)
+					/*if (ctx.info.material_name.contains("light_panel_"))
 					{
-						ctx.modifiers.dual_render_with_specified_texture = true;
-						ctx.modifiers.dual_render_texture = tex_addons::blue_laser_dualrender;
-					}
-				}
-				// TODO - create actual portals for this?
-				// requires portal stencil depth of at least 1
-				else if (ctx.info.material_name.contains("decals/portalstencildecal"))
-				{
-					//ctx.modifiers.do_not_render = true;
+						add_nocull_materialvar(ctx.info.material); // no longer needed
+						//ctx.modifiers.do_not_render = true;
+					}*/
 
-					// #TODO set unique texture
-					ctx.save_texture(dev, 0);
-					dev->SetTexture(0, tex_addons::portal_mask);
-				}
-				// unique textures for the white sky so they can be marked
-				else if (ctx.info.material_name.contains("sky"))
-				{
-					if (ctx.info.material_name.contains("_white"))
+					// side beams of light bridges - effects/projected_wall_rail
+					if (ctx.info.material_name.contains("ed_wall_ra"))
+					{
+						//ctx.modifiers.do_not_render = true;
+						if (tex_addons::blue_laser_dualrender)
+						{
+							ctx.modifiers.dual_render_with_specified_texture = true;
+							ctx.modifiers.dual_render_texture = tex_addons::blue_laser_dualrender;
+						}
+					}
+					// TODO - create actual portals for this?
+					// requires portal stencil depth of at least 1
+					else if (ctx.info.material_name.contains("decals/portalstencildecal"))
+					{
+						//ctx.modifiers.do_not_render = true;
+
+						// #TODO set unique texture
+						ctx.save_texture(dev, 0);
+						dev->SetTexture(0, tex_addons::portal_mask);
+					}
+					// unique textures for the white sky so they can be marked
+					else if (ctx.info.material_name.contains("sky"))
+					{
+						if (ctx.info.material_name.contains("_white"))
+						{
+							ctx.save_texture(dev, 0);
+
+							// sky_whiteft
+							if (ctx.info.material_name.contains("eft")) {
+								dev->SetTexture(0, tex_addons::sky_gray_ft);
+							}
+							else if (ctx.info.material_name.contains("ebk")) {
+								dev->SetTexture(0, tex_addons::sky_gray_bk);
+							}
+							else if (ctx.info.material_name.contains("elf")) {
+								dev->SetTexture(0, tex_addons::sky_gray_lf);
+							}
+							else if (ctx.info.material_name.contains("ert")) {
+								dev->SetTexture(0, tex_addons::sky_gray_rt);
+							}
+							else if (ctx.info.material_name.contains("eup")) {
+								dev->SetTexture(0, tex_addons::sky_gray_up);
+							}
+							else if (ctx.info.material_name.contains("edn")) {
+								dev->SetTexture(0, tex_addons::sky_gray_dn);
+							}
+
+							ctx.modifiers.as_sky = true;
+						}
+					}
+					else if (ctx.info.material_name.ends_with("warp_alpha"))
 					{
 						ctx.save_texture(dev, 0);
+						dev->SetTexture(0, tex_addons::water_drip);
 
-						// sky_whiteft
-						if (ctx.info.material_name.contains("eft"))  {
-							dev->SetTexture(0, tex_addons::sky_gray_ft);
-						}
-						else if (ctx.info.material_name.contains("ebk")) {
-							dev->SetTexture(0, tex_addons::sky_gray_bk);
-						}
-						else if (ctx.info.material_name.contains("elf")) {
-							dev->SetTexture(0, tex_addons::sky_gray_lf);
-						}
-						else if (ctx.info.material_name.contains("ert")) {
-							dev->SetTexture(0, tex_addons::sky_gray_rt);
-						}
-						else if (ctx.info.material_name.contains("eup")) {
-							dev->SetTexture(0, tex_addons::sky_gray_up);
-						}
-						else if (ctx.info.material_name.contains("edn")) {
-							dev->SetTexture(0, tex_addons::sky_gray_dn);
-						}
-
-						ctx.modifiers.as_sky = true;
+						ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+						dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
 					}
+
+					ctx.save_vs(dev);
+					dev->SetVertexShader(nullptr);
+
+					// noticed some normal issues on vgui_indicator's .. disable normals for now?
+					dev->SetFVF(D3DFVF_XYZB3 /*| D3DFVF_NORMAL*/ | D3DFVF_TEX1 | D3DFVF_TEXCOORDSIZE2(0));
+					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 				}
-				else if (ctx.info.material_name.ends_with("warp_alpha"))
-				{
-					ctx.save_texture(dev, 0);
-					dev->SetTexture(0, tex_addons::water_drip);
-
-					ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
-					dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
-				}
-
-				ctx.save_vs(dev);
-				dev->SetVertexShader(nullptr);
-
-				// noticed some normal issues on vgui_indicator's .. disable normals for now?
-				dev->SetFVF(D3DFVF_XYZB3 /*| D3DFVF_NORMAL*/ | D3DFVF_TEX1 | D3DFVF_TEXCOORDSIZE2(0));
-				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 			}
 
 			// portal_draw_ghosting 0 disables this
