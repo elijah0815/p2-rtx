@@ -617,9 +617,10 @@ namespace components
 		if (ent && ent->model)
 		{
 			if (ent->model->radius == 0.0f // chell
-				|| ent->model->radius == 24.6587677f // portalgun
+				|| (ent->model->radius == 24.6587677f) // portalgun
 				|| (ent->model->radius == 74.0151749f && ent->m_iTeamNum == player_team_num) // models/player/ballbot/ballbot.mdl
 				|| (ent->model->radius == 82.9798126f && ent->m_iTeamNum == player_team_num) // models/player/eggbot/eggbot.mdl
+				|| (ent->model->radius == 76.5784531f) // models/info_character/info_character_player.mdl
 				) {
 				return nullptr; 
 			}
