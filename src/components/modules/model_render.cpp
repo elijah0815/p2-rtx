@@ -1235,10 +1235,10 @@ namespace components
 			//}
 		}
 
-		if (ctx.info.material_name.contains("tool"))
+		/*if (ctx.info.material_name.contains("tool"))
 		{
 			int break_me = 1;   
-		}
+		}*/
 
 		if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x2480033)
 		{
@@ -1995,7 +1995,7 @@ namespace components
 				//ctx.modifiers.do_not_render = true;
 				
 				// always render UI and world ui with high gamma
-				ctx.modifiers.with_high_gamma = true;
+				ctx.modifiers.with_high_gamma = true; 
 
 				// early out if vgui_white
 				if (ctx.info.material_name != "vgui_white")
@@ -2174,6 +2174,11 @@ namespace components
 						dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
 					}
 
+					// some light sprites are rendered as ui through other geo 
+					else if (ctx.info.material_name.ends_with("_noz")) {
+						ctx.modifiers.do_not_render = true;
+					}
+
 					/* // --- render using shaders
 					// video on intro3
 					else if (ctx.info.material_name.contains("elevator_video_"))
@@ -2244,7 +2249,7 @@ namespace components
 			}
 
 			// terrain - "WorldVertexTransition"
-			else if (mesh->m_VertexFormat == 0x480007)
+			else if (mesh->m_VertexFormat == 0x480007) 
 			{
 				//ctx.modifiers.do_not_render = true;
 
@@ -2297,7 +2302,7 @@ namespace components
 				fix_sprite_particles(ctx, primlist);  
 
 				// scale the projection matrix for viewmodel particles so that they match the scaled remix viewmodel (currently set to a scale of 0.4)
-				if (ctx.info.buffer_state.m_Transform[2].m[3][2] == -1.00003529f)
+				if (ctx.info.buffer_state.m_Transform[2].m[3][2] == -1.00003529f) 
 				{
 					// #TODO - remove when floating point perc. gets better with shaders
 					//if (map_settings::get_map_name() == "sp_a1_wakeup")  
