@@ -1,0 +1,12 @@
+"substitution"
+{
+// SAMPLE DATA - use the "sub" key to create a new substitution entry.  
+// DO NOT specify file extensions; the code will automatically handle VVD, VTX, MDL, and ANI
+
+// Coming soon: feature to white list certain maps 
+//	"map"	"sp_a1_intro1"
+//	"map"	"sp_a1_intro2"
+//	"map"	"sp_a1_intro3"
+//	"map"	"sp_a1_intro4"
+//	"map"	"sp_a1_intro5"
+}
