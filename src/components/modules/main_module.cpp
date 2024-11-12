@@ -1533,7 +1533,6 @@ namespace components
 		utils::hook::nop(CLIENT_BASE + USE_OFFSET(0x1D6675, 0x1D0FD5), 2);
 		utils::hook::nop(CLIENT_BASE + USE_OFFSET(0x1D6679, 0x1D0FD9), 2);
 
-		// we force cpu and gpu_level via commandline now
 		// force some gpu_level 3 logic
 		// C_EnvProjectedTexture::ShouldUpdate :: always return true
 		utils::hook::set<WORD>(CLIENT_BASE + USE_OFFSET(0x9E50C, 0x9AF1C), 0x01B0); // 30 C0 -> B0 01
@@ -1541,6 +1540,11 @@ namespace components
 		// CViewRender::InitFadeData :: manually set fade data and not rely on cpu_level
 		utils::hook(CLIENT_BASE + USE_OFFSET(0x1E51E3, 0x1DFC33), init_fade_data_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(init_fade_data_retn, CLIENT_BASE + USE_OFFSET(0x1E5209, 0x1DFC59));
+
+		// C_BaseEntity::ShouldDraw :: gpu/cpu level checks for simulated entites
+		utils::hook::set<BYTE>(CLIENT_BASE + USE_OFFSET(0x6EE5D, 0x6BC2D), 0xEB);
+		utils::hook::set<BYTE>(CLIENT_BASE + USE_OFFSET(0x6EE6F, 0x6BC3F), 0xEB);
+		utils::hook::set<BYTE>(CLIENT_BASE + USE_OFFSET(0x6EE86, 0x6BC56), 0xEB);
 	}
 
 	main_module::~main_module()

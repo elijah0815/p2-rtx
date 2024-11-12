@@ -2040,6 +2040,7 @@ namespace components
 						|| ctx.info.material_name.ends_with("electricity_beam_01"))
 					{
 						model_render_hlslpp::fix_sprite_trail_particles(ctx, primlist);
+
 						ctx.save_vs(dev);
 						dev->SetVertexShader(nullptr);
 						dev->SetPixelShader(nullptr);
