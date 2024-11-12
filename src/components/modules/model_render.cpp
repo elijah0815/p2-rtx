@@ -1143,7 +1143,7 @@ namespace components
 		
 
 		//Vector* model_org = reinterpret_cast<Vector*>(ENGINE_BASE + 0x50DA90);
-		const auto model_to_world_mtx = reinterpret_cast<VMatrix*>(ENGINE_BASE + USE_OFFSET(0x63C8C8, 0x637158));
+		/*const auto model_to_world_mtx = reinterpret_cast<VMatrix*>(ENGINE_BASE + USE_OFFSET(0x63C8C8, 0x637158));
 
 		VMatrix mtx = {};
 		mtx.m[0][0] = model_to_world_mtx->m[0][0];
@@ -1161,7 +1161,7 @@ namespace components
 		mtx.m[3][0] = model_to_world_mtx->m[0][3];
 		mtx.m[3][1] = model_to_world_mtx->m[1][3];
 		mtx.m[3][2] = model_to_world_mtx->m[2][3];
-		mtx.m[3][3] = game::IDENTITY.m[3][3];
+		mtx.m[3][3] = game::IDENTITY.m[3][3];*/
 
 		auto& ctx = model_render::primctx;
 		const auto shaderapi = game::get_shaderapi();
@@ -1243,7 +1243,7 @@ namespace components
 		if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x2480033)
 		{
 			//ctx.modifiers.do_not_render = true;
-			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+			dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
 			dev->SetVertexShader(nullptr);
 
@@ -1353,7 +1353,7 @@ namespace components
 
 			//if (!is_portalgun_viewmodel)
 			{
-				dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 			}
 
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX6);
@@ -1761,7 +1761,7 @@ namespace components
 						ctx.save_vs(dev);
 						dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX5); // 64
 						dev->SetVertexShader(nullptr);
-						dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+						dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 					}
 
 					// if set to wireframe mode 
@@ -1771,7 +1771,7 @@ namespace components
 						ctx.save_vs(dev);
 						dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1 | D3DFVF_TEXCOORDSIZE2(0));
 						dev->SetVertexShader(nullptr);
-						dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+						dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 
 						// dirty hack to invert the portal direction in the spawn area on sp_a4_finale2 because
 						// the static overlays on portals (that we use to identify and render the rayportals) are rendered on the inside of the moving object
@@ -1782,8 +1782,11 @@ namespace components
 								if (g_player_current_area == 4)
 								{
 									// invert along the x axis
-									mtx.m[0][0] = -1;
-									dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+									//mtx.m[0][0] = -1;
+									//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
+
+									ctx.info.buffer_state.m_Transform[0].m[0][0] = -1;
+									dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 
 									//ctx.save_rs(dev, D3DRS_CULLMODE);
 									//dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
