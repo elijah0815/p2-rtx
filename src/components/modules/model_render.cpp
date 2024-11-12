@@ -1235,10 +1235,10 @@ namespace components
 			//}
 		}
 
-		/*if (ctx.info.material_name.contains("marker"))
+		if (ctx.info.material_name.contains("tool"))
 		{
 			int break_me = 1;   
-		}*/
+		}
 
 		if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x2480033)
 		{
