@@ -1137,31 +1137,8 @@ namespace components
 		IDirect3DVertexBuffer9* b = nullptr;
 		UINT stride = 0;
 		{
-			UINT ofs = 0;
-			dev->GetStreamSource(0, &b, &ofs, &stride);
+			UINT ofs = 0; dev->GetStreamSource(0, &b, &ofs, &stride);
 		}
-		
-
-		//Vector* model_org = reinterpret_cast<Vector*>(ENGINE_BASE + 0x50DA90);
-		/*const auto model_to_world_mtx = reinterpret_cast<VMatrix*>(ENGINE_BASE + USE_OFFSET(0x63C8C8, 0x637158));
-
-		VMatrix mtx = {};
-		mtx.m[0][0] = model_to_world_mtx->m[0][0];
-		mtx.m[1][0] = model_to_world_mtx->m[0][1];
-		mtx.m[2][0] = model_to_world_mtx->m[0][2];
-
-		mtx.m[0][1] = model_to_world_mtx->m[1][0];
-		mtx.m[1][1] = model_to_world_mtx->m[1][1];
-		mtx.m[2][1] = model_to_world_mtx->m[1][2];
-
-		mtx.m[0][2] = model_to_world_mtx->m[2][0];
-		mtx.m[1][2] = model_to_world_mtx->m[2][1];
-		mtx.m[2][2] = model_to_world_mtx->m[2][2];
-
-		mtx.m[3][0] = model_to_world_mtx->m[0][3];
-		mtx.m[3][1] = model_to_world_mtx->m[1][3];
-		mtx.m[3][2] = model_to_world_mtx->m[2][3];
-		mtx.m[3][3] = game::IDENTITY.m[3][3];*/
 
 		auto& ctx = model_render::primctx;
 		const auto shaderapi = game::get_shaderapi();
@@ -1223,16 +1200,6 @@ namespace components
 					}
 				}
 			}
-
-			//if (ctx.info.material_name.contains("water"))
-			//{
-			//	//ctx.modifiers.do_not_render = true;
-			//}
-
-			//if (ctx.info.material_name.contains("toxicslime002a_beneath"))
-			//{
-			//	//ctx.modifiers.do_not_render = true;
-			//}
 		}
 
 		/*if (ctx.info.material_name.contains("tool"))
@@ -1247,13 +1214,11 @@ namespace components
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX7);
 			dev->SetVertexShader(nullptr);
 
-			// needs mat_forcedynamic 1 because this alters ALL of the world surfaces ...
 			if (is_rendering_bmodel_paint) {
 				render_painted_surface(ctx, primlist);
 			}
 		}
-		else if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x80003 && ctx.info.material_name.starts_with("tools/"))
-		{
+		else if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x80003 && ctx.info.material_name.starts_with("tools/")) {
 			ctx.modifiers.do_not_render = true;
 		}
 
@@ -1267,8 +1232,6 @@ namespace components
 				//ctx.modifiers.do_not_render = true;
 				if (tex_addons::glass_shards)
 				{
-					// this can cause some issues with other glass textures?!
-					// a prob. because: models/props_destruction/glass_fracture_a_inner
 					ctx.save_texture(dev, 0);
 					dev->SetTexture(0, tex_addons::glass_shards);
 				}
@@ -1287,80 +1250,12 @@ namespace components
 				ctx.modifiers.do_not_render = true;
 			}*/
 
-			// models/npcs/personality_sphere/personality_sphere_light_damaged
-			//else if (ctx.info.material_name.ends_with("y_sphere_light_damaged"))
-			//{
-			//	if (map_settings::get_map_name().ends_with("bts3"))
-			//	{
-			//		Vector sphere_pos = {};
-
-			//		IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
-			//		dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
-
-			//		IDirect3DIndexBuffer9* ib = nullptr;
-			//		if (SUCCEEDED(dev->GetIndices(&ib)))
-			//		{
-			//			void* ib_data; // lock index buffer to retrieve the relevant vertex indices
-			//			if (SUCCEEDED(ib->Lock(0, 0, &ib_data, D3DLOCK_READONLY)))
-			//			{
-			//				// add relevant indices without duplicates
-			//				std::unordered_set<std::uint16_t> indices; indices.reserve(primlist->m_NumIndices);
-
-			//				for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++) {
-			//					indices.insert(static_cast<std::uint16_t*>(ib_data)[primlist->m_FirstIndex + i]);
-			//				}
-
-			//				ib->Unlock();
-
-			//				// get the range of vertices that we are going to work with
-			//				UINT min_vert = 0u, max_vert = 0u;
-			//				{
-			//					auto [min_it, max_it] = std::minmax_element(indices.begin(), indices.end());
-			//					min_vert = *min_it;
-			//					max_vert = *max_it;
-			//				}
-
-			//				void* src_buffer_data;
-
-			//				// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
-			//				if (SUCCEEDED(vb->Lock(min_vert * t_stride, max_vert * t_stride, &src_buffer_data, D3DLOCK_READONLY)))
-			//				{
-			//					struct src_vert {
-			//						Vector pos;
-			//					};
-
-			//					for (auto i : indices)
-			//					{
-			//						// we need to subtract min_vert because we locked @ min_vert which is the start of our lock
-			//						i -= static_cast<std::uint16_t>(min_vert);
-
-			//						const auto v_pos_in_src_buffer = i * t_stride;
-			//						const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
-
-			//						sphere_pos += src->pos;
-			//					}
-
-			//					sphere_pos /= static_cast<float>(indices.size());
-			//					vb->Unlock();
-			//				}
-			//			}
-			//		}
-
-			//		api::bts3_wheatly_pos = sphere_pos;
-			//		int x = 1;
-			//	}
-			//}
-
-			//if (!is_portalgun_viewmodel)
-			{
-				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
-			}
-
+			dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX6);
 			dev->SetVertexShader(nullptr); // vertexformat 0x00000000000a0003 
 		}
 
-		// this also renders the glass? infront of white panel lamps
+		// this also renders the glass infront of white panel lamps
 		// also renders some foliage (2nd level - emissive)
 		else if (ff_model::s_shader) // 0xa0103
 		{
@@ -1431,18 +1326,11 @@ namespace components
 		{
 			bool was_portal_related = false;
 
-			// open / close anim ideas:
-			// CPortalRender -> m_portalIsOpening vector to check for portal openings
-			// C_Prop_Portal -> m_fOpenAmount ?
-
-			
-
 			// world geo - floor / walls --- "LightmappedGeneric"
 			// this renders water but not the $bottommaterial
 			if (mesh->m_VertexFormat == 0x2480033)
 			{
 				//ctx.modifiers.do_not_render = true;
-
 				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr);
 				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX3); // tc @ 24
@@ -1528,7 +1416,6 @@ namespace components
 					ctx.save_vs(dev);
 					dev->SetVertexShader(nullptr);
 					dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX2);
-					//dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
 					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 				}
 			}
@@ -1664,6 +1551,7 @@ namespace components
 			{
 				//ctx.modifiers.do_not_render = true;
 
+				// handle coop portals
 				if (ctx.info.material_name.ends_with("overlay_tinted"))
 				{
 					// var: $portalopenamount
@@ -1712,22 +1600,8 @@ namespace components
 								handle_portal_mesh(ctx, is_p1p1 ? 0 : is_p1p2 ? 1 : is_p2p1 ? 2 : is_p2p2 ? 3 : 0, true);
 								was_portal_related = true;
 							}
-							
-							//const auto str = var_out->vftable->GetStringValue(var_out); 
-							//int yy = 0;
 						}
 					}
-
-					/*const auto parms = ctx.info.material->vftable->GetShaderParams(ctx.info.material);
-					const auto parm_count = ctx.info.material->vftable->ShaderParamCount(ctx.info.material);
-
-					for (auto p = 0u; p < parm_count; p++)
-					{
-						const auto x = parms[p];
-						const auto name = x->vftable->GetName(x);
-						const auto str = x->vftable->GetStringValue(x);
-						auto yy = 0;
-					}*/
 				}
 
 				// r_portal_stencil_depth 0 heavy influence
@@ -1782,14 +1656,8 @@ namespace components
 								if (g_player_current_area == 4)
 								{
 									// invert along the x axis
-									//mtx.m[0][0] = -1;
-									//dev->SetTransform(D3DTS_WORLD, reinterpret_cast<const D3DMATRIX*>(&mtx));
-
 									ctx.info.buffer_state.m_Transform[0].m[0][0] = -1;
 									dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
-
-									//ctx.save_rs(dev, D3DRS_CULLMODE);
-									//dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
 
 									if (primlist)
 									{
@@ -1799,24 +1667,14 @@ namespace components
 										IDirect3DIndexBuffer9* ib = nullptr;
 										if (SUCCEEDED(dev->GetIndices(&ib)))
 										{
-											//void* ib_data; // lock index buffer to retrieve the relevant vertex indices
-											WORD* ib_data;
-											if (SUCCEEDED(ib->Lock(0, 0, (void**)&ib_data, 0)))
+											WORD* ib_data; // lock index buffer to retrieve the relevant vertex indices
+											if (SUCCEEDED(ib->Lock(0, 0, (void**)&ib_data, D3DLOCK_READONLY)))
 											{
-												//{ // reverse triangle order
-													//if (primlist->m_NumIndices == 4)
-													//{
-													//	int start_index = primlist->m_FirstIndex;
-													//	std::swap(ib_data[start_index + 0], ib_data[start_index + 3]);
-													//	std::swap(ib_data[start_index + 1], ib_data[start_index + 2]);
-													//}
-												//}
-
 												// add relevant indices without duplicates
 												std::unordered_set<std::uint16_t> indices; indices.reserve(primlist->m_NumIndices);
 
 												for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++) {
-													indices.insert(static_cast<std::uint16_t*>(ib_data)[primlist->m_FirstIndex + i]);
+													indices.insert(ib_data[primlist->m_FirstIndex + i]);
 												}
 
 												ib->Unlock();
@@ -1829,16 +1687,11 @@ namespace components
 													max_vert = *max_it;
 												}
 
-												void* src_buffer_data;
-
-												// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
+												void* src_buffer_data; // lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
 												if (SUCCEEDED(vb->Lock(min_vert * t_stride, max_vert * t_stride, &src_buffer_data, 0)))
 												{
-													struct src_vert
-													{
-														Vector pos;
-														Vector normal;
-														Vector2D tc;
+													struct src_vert {
+														Vector pos; Vector normal; Vector2D tc;
 													};
 
 													for (auto i : indices)
@@ -1855,21 +1708,6 @@ namespace components
 														// flip normal
 														src->normal *= -1.0f;
 													}
-
-#if 0
-													auto v = static_cast<src_vert*>(src_buffer_data);
-													int startIndex = 0;
-													// Swap vertices for a quad
-													//std::swap(v[startIndex + 1], v[startIndex + 2]);
-													//std::swap(v[startIndex + 0], v[startIndex + 3]);
-													v[startIndex + 1].normal = v[startIndex + 1].normal.Scale(-1.0f);
-													v[startIndex + 2].normal = v[startIndex + 2].normal.Scale(-1.0f);
-													v[startIndex + 0].pos.x = v[startIndex + 0].pos.x * -1.0f - 10;
-													v[startIndex + 1].pos.x = v[startIndex + 1].pos.x * -1.0f - 10;
-													v[startIndex + 2].pos.x = v[startIndex + 2].pos.x * -1.0f - 10;
-													v[startIndex + 3].pos.x = v[startIndex + 3].pos.x * -1.0f - 10;
-#endif
-
 													vb->Unlock();
 												}
 											}
@@ -1882,12 +1720,6 @@ namespace components
 				} // end 'was_portal_related'
 				else
 				{
-					/*if (ctx.info.material_name.contains("light_panel_"))
-					{
-						add_nocull_materialvar(ctx.info.material); // no longer needed
-						//ctx.modifiers.do_not_render = true;
-					}*/
-
 					// side beams of light bridges - effects/projected_wall_rail
 					if (ctx.info.material_name.contains("ed_wall_ra"))
 					{
@@ -2000,7 +1832,7 @@ namespace components
 				// early out if vgui_white
 				if (ctx.info.material_name != "vgui_white")
 				{
-					// should be fine now that engine_post is now considered the first hud elem
+					// should be fine now that engine_post is the first hud elem
 					//if (ctx.info.material_name == "vgui__fontpage")
 					//{
 					//	// get rid of all world-rendered text as its using the same glyph as HUD elements?!
@@ -2178,23 +2010,6 @@ namespace components
 					else if (ctx.info.material_name.ends_with("_noz")) {
 						ctx.modifiers.do_not_render = true;
 					}
-
-					/* // --- render using shaders
-					// video on intro3
-					else if (ctx.info.material_name.contains("elevator_video_"))
-					{
-						//ctx.modifiers.do_not_render = true;
-						ctx.save_vs(dev);
-						//dev->SetVertexShader(nullptr);
-						//dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
-
-						ctx.save_texture(dev, 0);
-						if (const auto basemap2 = shaderapi->vtbl->GetD3DTexture(shaderapi, nullptr, ctx.info.buffer_state.m_BoundTexture[0]);
-							basemap2)
-						{
-							dev->SetTexture(0, basemap2);
-						}
-					}*/
 				}
 			}
 
@@ -2282,13 +2097,6 @@ namespace components
 				//ctx.modifiers.do_not_render = true; // they can freak out sometimes so just ignore them for now
 				ctx.save_texture(dev, 0);
 				dev->SetTexture(0, tex_addons::black_shader);
-#if 0
-				// do not set fvf
-				//dev->SetFVF(D3DFVF_XYZB5 | D3DFVF_NORMAL | D3DFVF_TEX2); // tc @ 28
-				//ctx.save_vs(dev);
-				//dev->SetPixelShader(nullptr);
-				//dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
-#endif
 			}
 
 			// SpriteCard shader
@@ -2298,7 +2106,6 @@ namespace components
 			else if (mesh->m_VertexFormat == 0x114900005) // stride 96 
 			{
 				//ctx.modifiers.do_not_render = true;
-
 				fix_sprite_particles(ctx, primlist);  
 
 				// scale the projection matrix for viewmodel particles so that they match the scaled remix viewmodel (currently set to a scale of 0.4)
