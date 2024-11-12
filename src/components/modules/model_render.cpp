@@ -2030,7 +2030,7 @@ namespace components
 				bool is_cleanser = ctx.info.material_name == "effects/portal_cleanser"
 					|| ctx.info.material_name == "effects/cleanser_edge";
 
-				// only fix portal gun beams
+				// fix portal gun beams / cleanser particles
 				if (ctx.info.buffer_state.m_Transform[2].m[3][2] > -2.0f
 					|| (g_player_current_area == 2 && map_settings::get_map_name() == "sp_a1_intro3") // allow in this area
 					|| is_cleanser)
@@ -2040,11 +2040,16 @@ namespace components
 						|| ctx.info.material_name.ends_with("electricity_beam_01"))
 					{
 						model_render_hlslpp::fix_sprite_trail_particles(ctx, primlist);
-
 						ctx.save_vs(dev);
 						dev->SetVertexShader(nullptr);
 						dev->SetPixelShader(nullptr);
 						dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX8); // fill up to stride? - 112
+
+						// modify light on portal gun pickup beams
+						if (ctx.info.buffer_state.m_Transform[2].m[3][2] > -2.0f) {
+							add_light_to_texture_color_edit(0.4f, 0.85f, 0.55f, 0.001f);
+						}
+						
 					}
 				}
 
@@ -2114,7 +2119,7 @@ namespace components
 					// #TODO - remove when floating point perc. gets better with shaders
 					//if (map_settings::get_map_name() == "sp_a1_wakeup")  
 					{
-						if (ctx.info.material_name == "particle/particle_glow_05_add_15ob" || ctx.info.material_name == "particle/electrical_arc/electrical_arc")  {
+						if (ctx.info.material_name == "particle/particle_glow_05_add_15ob" || ctx.info.material_name == "particle/electrical_arc/electrical_arc")   {
 							ctx.modifiers.do_not_render = true;
 						}
 					}
@@ -2326,7 +2331,6 @@ namespace components
 				if (has_materialvar(ctx.info.material, "$CROPFACTOR", &var_out))
 				{
 					if (var_out) {
-						//auto xx = var_out->vftable->GetStringValue(var_out);
 						use_crop = var_out->vftable->GetVecValueInternal1(var_out)[0] != 1.0f || var_out->vftable->GetVecValueInternal1(var_out)[1] != 1.0f;
 					}
 				}
@@ -2335,7 +2339,6 @@ namespace components
 				if (has_materialvar(ctx.info.material, "$DUALSEQUENCE", &var_out))
 				{
 					if (var_out) {
-						//auto xx = var_out->vftable->GetStringValue(var_out);
 						use_dualsequence = var_out->vftable->GetIntValueInternal(var_out) != 0;
 					}
 				}
@@ -2344,7 +2347,6 @@ namespace components
 				if (has_materialvar(ctx.info.material, "$ZOOMANIMATESEQ2", &var_out))
 				{
 					if (var_out) {
-						//auto xx = var_out->vftable->GetStringValue(var_out);
 						bZoomSeq2 = var_out->vftable->GetFloatValueInternal(var_out) > 1.0f;
 					}
 				}
