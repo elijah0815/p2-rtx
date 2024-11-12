@@ -49,6 +49,27 @@ namespace game
 	inline const float* get_current_view_origin() { return reinterpret_cast<float*>(ENGINE_BASE + USE_OFFSET(0x513380, 0x50DB50)); }
 	inline Vector get_current_view_origin_as_vector() { return get_current_view_origin(); }
 
+	inline bool is_puzzlemaker_active()
+	{
+		struct puzz
+		{
+			int pad;
+			bool m_bShowing;
+			bool m_bActive;
+			float m_flTransition;
+			float m_flZoomScale;
+			bool m_bInputEnabled;
+			int m_LastUpdateFrame;
+			bool m_bIsInLevel;
+			bool m_bCanQuitGame;
+			int m_nCachedSSSlot;
+		};
+
+		const auto p = reinterpret_cast<puzz*>(*(DWORD*)(CLIENT_BASE + USE_OFFSET(0x94EAE8, 0x946438)));
+		return p && p->m_bActive;
+	}
+	// 946438
+
 	// CM_PointLeafnum
 	inline int get_leaf_from_position(const Vector& pos) { return utils::hook::call<int(__cdecl)(const float*)>(ENGINE_BASE + USE_OFFSET(0x159C80, 0x158540))(&pos.x); }
 

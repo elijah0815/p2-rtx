@@ -8,8 +8,6 @@ namespace components
 	bool is_portalgun_viewmodel = false;
 	int	 is_rendering_paint = false;
 	int	 is_rendering_bmodel_paint = false;
-	bool render_with_new_stride = false;
-	std::uint32_t new_stride = 0u;
 
 	namespace ff_model
 	{
@@ -1813,10 +1811,13 @@ namespace components
 			// engine/shadowbuild
 			else if (mesh->m_VertexFormat == 0xa0003)
 			{
-				ctx.modifiers.do_not_render = true;
+				//ctx.modifiers.do_not_render = true; // not used anywhere else besides in puzzlemaker?
+				//if (game::is_puzzlemaker_active())
+
+				//lookat_vertex_decl(dev, primlist);
 				ctx.save_vs(dev);
 				dev->SetVertexShader(nullptr); // def. render using FF as the shader is causing heavy frametime drops
-				dev->SetFVF(D3DFVF_XYZ | D3DFVF_TEX5 | D3DFVF_TEXCOORDSIZE1(4)); // stride 0x30
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX2 | D3DFVF_TEXCOORDSIZE1(4)); // stride 0x30
 			}
 
 			// HUD
@@ -2869,7 +2870,6 @@ namespace components
 			ff_worldmodel::s_shader = nullptr;
 		}
 
-		render_with_new_stride = false;
 		add_light_to_texture_color_restore();
 
 		// reset prim/pass modifications
