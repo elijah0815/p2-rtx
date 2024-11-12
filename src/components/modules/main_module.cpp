@@ -1341,6 +1341,10 @@ namespace components
 		game::cvar_uncheat_and_set_int("r_decals", 2048);
 		game::cvar_uncheat_and_set_int("r_decal_overlap_count", 3);
 
+		// disable fog
+		game::cvar_uncheat_and_set_int("fog_override", 1);
+		game::cvar_uncheat_and_set_int("fog_enable", 0);
+
 		//float ms = 0.0f;
 		//bench.now(&ms);
 		//printf("[ %.3f ms ]\n", ms);
