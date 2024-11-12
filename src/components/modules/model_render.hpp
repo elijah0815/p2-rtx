@@ -333,6 +333,7 @@ namespace components
 			bool as_water = false;
 			bool as_transport_beam = false;
 			bool as_emancipation_grill = false;
+			bool as_portalgun_pickup_beam = false;
 			Vector2D emancipation_offset = {};
 			Vector2D emancipation_scale = { 1.0f, 1.0f };
 			float emancipation_color_scale = 1.0f;
@@ -349,6 +350,7 @@ namespace components
 				as_water = false;
 				as_transport_beam = false;
 				as_emancipation_grill = false;
+				as_portalgun_pickup_beam = false;
 				emancipation_offset = { 0.0f, 0.0f };
 				emancipation_scale = { 1.0f, 1.0f };
 				emancipation_color_scale = 1.0f;

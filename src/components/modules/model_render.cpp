@@ -2045,9 +2045,14 @@ namespace components
 						dev->SetPixelShader(nullptr);
 						dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX8); // fill up to stride? - 112
 
-						// modify light on portal gun pickup beams
-						if (ctx.info.buffer_state.m_Transform[2].m[3][2] > -2.0f) {
+						// portal gun pickup beams
+						if (ctx.info.buffer_state.m_Transform[2].m[3][2] > -2.0f) 
+						{
+							// modify light of add-light-to-texture light
 							add_light_to_texture_color_edit(0.4f, 0.85f, 0.55f, 0.001f);
+
+							// fix out of bounds point (dirty)
+							ctx.modifiers.as_portalgun_pickup_beam = true;
 						}
 						
 					}
@@ -2606,11 +2611,9 @@ namespace components
 		// do not render next surface if set
 		if (!ctx.modifiers.do_not_render)
 		{
-			if (render_with_new_stride)
-			{
-				num_verts *= 1;
-				prim_count *= 1;
-				type = D3DPT_TRIANGLELIST;
+			// dirty hack to fix 1 oob point
+			if (ctx.modifiers.as_portalgun_pickup_beam) {
+				prim_count -= 1;
 			}
 
 			DWORD og_texfactor = {}, og_colorarg2 = {}, og_colorop = {};
