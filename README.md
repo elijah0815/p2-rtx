@@ -19,7 +19,7 @@ Please keep that in mind.
 ![img](img/logo.png)
 
 ### __[ Remix Compatibility Features ]__   
-🔹Most things rendered are using the fixed-function pipeline🔹  
+🔹Most things are rendered using the fixed-function pipeline🔹  
 🔹Remix friendly culling and the ability to manually override culling per visleaf🔹  
 🔹Per map loading of remix config files to set remix variables🔹  
 🔹Spawning of unique anchor meshes🔹  
@@ -49,8 +49,8 @@ for Portal 2 (`bin/.trex/d3d9.dll`)
 
 
 #### ⚠️ Current issues:
-- Most effects are rendered using shaders. Effects can get glitchy the further away you are away from the map center. Performance is not the best either (as I had do do some dirty hacks to get them to render).
-- Just expect stuff to be a little broken
+- Most effects are rendered using shaders. Effects can get glitchy the further away you are away from the map center. Performance is not the best either (as I had do do some dirty hacks to get them to render somewhat correctly).
+- Expect stuff to be a little broken / looking different 
 
 <br>
 
@@ -127,6 +127,7 @@ This will always force __leaf 449 & 452__ to be visible if you are in __area 4__
 - [Nvidia - RTX Remix](https://github.com/NVIDIAGameWorks/rtx-remix)
 - [People of the showcase discord](https://discord.gg/j6sh7JD3v9) - especially the nvidia engineers ✌️
 - All early access people for testing/bug reporting and for covering my electricity bill ⚡
+- Wolƒe Strider Shoσter - for all the high quality bug reports! 
 - Yosuke Nathan - Portal 2 Remix Logo
 
 <br>
