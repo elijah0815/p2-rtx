@@ -1545,6 +1545,11 @@ namespace components
 		utils::hook::set<BYTE>(CLIENT_BASE + USE_OFFSET(0x6EE5D, 0x6BC2D), 0xEB);
 		utils::hook::set<BYTE>(CLIENT_BASE + USE_OFFSET(0x6EE6F, 0x6BC3F), 0xEB);
 		utils::hook::set<BYTE>(CLIENT_BASE + USE_OFFSET(0x6EE86, 0x6BC56), 0xEB);
+
+		// CStaticPropMgr::UpdatePropVisibility :: ignore cpu/gpu level key-value pairs on static props
+		utils::hook::set<BYTE>(ENGINE_BASE + USE_OFFSET(0x1F02D0, 0x1ED3F0), 0xEB);
+		utils::hook::set<BYTE>(ENGINE_BASE + USE_OFFSET(0x1F02FB, 0x1ED41B), 0xEB);
+		utils::hook::nop(ENGINE_BASE + USE_OFFSET(0x1F035F, 0x1ED47F), 2);
 	}
 
 	main_module::~main_module()
