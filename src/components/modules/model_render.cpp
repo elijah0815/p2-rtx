@@ -2142,6 +2142,8 @@ namespace components
 #endif
 				}
 
+				bool disable_vertex_color_modulation = false;
+
 				// get flashlight end pos (wheatly) on bts3
 				if (map_settings::get_map_name().ends_with("bts3"))
 				{
@@ -2211,11 +2213,36 @@ namespace components
 					// fix emissive smoke near end
 					if (dstblend == D3DBLEND_ONE)
 					{
-						if (!ctx.info.material_name.contains("fire") && !ctx.info.material_name.contains("glow"))
+						if (ctx.info.material_name == "particle/smoke1/smoke1_additive")
+						{
+							//ctx.save_rs(dev, D3DRS_DESTBLEND);
+							//dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA); // disables emissive smoke
+
+							ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+							ctx.save_tss(dev, D3DTSS_COLOROP);
+							ctx.save_tss(dev, D3DTSS_COLORARG2);
+							ctx.save_tss(dev, D3DTSS_ALPHAOP);
+							ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+							dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_RGBA(30, 30, 30, 255));
+							dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+							dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+							dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+							dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
+							disable_vertex_color_modulation = true;
+						}
+						/*else if (ctx.info.material_name == "particle/star_noz")
 						{
 							ctx.save_rs(dev, D3DRS_DESTBLEND);
-							dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
-						}
+							dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+
+							ctx.save_tss(dev, D3DTSS_COLOROP);
+							ctx.save_tss(dev, D3DTSS_COLORARG2);
+							ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+							dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(1, 1, 1, 1.0f));
+							dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE4X);
+							dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+							disable_vertex_color_modulation = true;
+						}*/
 					}
 					/*else if (dstblend == D3DBLEND_INVSRCALPHA && ctx.info.material_name.ends_with("spray1_addself"))
 					{
@@ -2224,20 +2251,23 @@ namespace components
 					}*/
 				}
 
-				ctx.save_tss(dev, D3DTSS_COLOROP);
-				ctx.save_tss(dev, D3DTSS_COLORARG2);
-				dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
-				dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+				if (!disable_vertex_color_modulation) 
+				{
+					ctx.save_tss(dev, D3DTSS_COLOROP);
+					ctx.save_tss(dev, D3DTSS_COLORARG2);
+					dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+					dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
 
-				ctx.save_tss(dev, D3DTSS_ALPHAOP);
-				ctx.save_tss(dev, D3DTSS_ALPHAARG2);
-				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE2X);
-				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+					ctx.save_tss(dev, D3DTSS_ALPHAOP);
+					ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+					dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE2X);
+					dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
 
-				// testing
-				//ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
-				//dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(1, 1, 1, 0.25f));
-				//dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+					// testing
+					//ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+					//dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(1, 1, 1, 0.25f));
+					//dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+				}
 
 				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);  
 				dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);
