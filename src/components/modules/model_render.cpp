@@ -2224,6 +2224,21 @@ namespace components
 					}*/
 				}
 
+				ctx.save_tss(dev, D3DTSS_COLOROP);
+				ctx.save_tss(dev, D3DTSS_COLORARG2);
+				dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+				dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+
+				ctx.save_tss(dev, D3DTSS_ALPHAOP);
+				ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE2X);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+
+				// testing
+				//ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+				//dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(1, 1, 1, 0.25f));
+				//dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+
 				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);  
 				dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);
 				dev->SetTransform(D3DTS_PROJECTION, &ctx.info.buffer_state.m_Transform[2]);
