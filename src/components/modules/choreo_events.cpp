@@ -55,7 +55,7 @@ namespace components
 							}
 
 							// bw_finale04_button_press04.vcd
-							else if (sname.ends_with("button_press04.vcd")) {
+							else if (sname.ends_with("epilogue10.vcd")) {
 								api::remix_vars::set_option(api::remix_vars::get_option("rtx.playerModel.enableInPrimarySpace"), { false });
 							}
 						}
