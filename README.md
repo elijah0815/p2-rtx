@@ -37,6 +37,7 @@ If you want to support my work, consider buying me some coffee:
 
 # Usage / Installation
 - Download the latest [release](https://github.com/xoxor4d/p2-rtx/releases) and extract the contents into your portal2 root directory.  
+- To avoid rebuilding the sound cache on first startup, copy `_master.cache` from `root/portal2/maps/soundcache` to `root/portal2_dlc3/maps/soundcache`
 - Start the game by executing `_start_portal2_rtx.bat`
 - The window title should change to `Portal 2 - RTX` followed by the GitHub commit number if successful
 
