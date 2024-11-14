@@ -1216,8 +1216,12 @@ namespace components
 				render_painted_surface(ctx, primlist);
 			}
 		}
-		else if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x80003 && ctx.info.material_name.starts_with("tools/")) {
-			ctx.modifiers.do_not_render = true;
+
+		// disable areaportals
+		else if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x80003 && ctx.info.material_name.starts_with("tools/")
+			&& !(g_player_current_area == 6 && map_settings::get_map_name() == "sp_a1_wakeup")) // do not disable elevator "door" on wakeup
+		{
+			ctx.modifiers.do_not_render = true; 
 		}
 
 		// player model - gun - grabable stuff - portal button - portal door - stairs
@@ -1845,6 +1849,13 @@ namespace components
 
 					bool is_world_ui_text = ctx.info.buffer_state.m_Transform[0].m[3][0] != 0.0f && ctx.info.material_name == "vgui__fontpage";
 
+					if (is_world_ui_text)
+					{
+						// set remix texture categories
+						ctx.save_rs(dev, (D3DRENDERSTATETYPE)42);
+						dev->SetRenderState((D3DRENDERSTATETYPE)42, WorldUI);
+					}
+
 					// vgui/screens/vgui_coop_progress_board
 					if (ctx.info.material_name.ends_with("progress_board"))
 					{
@@ -2028,15 +2039,23 @@ namespace components
 				//if (has_materialvar(ctx.info.material, "$splinetype", &splinetype) // could fix other splines as well but performance is not great esp. when shooting portals
 				//	&& splinetype && splinetype->m_intVal > 0)
 
-				bool is_cleanser = ctx.info.material_name == "effects/portal_cleanser"
-					|| ctx.info.material_name == "effects/cleanser_edge";
+				const bool is_cleanser = ctx.info.material_name == "effects/portal_cleanser"
+									  || ctx.info.material_name == "effects/cleanser_edge";
+
+				const bool is_wakeup = map_settings::get_map_name() == "sp_a1_wakeup";
+
+				const bool is_spark = ctx.info.material_name == "particle/sparks/sparks";
 
 				// fix portal gun beams / cleanser particles
-				if (ctx.info.buffer_state.m_Transform[2].m[3][2] > -2.0f
+				if (ctx.info.buffer_state.m_Transform[2].m[3][2] > -2.0f 
+					|| is_cleanser
+					|| is_spark
 					|| (g_player_current_area == 2 && map_settings::get_map_name() == "sp_a1_intro3") // allow in this area
-					|| is_cleanser)
+					|| is_wakeup)
 				{
 					if (is_cleanser
+						|| is_wakeup
+						|| is_spark
 						|| ctx.info.material_name.starts_with("particle/beam_generic")
 						|| ctx.info.material_name.ends_with("electricity_beam_01"))
 					{
@@ -2047,16 +2066,28 @@ namespace components
 						dev->SetPixelShader(nullptr);
 						dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX8); // fill up to stride? - 112
 
+						if (is_spark)
+						{
+							ctx.save_tss(dev, D3DTSS_COLORARG1);
+							ctx.save_tss(dev, D3DTSS_COLORARG2);
+							ctx.save_tss(dev, D3DTSS_COLOROP);
+							dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+							dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+							dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+
+							/*ctx.save_rs(dev, D3DRS_DESTBLEND);
+							dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);*/
+						}
+
+						// fix out of bounds point (dirty)
+						ctx.modifiers.as_portalgun_pickup_beam = true;
+
 						// portal gun pickup beams
 						if (ctx.info.buffer_state.m_Transform[2].m[3][2] > -2.0f) 
 						{
 							// modify light of add-light-to-texture light
 							add_light_to_texture_color_edit(0.4f, 0.85f, 0.55f, 0.001f);
-
-							// fix out of bounds point (dirty)
-							ctx.modifiers.as_portalgun_pickup_beam = true;
 						}
-						
 					}
 				}
 
@@ -2297,18 +2328,22 @@ namespace components
 			// transport beam emitter effect
 			else if (mesh->m_VertexFormat == 0x1b924900005) // stride 0x90 - 144
 			{
-#ifdef DEBUG
 				//ctx.modifiers.do_not_render = true;
-				int break_me = 0;
-
+				//int break_me = 0;
 				//lookat_vertex_decl(dev, primlist);
-				//model_render_hlslpp::fix_sprite_trail_particles(ctx, primlist); 
 
-				//ctx.save_vs(dev);
-				//dev->SetVertexShader(nullptr);
-				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX8); // 64 :: tc @ 24
-				//dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
-#endif
+				if (map_settings::get_map_name() == "sp_a4_finale4")
+				{
+					model_render_hlslpp::fix_sprite_trail_particles(ctx, primlist);
+
+					ctx.save_vs(dev);
+					dev->SetVertexShader(nullptr);
+					dev->SetPixelShader(nullptr);
+					dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX8); // fill up to stride? - 112
+
+					// fix out of bounds point (dirty)
+					ctx.modifiers.as_portalgun_pickup_beam = true;
+				}
 			}
 
 			// emancipation grill
