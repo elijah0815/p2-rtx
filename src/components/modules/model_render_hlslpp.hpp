@@ -7,6 +7,6 @@ namespace components
 	public:
 		model_render_hlslpp();
 
-		static void fix_sprite_trail_particles(prim_fvf_context& ctx, CPrimList* primlist);
+		static Vector4D fix_sprite_trail_particles(prim_fvf_context& ctx, CPrimList* primlist);
 	};
 }

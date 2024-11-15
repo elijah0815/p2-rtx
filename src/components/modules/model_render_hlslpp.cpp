@@ -4,10 +4,12 @@ namespace components
 {
 	// Fixes sprite trail verts by changing verts within the vertexbuffer
 	// Expensive - use with caution. A drawcall with lots of verts is okay. A lot of smaller ones are not
-	void model_render_hlslpp::fix_sprite_trail_particles(prim_fvf_context& ctx, CPrimList* primlist)
+	Vector4D model_render_hlslpp::fix_sprite_trail_particles(prim_fvf_context& ctx, CPrimList* primlist)
 	{
 		using namespace hlslpp;
 		const auto dev = game::get_d3d_device();
+
+		Vector4D vertex_color_result = {};
 
 		ctx.save_tss(dev, D3DTSS_ALPHAARG1);
 		ctx.save_tss(dev, D3DTSS_ALPHAARG2);
@@ -110,8 +112,23 @@ namespace components
 							// write texcoords
 							dest->tc.FromFloat2(float2(lerp(src->vTexCoordRange.z, src->vTexCoordRange.x, parmsZ), lerp(src->vTexCoordRange.y, src->vTexCoordRange.w, parmsY)));
 
+							float4 color;
+							color.r = static_cast<float>((src->vTint >> 16) & 0xFF) / 255.0f * 1.0f;
+							color.g = static_cast<float>((src->vTint >> 8) & 0xFF) / 255.0f * 1.0f;
+							color.b = static_cast<float>((src->vTint >> 0) & 0xFF) / 255.0f * 1.0f;
+							color.a = static_cast<float>((src->vTint >> 24) & 0xFF) / 255.0f * 0.1f;
+
+							color = lerp(color, src->vEndPointColor, parmsX);
+							color.a *= std::lerp(1.0f, ALPHATFADE, parmsX);
+
+							vertex_color_result.x = color.r;
+							vertex_color_result.y = color.g;
+							vertex_color_result.z = color.b;
+							vertex_color_result.w = color.a;
+
 							// write color
-							dest->vTint = D3DCOLOR_COLORVALUE(src->vEndPointColor.r, src->vEndPointColor.g, src->vEndPointColor.b, src->vEndPointColor.a * std::lerp(1.0f, ALPHATFADE, parmsX));
+							dest->vTint = D3DCOLOR_COLORVALUE(color.r, color.g, color.b, color.a);
+							//dest->vTint = D3DCOLOR_COLORVALUE(src->vEndPointColor.r, src->vEndPointColor.g, src->vEndPointColor.b, src->vEndPointColor.a * std::lerp(1.0f, ALPHATFADE, parmsX));
 						}
 						vb->Unlock();
 					}
@@ -119,6 +136,8 @@ namespace components
 			}
 		}
 #endif
+
+		return vertex_color_result;
 	}
 
 	model_render_hlslpp::model_render_hlslpp()

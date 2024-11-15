@@ -1200,10 +1200,10 @@ namespace components
 			}
 		}
 
-		/*if (ctx.info.material_name.contains("tool"))
+		if (ctx.info.material_name.contains("dev/fade_blur"))
 		{
 			int break_me = 1;   
-		}*/
+		}
 
 		if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x2480033)
 		{
@@ -1526,10 +1526,26 @@ namespace components
 				}
 
 				// Eye of Glados?
-				/*else if (ctx.info.material_name == "dev/fade_blur")  
-				{
-					add_light_to_texture_color_edit(0.8f, 50.7f, 0.05f, 0.1f);
-				}*/
+				//else if (ctx.info.material_name == "dev/fade_blur")  
+				//{
+				//	ctx.modifiers.do_not_render = true;
+
+				//	ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+				//	dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(1, 0, 0, 1));
+				//	dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+				//	dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+				//	dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_ADD);
+
+				//	// already saved in fix_sprite_trail_particles
+				//	ctx.save_tss(dev, D3DTSS_ALPHAARG1);
+				//	ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+				//	ctx.save_tss(dev, D3DTSS_ALPHAOP);
+				//	dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+				//	dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+				//	dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE2X);
+
+				//	//add_light_to_texture_color_edit(0.8f, 50.7f, 0.05f, 0.1f);
+				//}
 #endif
 				//else 
 				//{
@@ -2025,42 +2041,61 @@ namespace components
 			// + laser emitter swirrl
 			// + portal cleanser
 			// can be rendered but requires vertexshader + position
+#if 1
 			else if (mesh->m_VertexFormat == 0x924900005) // stride 0x70 - 112 
 			{
 				// Spritecard -> Splinecard
 
-				//IMaterialVar* splinetype = nullptr;
-				//if (has_materialvar(ctx.info.material, "$splinetype", &splinetype) // could fix other splines as well but performance is not great esp. when shooting portals
-				//	&& splinetype && splinetype->m_intVal > 0)
+				bool is_spline = false;
+				IMaterialVar* splinetype = nullptr;
+				if (has_materialvar(ctx.info.material, "$splinetype", &splinetype) // could fix other splines as well but performance is not great esp. when shooting portals
+					&& splinetype && splinetype->m_intVal > 0)
+				{
+					is_spline = true;
+				}
+
+				bool add_self = 0;
+				float fAdditiveSelfBlendWeight = 1.0f;
+				if (has_materialvar(ctx.info.material, "$ADDSELF", &splinetype)
+					&& splinetype && splinetype->m_intVal > 0)
+				{
+					add_self = splinetype->m_intVal;
+
+					float v[4] = {}; dev->GetPixelShaderConstantF(0, v, 1);
+					fAdditiveSelfBlendWeight = v[2];
+				}
 
 				const bool is_cleanser = ctx.info.material_name == "effects/portal_cleanser"
 									  || ctx.info.material_name == "effects/cleanser_edge";
 
-				const bool is_wakeup = map_settings::get_map_name() == "sp_a1_wakeup";
+				const bool is_spark = ctx.info.material_name.starts_with("particle/sparks/");
 
-				const bool is_spark = ctx.info.material_name == "particle/sparks/sparks";
-
-				// fix portal gun beams / cleanser particles
-				if (ctx.info.buffer_state.m_Transform[2].m[3][2] > -2.0f 
-					|| is_cleanser
-					|| is_spark
-					|| (g_player_current_area == 2 && map_settings::get_map_name() == "sp_a1_intro3") // allow in this area
-					|| is_wakeup)
+				// fix portal gun beams / cleanser particles / sparks
+				if (is_spline &&
+					 (   is_cleanser
+					  || is_spark
+					  || map_settings::is_level.sp_a1_wakeup
+					  || ctx.info.buffer_state.m_Transform[2].m[3][2] > -2.0f // portal gun pickup beams (the two materials in the next check)
+					  || (g_player_current_area == 2 && map_settings::is_level.sp_a1_intro3) // allow in this area
+					  || (g_player_current_area == 5 && map_settings::is_level.sp_a2_intro) // allow in this area
+					 )
+					)
 				{
-					if (is_cleanser
-						|| is_wakeup
+					if (   is_cleanser
 						|| is_spark
+						|| map_settings::is_level.sp_a1_wakeup
 						|| ctx.info.material_name.starts_with("particle/beam_generic")
 						|| ctx.info.material_name.ends_with("electricity_beam_01"))
 					{
-						model_render_hlslpp::fix_sprite_trail_particles(ctx, primlist);
+						auto v_color = model_render_hlslpp::fix_sprite_trail_particles(ctx, primlist); 
 
 						ctx.save_vs(dev);
 						dev->SetVertexShader(nullptr);
-						dev->SetPixelShader(nullptr);
-						dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX8); // fill up to stride? - 112
+						//dev->SetPixelShader(nullptr);
+						dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX8);
 
-						if (is_spark)
+						// base sparks
+						if (is_spark && !add_self)
 						{
 							ctx.save_tss(dev, D3DTSS_COLORARG1);
 							ctx.save_tss(dev, D3DTSS_COLORARG2);
@@ -2069,8 +2104,32 @@ namespace components
 							dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
 							dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
 
-							/*ctx.save_rs(dev, D3DRS_DESTBLEND);
-							dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);*/
+							ctx.save_rs(dev, D3DRS_SRCBLEND);
+							ctx.save_rs(dev, D3DRS_DESTBLEND);
+							dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
+							dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVDESTALPHA); // no alpha but lights up the scene
+						}
+
+						// if overbright
+						if (add_self)
+						{
+							ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+							dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(fAdditiveSelfBlendWeight - (1.0f - v_color.x), fAdditiveSelfBlendWeight - (1.0f - v_color.y), fAdditiveSelfBlendWeight - (1.0f - v_color.z), v_color.w));
+
+							ctx.save_tss(dev, D3DTSS_COLORARG1);
+							ctx.save_tss(dev, D3DTSS_COLORARG2);
+							ctx.save_tss(dev, D3DTSS_COLOROP);
+							dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE); 
+							dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+							dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_ADD);
+
+							// already saved in fix_sprite_trail_particles
+							ctx.save_tss(dev, D3DTSS_ALPHAARG1);
+							ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+							ctx.save_tss(dev, D3DTSS_ALPHAOP);
+							dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+							dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+							dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE2X);
 						}
 
 						// fix out of bounds point (dirty)
@@ -2084,12 +2143,18 @@ namespace components
 						}
 					}
 				}
+				//else if (ctx.info.material_name == "particle/particle_glow_02_additive_trail")
+				//{
+				//	ctx.save_rs(dev, D3DRS_DESTBLEND);
+				//	dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+				//}
 
 				//ctx.modifiers.do_not_render = true;
 				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
 				dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]); 
 				dev->SetTransform(D3DTS_PROJECTION, &ctx.info.buffer_state.m_Transform[2]);
 			}
+#endif
 
 			// general models (eg. furniture in first lvl - container)
 			else if (mesh->m_VertexFormat == 0xa0103)  
@@ -2424,13 +2489,13 @@ namespace components
 					}
 				}
 
-				bool bZoomSeq2 = false;
+				/*bool bZoomSeq2 = false;
 				if (has_materialvar(ctx.info.material, "$ZOOMANIMATESEQ2", &var_out))
 				{
 					if (var_out) {
 						bZoomSeq2 = var_out->vftable->GetFloatValueInternal(var_out) > 1.0f;
 					}
-				}
+				}*/
 
 				ctx.save_tss(dev, D3DTSS_ALPHAOP);
 				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);

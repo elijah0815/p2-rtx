@@ -199,6 +199,10 @@ namespace components
 		// save render state (e.g. D3DRS_TEXTUREFACTOR)
 		void save_rs(IDirect3DDevice9* device, const D3DRENDERSTATETYPE& state)
 		{
+			if (saved_render_state_.contains(state)) {
+				return;
+			}
+
 			DWORD temp;
 			device->GetRenderState(state, &temp);
 			saved_render_state_[state] = temp;
@@ -207,6 +211,10 @@ namespace components
 		// save sampler state (D3DSAMPLERSTATETYPE)
 		void save_ss(IDirect3DDevice9* device, const D3DSAMPLERSTATETYPE& state)
 		{
+			if (saved_sampler_state_.contains(state)) {
+				return;
+			}
+
 			DWORD temp;
 			device->GetSamplerState(0, state, &temp);
 			saved_sampler_state_[state] = temp;
@@ -215,6 +223,10 @@ namespace components
 		// save texture stage 0 state (e.g. D3DTSS_ALPHAARG1)
 		void save_tss(IDirect3DDevice9* device, const D3DTEXTURESTAGESTATETYPE& type)
 		{
+			if (saved_texture_stage_state_.contains(type)) {
+				return;
+			}
+
 			DWORD temp;
 			device->GetTextureStageState(0, type, &temp);
 			saved_texture_stage_state_[type] = temp;
