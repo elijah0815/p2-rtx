@@ -12,7 +12,7 @@ namespace components::api
 				dir.Normalize();
 
 				// offset pos along along direction so it does not start inside wheatly
-				auto pos = m_bts3_wheatly_pos + dir * 10.0f;
+				auto pos = m_bts3_wheatly_pos + dir * 20.0f;
 
 				auto ext = remixapi_LightInfoSphereEXT
 				{
