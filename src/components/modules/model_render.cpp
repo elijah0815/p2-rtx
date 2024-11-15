@@ -55,6 +55,7 @@ namespace components
 		LPDIRECT3DTEXTURE9 sky_gray_up;
 		LPDIRECT3DTEXTURE9 sky_gray_dn;
 		LPDIRECT3DTEXTURE9 emancipation_grill;
+		LPDIRECT3DTEXTURE9 emancipation_grill_bg;
 		LPDIRECT3DTEXTURE9 water_drip;
 		LPDIRECT3DTEXTURE9 white;
 	}
@@ -85,6 +86,7 @@ namespace components
 			if (tex_addons::sky_gray_up) tex_addons::sky_gray_up->Release();
 			if (tex_addons::sky_gray_dn) tex_addons::sky_gray_dn->Release();
 			if (tex_addons::emancipation_grill) tex_addons::emancipation_grill->Release();
+			if (tex_addons::emancipation_grill_bg) tex_addons::emancipation_grill_bg->Release();
 			if (tex_addons::water_drip) tex_addons::water_drip->Release();
 			if (tex_addons::white) tex_addons::white->Release();
 			return;
@@ -113,6 +115,7 @@ namespace components
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_up.jpg", &tex_addons::sky_gray_up);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\graycloud_dn.jpg", &tex_addons::sky_gray_dn);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\emancipation_grill.png", &tex_addons::emancipation_grill);
+		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\emancipation_grill_bg.png", &tex_addons::emancipation_grill_bg);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\water_drip.png", &tex_addons::water_drip);
 		D3DXCreateTextureFromFileA(dev, "portal2-rtx\\textures\\white.dds", &tex_addons::white);
 	}
@@ -909,21 +912,29 @@ namespace components
 		ctx.save_tss(dev, D3DTSS_ALPHAOP);
 		ctx.save_tss(dev, D3DTSS_ALPHAARG2);
 
-		if (side_emitters)
+		//if (side_emitters) 
 		{
 			ctx.save_texture(dev, 0);
 			dev->SetTexture(0, tex_addons::emancipation_grill);
 
-			dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(
-				g_vFlowColor[0] * g_flPowerUp * 0.5f, 
-				g_vFlowColor[1] * g_flPowerUp * 0.5f, 
-				g_vFlowColor[2] * g_flPowerUp * 0.35f, 
-				0.7f * g_flPowerUp));
+			dev->SetRenderState(D3DRS_TEXTUREFACTOR, 
+				
+				side_emitters ? 
+					D3DCOLOR_COLORVALUE(
+					g_vFlowColor[0] * g_flPowerUp * 0.5f, 
+					g_vFlowColor[1] * g_flPowerUp * 0.5f, 
+					g_vFlowColor[2] * g_flPowerUp * 0.35f, 
+					0.7f * g_flPowerUp)
+
+				  : D3DCOLOR_COLORVALUE(
+					  0.2f * g_flPowerUp, 0.4f * g_flPowerUp, 0.52f * g_flPowerUp, 0.05f * g_flPowerUp)
+			);
 		}
-		else
-		{
-			dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(0.2f * g_flPowerUp, 0.4f * g_flPowerUp, 0.52f * g_flPowerUp, 0.05f * g_flPowerUp));
-		}
+		//else
+		//{
+		//	//dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(0.2f * g_flPowerUp, 0.4f * g_flPowerUp, 0.52f * g_flPowerUp, 0.05f * g_flPowerUp));
+		//	dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(1.0f, 0.0f, 0.0f, 0.05f * g_flPowerUp));
+		//}
 		
 		dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
 		dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
@@ -1200,10 +1211,10 @@ namespace components
 			}
 		}
 
-		if (ctx.info.material_name.contains("dev/fade_blur"))
+		/*if (ctx.info.material_name.contains("portal_cleanser"))
 		{
-			int break_me = 1;   
-		}
+			int break_me = 1;    
+		}*/
 
 		if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x2480033)
 		{
@@ -2046,7 +2057,7 @@ namespace components
 			{
 				// Spritecard -> Splinecard
 
-				bool is_spline = false;
+				bool is_spline = false; 
 				IMaterialVar* splinetype = nullptr;
 				if (has_materialvar(ctx.info.material, "$splinetype", &splinetype) // could fix other splines as well but performance is not great esp. when shooting portals
 					&& splinetype && splinetype->m_intVal > 0)
@@ -2068,12 +2079,13 @@ namespace components
 				const bool is_cleanser = ctx.info.material_name == "effects/portal_cleanser"
 									  || ctx.info.material_name == "effects/cleanser_edge";
 
-				const bool is_spark = ctx.info.material_name.starts_with("particle/sparks/");
+				// FF sparks look really good but are heavy on the framerate + it messes up the trail shot by the portal gun ....
+				const bool is_spark = ctx.info.material_name.starts_with("particle/sparks/"); //|| ctx.info.material_name == "particle/particle_glow_02_additive_trail";
 
 				// fix portal gun beams / cleanser particles / sparks
-				if (is_spline &&
+				if (is_spline && !is_spark &&
 					 (   is_cleanser
-					  || is_spark
+					  //|| is_spark
 					  || map_settings::is_level.sp_a1_wakeup
 					  || ctx.info.buffer_state.m_Transform[2].m[3][2] > -2.0f // portal gun pickup beams (the two materials in the next check)
 					  || (g_player_current_area == 2 && map_settings::is_level.sp_a1_intro3) // allow in this area
@@ -2082,7 +2094,7 @@ namespace components
 					)
 				{
 					if (   is_cleanser
-						|| is_spark
+						//|| is_spark
 						|| map_settings::is_level.sp_a1_wakeup
 						|| ctx.info.material_name.starts_with("particle/beam_generic")
 						|| ctx.info.material_name.ends_with("electricity_beam_01"))
@@ -2095,20 +2107,20 @@ namespace components
 						dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX8);
 
 						// base sparks
-						if (is_spark && !add_self)
-						{
-							ctx.save_tss(dev, D3DTSS_COLORARG1);
-							ctx.save_tss(dev, D3DTSS_COLORARG2);
-							ctx.save_tss(dev, D3DTSS_COLOROP);
-							dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-							dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
-							dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+						//if (is_spark && !add_self) 
+						//{
+						//	ctx.save_tss(dev, D3DTSS_COLORARG1);
+						//	ctx.save_tss(dev, D3DTSS_COLORARG2);
+						//	ctx.save_tss(dev, D3DTSS_COLOROP);
+						//	dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+						//	dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+						//	dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
 
-							ctx.save_rs(dev, D3DRS_SRCBLEND);
-							ctx.save_rs(dev, D3DRS_DESTBLEND);
-							dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
-							dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVDESTALPHA); // no alpha but lights up the scene
-						}
+						//	ctx.save_rs(dev, D3DRS_SRCBLEND);
+						//	ctx.save_rs(dev, D3DRS_DESTBLEND);
+						//	dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
+						//	dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVDESTALPHA); // no alpha but lights up the scene
+						//}
 
 						// if overbright
 						if (add_self)
@@ -2143,11 +2155,46 @@ namespace components
 						}
 					}
 				}
-				//else if (ctx.info.material_name == "particle/particle_glow_02_additive_trail")
-				//{
-				//	ctx.save_rs(dev, D3DRS_DESTBLEND);
-				//	dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
-				//}
+				else if (is_spark)
+				{
+					//auto v_color = model_render_hlslpp::get_sprite_trail_particle_color(primlist);
+					/* ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+					dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(v_color.x, v_color.y, v_color.z, v_color.w));
+
+					ctx.save_tss(dev, D3DTSS_COLORARG1);
+					ctx.save_tss(dev, D3DTSS_COLORARG2);
+					ctx.save_tss(dev, D3DTSS_COLOROP);
+					dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+					dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+					dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG2);
+
+					ctx.save_tss(dev, D3DTSS_ALPHAARG1);
+					ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+					ctx.save_tss(dev, D3DTSS_ALPHAOP);
+					dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+					dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+					dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG2);*/
+
+					ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+					dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(0.25f, 0.25f, 0.25f, 1.0f)); // v_color.w
+
+					ctx.save_tss(dev, D3DTSS_COLORARG1);
+					ctx.save_tss(dev, D3DTSS_COLORARG2);
+					ctx.save_tss(dev, D3DTSS_COLOROP);
+					dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_DIFFUSE);
+					dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+					dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+
+					ctx.save_tss(dev, D3DTSS_ALPHAARG1);
+					ctx.save_tss(dev, D3DTSS_ALPHAOP);
+					dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TFACTOR);
+					dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+
+					ctx.save_rs(dev, D3DRS_SRCBLEND);
+					ctx.save_rs(dev, D3DRS_DESTBLEND);
+					dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
+					dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_DESTALPHA); // no alpha but lights up the scene
+				}
 
 				//ctx.modifiers.do_not_render = true;
 				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
@@ -2949,7 +2996,7 @@ namespace components
 			dev->SetTransform(D3DTS_TEXTURE0, &current_transform);
 
 			ctx.save_texture(dev, 0); 
-			dev->SetTexture(0, tex_addons::emancipation_grill);
+			dev->SetTexture(0, tex_addons::emancipation_grill_bg);
 
 			const auto& cs = ctx.modifiers.emancipation_color_scale;
 			dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(0.2f * cs, 0.4f * cs, 0.52f * cs, 0.3f * cs));

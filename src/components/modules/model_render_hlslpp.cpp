@@ -140,6 +140,64 @@ namespace components
 		return vertex_color_result;
 	}
 
+	Vector4D model_render_hlslpp::get_sprite_trail_particle_color(CPrimList* primlist)
+	{
+		using namespace hlslpp;
+		const auto dev = game::get_d3d_device();
+
+		Vector4D vertex_color_result = {};
+
+		float ALPHATFADE;
+		{
+			float v[4] = {}; dev->GetVertexShaderConstantF(57, v, 1);
+			ALPHATFADE = v[2];
+		}
+
+		// cant get vertex color to work here? -> grab vertex color and use tfactor instead
+		{
+			IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
+			dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
+
+			IDirect3DIndexBuffer9* ib = nullptr;
+			if (SUCCEEDED(dev->GetIndices(&ib)))
+			{
+				void* ib_data; // retrieve a single vertex index (*2 because WORD)
+				if (SUCCEEDED(ib->Lock(primlist->m_FirstIndex * 2, 2, &ib_data, D3DLOCK_READONLY)))
+				{
+					const auto first_index = *static_cast<std::uint16_t*>(ib_data);
+					ib->Unlock();
+
+					void* src_buffer_data; // retrieve single indexed vertex
+					if (SUCCEEDED(vb->Lock(first_index * t_stride, t_stride, &src_buffer_data, D3DLOCK_READONLY)))
+					{
+						struct src_vert {
+							Vector vParms; D3DCOLOR vTint; float4 vSplinePt0; float4 vSplinePt1; float4 vSplinePt2; float4 vSplinePt3; float4 vTexCoordRange; float4 vEndPointColor;
+						};
+
+						const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data));
+
+						// unpack color
+						float4 color;
+						color.r = static_cast<float>((src->vTint >> 16) & 0xFF) / 255.0f * 1.0f;
+						color.g = static_cast<float>((src->vTint >> 8) & 0xFF) / 255.0f * 1.0f;
+						color.b = static_cast<float>((src->vTint >> 0) & 0xFF) / 255.0f * 1.0f;
+						color.a = static_cast<float>((src->vTint >> 24) & 0xFF) / 255.0f * 0.1f;
+
+						color = lerp(color, src->vEndPointColor, src->vParms.x);
+						color.a *= std::lerp(1.0f, ALPHATFADE, src->vParms.x);
+
+						vertex_color_result.x = color.r;
+						vertex_color_result.y = color.g;
+						vertex_color_result.z = color.b;
+						vertex_color_result.w = color.a;
+						vb->Unlock();
+					}
+				}
+			}
+		}
+		return vertex_color_result;
+	}
+
 	model_render_hlslpp::model_render_hlslpp()
 	{
 		
