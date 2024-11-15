@@ -58,6 +58,7 @@ for Portal 2 (`bin/.trex/d3d9.dll`)
 <div align="center" markdown="1">
 
 ![img](img/01.png)
+![img](img/04.png)
 </div>
 
 # Tweakable Settings:
@@ -136,4 +137,6 @@ This will always force __leaf 449 & 452__ to be visible if you are in __area 4__
 <div align="center" markdown="1">
 
 ![img](img/02.png)
+![img](img/03.png)
+![img](img/05.png)
 </div>
