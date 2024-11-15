@@ -2415,19 +2415,18 @@ namespace components
 			// water drops on glados wakeup
 			else if (mesh->m_VertexFormat == 0x80037) // TODO - test with buffer_state transforms  
 			{
-#ifdef DEBUG
+//#ifdef DEBUG
 				//ctx.modifiers.do_not_render = true; // this needs a position as it spawns on 0 0 0 // stride 0x40
-				int break_me = 0;
+				//int break_me = 0;
 
-				if (ctx.info.shader_name != "Wireframe_DX9")
-				{
+				if (ctx.info.shader_name != "Wireframe_DX9") {
 					ctx.info.material->vftable->SetShader(ctx.info.material, "Wireframe");
 				}
 
 				//ctx.save_vs(dev);
 				//dev->SetVertexShader(nullptr);
 				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_NORMAL | D3DFVF_TEX5);
-#endif
+//#endif
 			}
 
 			// on portal open - outer ring effect
