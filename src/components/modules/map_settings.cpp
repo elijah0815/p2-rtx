@@ -485,6 +485,9 @@ namespace components
 	void map_settings::on_map_load(const std::string& map_name)
 	{
 		get()->set_settings_for_map(map_name);
+
+		is_level.reset();
+		is_level.update(get_map_name());
 	}
 
 	void map_settings::on_map_exit()

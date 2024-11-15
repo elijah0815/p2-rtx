@@ -8,25 +8,22 @@ namespace components
 	// called from main_module::on_renderview()
 	void choreo_events::on_client_frame()
 	{
-		const auto& mapname = map_settings::get_map_name();
-		if (!mapname.empty())
+		//const auto& mapname = map_settings::get_map_name();
+		//if (!mapname.empty())
 		{
-			if (mapname.starts_with("sp_a4"))
+			if (map_settings::is_level.sp_a4_finale2) // sp_a4_finale2
 			{
-				if (mapname.ends_with("le2")) // sp_a4_finale2
+				if (ev_a4_f2_api_portal_spawn.has_elapsed(5.0f))
 				{
-					if (ev_a4_f2_api_portal_spawn.has_elapsed(5.0f))
+					if (!api::remix_rayportal::get()->empty())
 					{
-						if (!api::remix_rayportal::get()->empty())
-						{
-							auto& p = api::remix_rayportal::get()->get_portal_pair(api::remix_rayportal::PORTAL_PAIR_1)->get_portal0();
-							p.m_pos = { 2108.0f, 774.0f, -18.0f };
-							p.uncache();
-							ev_a4_f2_api_portal_spawn.reset();
-						}
+						auto& p = api::remix_rayportal::get()->get_portal_pair(api::remix_rayportal::PORTAL_PAIR_1)->get_portal0();
+						p.m_pos = { 2108.0f, 774.0f, -18.0f };
+						p.uncache();
+						ev_a4_f2_api_portal_spawn.reset();
 					}
 				}
-			} // end 'sp_a4'
+			}
 		}
 	}
 
@@ -41,25 +38,22 @@ namespace components
 			const auto sname = std::string_view(ev->m_pScene->m_szFileName);
 			if (std::string_view(ev->m_Name.string) != "NULL")
 			{
-				const auto& mapname = map_settings::get_map_name();
-				if (!mapname.empty())
+				//const auto& mapname = map_settings::get_map_name();
+				//if (!mapname.empty())
 				{
-					if (mapname.starts_with("sp_a4"))
+					// fix invisible world model (arms/pgun) after expl.
+					if (map_settings::is_level.sp_a4_finale4)
 					{
-						// fix invisible world model (arms/pgun) after expl.
-						if (mapname.ends_with("le4")) // sp_a4_finale4
-						{
-							// bw_finale04_button_press01.vcd
-							if (sname.ends_with("button_press01.vcd")) {
-								api::remix_vars::set_option(api::remix_vars::get_option("rtx.playerModel.enableInPrimarySpace"), { true });
-							}
-
-							// bw_finale04_button_press04.vcd
-							else if (sname.ends_with("epilogue10.vcd")) {
-								api::remix_vars::set_option(api::remix_vars::get_option("rtx.playerModel.enableInPrimarySpace"), { false });
-							}
+						// bw_finale04_button_press01.vcd
+						if (sname.ends_with("button_press01.vcd")) {
+							api::remix_vars::set_option(api::remix_vars::get_option("rtx.playerModel.enableInPrimarySpace"), { true });
 						}
-					} // end 'sp_a4'
+
+						// bw_finale04_button_press04.vcd
+						else if (sname.ends_with("epilogue10.vcd")) {
+							api::remix_vars::set_option(api::remix_vars::get_option("rtx.playerModel.enableInPrimarySpace"), { false });
+						}
+					}
 				}
 			}
 		}
@@ -94,20 +88,16 @@ namespace components
 		if (scene_name)
 		{
 			const auto sname = std::string_view(scene_name);
-			const auto& mapname = map_settings::get_map_name();
-
-			if (!mapname.empty())
+			//const auto& mapname = map_settings::get_map_name();
+			//if (!mapname.empty())
 			{
-				if (mapname.starts_with("sp_a4"))
+				if (map_settings::is_level.sp_a4_finale2)
 				{
-					if (mapname.ends_with("le2")) // sp_a4_finale2
-					{
-						// scenes/npc/sphere03/bw_a4_finale02_trapintro02.vcd
-						if (sname.ends_with("trapintro02.vcd")) {
-							choreo_events::ev_a4_f2_api_portal_spawn.trigger();
-						}
+					// scenes/npc/sphere03/bw_a4_finale02_trapintro02.vcd
+					if (sname.ends_with("trapintro02.vcd")) {
+						choreo_events::ev_a4_f2_api_portal_spawn.trigger();
 					}
-				} // end 'sp_a4'
+				}
 			}
 		}
 	}

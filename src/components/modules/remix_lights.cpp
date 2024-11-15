@@ -4,7 +4,7 @@ namespace components::api
 {
 	void remix_lights::a2_bts3_flashlight()
 	{
-		if (map_settings::get_map_name().ends_with("bts3"))
+		if (map_settings::is_level.sp_a2_bts3)
 		{
 			if (!m_bts3_flashlight_pos.IsZero(0.0001f) && !m_bts3_wheatly_pos.IsZero(0.0001f))
 			{

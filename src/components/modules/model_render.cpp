@@ -341,7 +341,7 @@ namespace components
 
 		// get origin of wheatly for flashlight calc. on bts3
 		if (pInfo.flags == 0x9 && pInfo.pModel->radius == 19.3280182f &&
-			map_settings::get_map_name().ends_with("bts3"))
+			map_settings::is_level.sp_a2_bts3)
 		{
 			if (std::string_view(pInfo.pModel->szPathName).contains("sphere")) {
 				api::remix_lights::bts3_set_flashlight_start_pos(pInfo.origin);
@@ -1219,7 +1219,7 @@ namespace components
 
 		// disable areaportals
 		else if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x80003 && ctx.info.material_name.starts_with("tools/")
-			&& !(g_player_current_area == 6 && map_settings::get_map_name() == "sp_a1_wakeup")) // do not disable elevator "door" on wakeup
+			&& !(g_player_current_area == 6 && map_settings::is_level.sp_a1_wakeup)) // do not disable elevator "door" on wakeup
 		{
 			ctx.modifiers.do_not_render = true; 
 		}
@@ -1651,68 +1651,62 @@ namespace components
 
 						// dirty hack to invert the portal direction in the spawn area on sp_a4_finale2 because
 						// the static overlays on portals (that we use to identify and render the rayportals) are rendered on the inside of the moving object
-						if (const auto& m = map_settings::get_map_name(); !m.empty())
+						if (map_settings::is_level.sp_a4_finale2 && g_player_current_area == 4)
 						{
-							if (m.ends_with("finale2"))
+							// invert along the x axis
+							ctx.info.buffer_state.m_Transform[0].m[0][0] = -1;
+							dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
+
+							if (primlist)
 							{
-								if (g_player_current_area == 4)
+								IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
+								dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
+
+								IDirect3DIndexBuffer9* ib = nullptr;
+								if (SUCCEEDED(dev->GetIndices(&ib)))
 								{
-									// invert along the x axis
-									ctx.info.buffer_state.m_Transform[0].m[0][0] = -1;
-									dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
-
-									if (primlist)
+									WORD* ib_data; // lock index buffer to retrieve the relevant vertex indices
+									if (SUCCEEDED(ib->Lock(0, 0, (void**)&ib_data, D3DLOCK_READONLY)))
 									{
-										IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
-										dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
+										// add relevant indices without duplicates
+										std::unordered_set<std::uint16_t> indices; indices.reserve(primlist->m_NumIndices);
 
-										IDirect3DIndexBuffer9* ib = nullptr;
-										if (SUCCEEDED(dev->GetIndices(&ib)))
+										for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++) {
+											indices.insert(ib_data[primlist->m_FirstIndex + i]);
+										}
+
+										ib->Unlock();
+
+										// get the range of vertices that we are going to work with
+										UINT min_vert = 0u, max_vert = 0u;
 										{
-											WORD* ib_data; // lock index buffer to retrieve the relevant vertex indices
-											if (SUCCEEDED(ib->Lock(0, 0, (void**)&ib_data, D3DLOCK_READONLY)))
+											auto [min_it, max_it] = std::minmax_element(indices.begin(), indices.end());
+											min_vert = *min_it;
+											max_vert = *max_it;
+										}
+
+										void* src_buffer_data; // lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
+										if (SUCCEEDED(vb->Lock(min_vert * t_stride, max_vert * t_stride, &src_buffer_data, 0)))
+										{
+											struct src_vert {
+												Vector pos; Vector normal; Vector2D tc;
+											};
+
+											for (auto i : indices)
 											{
-												// add relevant indices without duplicates
-												std::unordered_set<std::uint16_t> indices; indices.reserve(primlist->m_NumIndices);
+												// we need to subtract min_vert because we locked @ min_vert which is the start of our lock
+												i -= static_cast<std::uint16_t>(min_vert);
 
-												for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++) {
-													indices.insert(ib_data[primlist->m_FirstIndex + i]);
-												}
+												const auto v_pos_in_src_buffer = i * t_stride;
+												const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
 
-												ib->Unlock();
+												// invert x coordinate as we scaled X by -1 using the world matrix
+												src->pos.x = src->pos.x * -1.0f - 0.5f;
 
-												// get the range of vertices that we are going to work with
-												UINT min_vert = 0u, max_vert = 0u;
-												{
-													auto [min_it, max_it] = std::minmax_element(indices.begin(), indices.end());
-													min_vert = *min_it;
-													max_vert = *max_it;
-												}
-
-												void* src_buffer_data; // lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
-												if (SUCCEEDED(vb->Lock(min_vert * t_stride, max_vert * t_stride, &src_buffer_data, 0)))
-												{
-													struct src_vert {
-														Vector pos; Vector normal; Vector2D tc;
-													};
-
-													for (auto i : indices)
-													{
-														// we need to subtract min_vert because we locked @ min_vert which is the start of our lock
-														i -= static_cast<std::uint16_t>(min_vert);
-
-														const auto v_pos_in_src_buffer = i * t_stride;
-														const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
-
-														// invert x coordinate as we scaled X by -1 using the world matrix
-														src->pos.x = src->pos.x * -1.0f - 0.5f;
-
-														// flip normal
-														src->normal *= -1.0f;
-													}
-													vb->Unlock();
-												}
+												// flip normal
+												src->normal *= -1.0f;
 											}
+											vb->Unlock();
 										}
 									}
 								}
@@ -2176,7 +2170,7 @@ namespace components
 				bool disable_vertex_color_modulation = false;
 
 				// get flashlight end pos (wheatly) on bts3
-				if (map_settings::get_map_name().ends_with("bts3"))
+				if (map_settings::is_level.sp_a2_bts3)
 				{
 					if (ctx.info.material_name == "particle/flashlight_glow")
 					{
@@ -2236,7 +2230,7 @@ namespace components
 						api::remix_lights::bts3_set_flashlight_end_pos(flashlight_pos);
 					}
 				}
-				else if (map_settings::get_map_name() == "sp_a4_finale4")
+				else if (map_settings::is_level.sp_a4_finale4)
 				{
 					DWORD dstblend;
 					dev->GetRenderState(D3DRS_DESTBLEND, &dstblend);
@@ -2332,7 +2326,7 @@ namespace components
 				//int break_me = 0;
 				//lookat_vertex_decl(dev, primlist);
 
-				if (map_settings::get_map_name() == "sp_a4_finale4")
+				if (map_settings::is_level.sp_a4_finale4)
 				{
 					model_render_hlslpp::fix_sprite_trail_particles(ctx, primlist);
 
