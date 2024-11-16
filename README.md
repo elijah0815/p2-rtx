@@ -36,21 +36,29 @@ If you want to support my work, consider buying me some coffee:
 <br>
 
 # Usage / Installation
-- Download the latest [release](https://github.com/xoxor4d/p2-rtx/releases) and extract the contents into your portal2 root directory.  
-- The `.zip` with the commit hash contains the compatibility mod and the `_remix_mod.zip` contains a base remix-mod
-- To avoid rebuilding the sound cache on first startup, copy `_master.cache` from `root/portal2/maps/soundcache` to `root/portal2_dlc3/maps/soundcache`
+- Download the latest [release](https://github.com/xoxor4d/p2-rtx/releases) and extract the contents to your portal2 root directory.  
+- The `.zip` with the commit hash contains the comp. mod and the `_remix_mod.zip` contains a base remix-mod
+- To avoid rebuilding the sound cache on first startup, copy `_master.cache` from  
+`root/portal2/maps/soundcache` to `root/portal2_dlc3/maps/soundcache`
 - Start the game by executing `_start_portal2_rtx.bat`
 - The window title should change to `Portal 2 - RTX` followed by the GitHub commit number if successful
+
+- [Set graphic options](#graphic-settings) ⚠️ 
+> - Shader Detail: Low  
+> - Effect Detail: Low  
+> - Model /Texture Detail: High  
+> - Paged Pool Memory: High  
 
 <br>
 
 #### ⚠️ Info: 
-- Current releases ship with a [custom build of the remix-dxvk runtime](https://github.com/xoxor4d/dxvk-remix/tree/combine/pairs_mask_rs) which includes necessary changes for Portal 2 (`bin/.trex/d3d9.dll`)  
+- Current releases ship with a [custom build of the remix-dxvk runtime](https://github.com/xoxor4d/dxvk-remix/tree/combine/pairs_mask_rs) which includes necessary changes  
+for Portal 2 (`bin/.trex/d3d9.dll`)  
 - For ease of use, releases ship with [Ultimate-ASI-Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases) (`bin/winmm.dll`)  
 
 
 #### ⚠️ Current issues:
-- Most effects are rendered using shaders. Effects can get glitchy the further away you are away from the map center. Performance is not the best either (as I had do do some dirty hacks to get them to render somewhat correctly).
+- A lot of effects are rendered using shaders. Effects can get glitchy the further away you are away from the map center. Performance is not the best either (as I had do do some dirty hacks to get them to render somewhat correctly).
 - Expect stuff to be a little broken / looking different 
 
 <br>
@@ -139,4 +147,16 @@ This will always force __leaf 449 & 452__ to be visible if you are in __area 4__
 ![img](img/02.png)
 ![img](img/03.png)
 ![img](img/05.png)
+</div>
+
+
+<br>
+<br>
+
+
+# Graphic-Settings
+
+<div align="center" markdown="1">
+
+<img src="img/settings.png" alt="Description" width="70%">
 </div>
