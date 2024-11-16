@@ -1850,7 +1850,7 @@ namespace components
 			// rain
 			else if (mesh->m_VertexFormat == 0x80007) 
 			{
-				//ctx.modifiers.do_not_render = true;
+				//ctx.modifiers.do_not_render = true; 
 				
 				// always render UI and world ui with high gamma
 				ctx.modifiers.with_high_gamma = true; 
@@ -2042,6 +2042,28 @@ namespace components
 					// some light sprites are rendered as ui through other geo 
 					else if (ctx.info.material_name.ends_with("_noz")) {
 						ctx.modifiers.do_not_render = true;
+					}
+
+					// fix particles on intro1 after breaking the wall
+					else if (ctx.info.material_name.starts_with("particle/"))
+					{
+						//lookat_vertex_decl(dev, primlist);
+						ctx.save_vs(dev);
+						dev->SetVertexShader(nullptr);
+						dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_DIFFUSE | D3DFVF_TEX1);
+						dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]); 
+						dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);
+						dev->SetTransform(D3DTS_PROJECTION, &ctx.info.buffer_state.m_Transform[2]);
+
+						ctx.save_tss(dev, D3DTSS_COLOROP);
+						ctx.save_tss(dev, D3DTSS_COLORARG2);
+						ctx.save_tss(dev, D3DTSS_ALPHAOP);
+						ctx.save_tss(dev, D3DTSS_ALPHAARG2);
+
+						dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+						dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+						dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
+						dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE2X);
 					}
 				}
 			}
