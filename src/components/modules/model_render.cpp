@@ -1793,14 +1793,6 @@ namespace components
 							ctx.modifiers.as_sky = true;
 						}
 					}
-					else if (ctx.info.material_name.ends_with("warp_alpha"))
-					{
-						ctx.save_texture(dev, 0);
-						dev->SetTexture(0, tex_addons::water_drip);
-
-						ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
-						dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
-					}
 
 					ctx.save_vs(dev);
 					dev->SetVertexShader(nullptr);
@@ -2441,9 +2433,31 @@ namespace components
 				//ctx.modifiers.do_not_render = true; // this needs a position as it spawns on 0 0 0 // stride 0x40
 				//int break_me = 0;
 
-				if (ctx.info.shader_name != "Wireframe_DX9") {
-					ctx.info.material->vftable->SetShader(ctx.info.material, "Wireframe");
+				if (ctx.info.material_name.ends_with("warp_alpha"))
+				{
+					ctx.save_texture(dev, 0);
+					dev->SetTexture(0, tex_addons::water_drip);
+					dev->SetTexture(1, tex_addons::water_drip);
+					
+					ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+					dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(0.2f, 0.2f, 0.2f, 1.0f)); // v_color.w
+
+					ctx.save_tss(dev, D3DTSS_COLORARG1);
+					ctx.save_tss(dev, D3DTSS_COLORARG2);
+					ctx.save_tss(dev, D3DTSS_COLOROP);
+					dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+					dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
+					dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_ADD);
+
+					ctx.save_tss(dev, D3DTSS_ALPHAARG1);
+					ctx.save_tss(dev, D3DTSS_ALPHAOP);
+					dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+					dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE2X);
 				}
+
+				/*if (ctx.info.shader_name != "Wireframe_DX9") {
+					ctx.info.material->vftable->SetShader(ctx.info.material, "Wireframe");
+				}*/
 
 				//ctx.save_vs(dev);
 				//dev->SetVertexShader(nullptr);
