@@ -54,7 +54,7 @@ If you want to support my work, consider buying me some coffee:
 #### ⚠️ Info: 
 - Current releases ship with a [custom build of the remix-dxvk runtime](https://github.com/xoxor4d/dxvk-remix/tree/combine/pairs_mask_rs) which includes necessary changes  
 for Portal 2 (`bin/.trex/d3d9.dll`)  
-- For ease of use, releases ship with [Ultimate-ASI-Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases) (`bin/winmm.dll`)  
+- Releases also include [Ultimate-ASI-Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases) (`bin/winmm.dll`)  
 
 
 #### ⚠️ Current issues:
@@ -83,7 +83,7 @@ for Portal 2 (`bin/.trex/d3d9.dll`)
   #### Map Settings:
     - `xo_debug_toggle_node_vis` :: Toggle debug visualization of bsp leafs using the remix API  
     - `xo_debug_toggle_rayportal_info` :: Toggle debug info for portal pairs spawned via map settings  
-    - `xo_mapsettings_update` :: Reload the map_settings.ini file + map.conf    
+    - `xo_mapsettings_update` :: Reload the map_settings.toml file + map.conf    
    
   #### Remix Variables:
     - `xo_vars_parse_options` :: Re-parse the rtx.conf and resets everything (incl. runtime settings - ignoring tex hashes)  
@@ -97,30 +97,45 @@ for Portal 2 (`bin/.trex/d3d9.dll`)
 > #### Fix light bleed / lights turning off due to culling: 
 - Go to spot where culling occurs and use cvar `r_lockPvs 1` to freeze vis updates
 - Use cmd `xo_debug_toggle_node_vis`
+- Note the current area you are in
 - Move into the leaf (green cube) that is getting culled
-- Open the `map_settings.ini` file found in `root/portal2-rtx/`
-- Add the map name under `#CULL` followed by a comma + the __[AREA]__ you are in + the __(LEAF)__ number/s
-- EG: `sp_a1_intro1, [4](449 452)` (separate multiple leafs by a space)
+- Open the `map_settings.toml` file found in `root/portal2-rtx/`
+- Add a new entry under `[CULL]` if the map is not listed yet
+- Add or edit the __area__ entry and add all the leafs you want to force to __leafs__ 
+```toml
+sp_a1_intro2 = [
+        { area = 4, leafs = [712, 713, 714, 780] },
+        { area = 6, leafs = [178, 179, 180, 236] }
+    ]
+```
 - Use cmd `xo_mapsettings_update` to reload the map_settings file
 - You might need to enter a new area for it to update
 - Disable `r_lockPvs` 
-
-This will always force __leaf 449 & 452__ to be visible if you are in __area 4__.
 
 <br>
 
 > #### Spawn unique map marker meshes
 - Use cvar `cl_showPos 1` to see your current position
-- Add the map name under `#MARKER` followed by a comma + the __[MAKER_NUM]__ you want to spawn + the __(POSITION)__ 
-- EG: `sp_a1_intro4, [0](0 0 0), [1](0 0 20)`
+- Add a new entry under `[MARKER]` if the map is not listed yet
+- Declare the marker number and the position of the marker
+- Duplicates are allowed
+```toml
+sp_a1_intro3 = [
+        { marker = 5, position = [-380, 840, -250] },
+        { marker = 6, position = [18, 2283, -363] },
+        { marker = 7, position = [-500, -500, 1150] }
+    ]
+```
 - Use cmd `xo_mapsettings_update` to reload the map_settings file
 
 <br>
 
 > #### Setting remix variables per map
 - Add `your_mapname.conf` to `root/portal2-rtx/map_configs/` which includes all the remix variables you want to change when loading the map. This file will be loaded automatically if it exists.
-- You can chain additional config files found in the __map_configs__ folder by adding the map name under `#API_CONFIGVARS` followed by a comma + the `NAME.conf`
-- EG: `sp_a1_intro1, chromatic.conf`
+- You can chain additional config files found in the __map_configs__ folder by adding the map name under `[CONFIGVARS]`
+```toml
+    sp_a1_intro2 = { startup = ["chromatic.conf, asd.conf"] }
+```
 
 <br>
 
