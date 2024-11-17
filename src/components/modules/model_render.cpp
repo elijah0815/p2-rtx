@@ -605,7 +605,7 @@ namespace components
 #define SPRITE_TRAIL_TEST
 #ifdef SPRITE_TRAIL_TEST
 	// works good on some maps but breaks on others?
-	void RenderSpriteTrail_mid_hk(CMeshBuilder* builder, int type)
+	void RenderSpriteTrail_mid_hk(CMeshBuilder* builder, [[maybe_unused]] int type)
 	{
 		// TODO: use hlslpp
 		//using namespace hlslpp;
@@ -664,10 +664,10 @@ namespace components
 			eyePos = Vector(v[0], v[1], v[2]);
 		}
 
-		if (type)
+		/*if (type)
 		{
 			int x = 1;
-		}
+		}*/
 
 #if 1
 		for (auto v = 0; v < builder->m_VertexBuilder.m_nVertexCount; v++)
@@ -1279,10 +1279,10 @@ namespace components
 			}
 		}
 
-		//if (ctx.info.material_name.contains("rain"))
-		//{
-		//	int break_me = 1;    
-		//}
+		/*if (ctx.info.material_name.contains("props_foliage"))
+		{
+			int break_me = 1;    
+		}*/
 
 		if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x2480033)
 		{
@@ -1337,7 +1337,7 @@ namespace components
 		}
 
 		// this also renders the glass infront of white panel lamps
-		// also renders some foliage (2nd level - emissive)
+		// also renders some foliage (2nd level - emissive) - treeleaf
 		else if (ff_model::s_shader) // 0xa0103
 		{
 			//ctx.modifiers.do_not_render = true;
@@ -1347,6 +1347,25 @@ namespace components
 			{
 				// I think we are simply missing basetex0 here
 				ctx.info.material->vftable->SetShader(ctx.info.material, "Wireframe");
+			}
+
+			// make sure that alpha testing is set
+			else if (ctx.info.material_name.contains("props_foliage"))
+			{
+				//ctx.modifiers.do_not_render = true;
+				ctx.save_rs(dev, D3DRS_ALPHABLENDENABLE);
+				ctx.save_rs(dev, D3DRS_SRCBLEND);
+				ctx.save_rs(dev, D3DRS_DESTBLEND);
+				ctx.save_rs(dev, D3DRS_ALPHATESTENABLE);
+				ctx.save_rs(dev, D3DRS_ALPHAFUNC);
+				ctx.save_rs(dev, D3DRS_ALPHAREF);
+
+				dev->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+				dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+				dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+				dev->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
+				dev->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_GREATER);
+				dev->SetRenderState(D3DRS_ALPHAREF, 128);
 			}
 
 			// change observer window texture (models/props_lab/glasswindow_observation)
