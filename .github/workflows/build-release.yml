@@ -54,3 +54,30 @@ jobs:
           name: ${{matrix.configuration}}-binaries-p2-rtx
           path: |
             ./assets/
+
+  webbook:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Tag String
+        id: tag
+        run: |
+            echo "GIT_TAG=`echo $(git describe --tags --dirty --always)`" >> $GITHUB_ENV
+          
+            git describe --tags --dirty --always
+            # …
+        
+      - uses: tsickert/discord-webhook@v4.0.0
+        with:
+          webhook-url: ${{ secrets.WEBHOOK_URL }}
+          username: "GitHub Workflow"
+          avatar-url: "https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png"
+          embed-author-icon-url: "https://cdn2.steamgriddb.com/icon/9eac560d661140becf2386e61f0c3aa7/32/256x256.png"
+          embed-author-name: "p2-rtx/develop"
+          embed-author-url: "https://github.com/xoxor4d/p2-rtx"
+          embed-title: "Successful build (release)"
+          embed-color: 0x119bcf
+          embed-description: "${{ env.GIT_TAG }} [nightly link](https://nightly.link/xoxor4d/p2-rtx/workflows/build-release/develop/Release-binaries-p2-rtx.zip)"
