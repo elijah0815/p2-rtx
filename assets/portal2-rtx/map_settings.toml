@@ -1,0 +1,116 @@
+# Fog Settings - distance: larger distance means less fog - color is actually transmission
+[FOG]
+    sp_a1_intro1 = { distance = 150000, color = [180, 160, 120] }
+    sp_a1_intro2 = { distance = 20000, color = [250, 250, 250] }
+    sp_a1_wakeup = { distance = 60000, color = [180, 140, 100] }
+    sp_a2_intro = { distance = 60000, color = [180, 140, 100] }
+    sp_a2_core = { distance = 150000, color = [180, 140, 100] }
+    sp_a4_finale2 = { distance = 150000, color = [180, 140, 100] }
+
+
+# Override culling - Specified leafs will always be rendered when in the specified area
+[CULL]
+    sp_a1_intro1 = [
+        { area = 4, leafs = [370, 371, 449, 452, 708, 841, 950] }
+    ]
+
+    sp_a1_intro2 = [
+        { area = 4, leafs = [712, 713, 714, 780] },
+        { area = 6, leafs = [178, 179, 180, 236]}
+    ]
+
+    sp_a1_intro3 = [
+        { area = 1, leafs = [13, 384, 387, 402, 1215] },
+        { area = 2, leafs = [735, 746, 872, 889, 901, 1055, 1167, 1191, 1215] },
+        { area = 3, leafs = [19, 21, 30, 38, 52, 60, 71, 73, 77, 82, 118, 145, 148, 162, 175, 191, 193, 196, 209, 233, 238, 240, 246, 266, 277, 280, 397, 400, 406, 415, 426, 427, 428, 434, 437, 620, 622, 625, 635, 640, 662, 664, 666, 674, 681, 669, 744, 751, 752, 754, 790, 801, 802, 932, 1222, 1215] },
+        { area = 4, leafs = [712, 713, 714, 780, 1215] },
+        { area = 5, leafs = [861, 862, 1215] },
+        { area = 7, leafs = [699, 712, 713, 714, 945, 954, 1080, 1081, 1111] }
+    ]
+
+    sp_a1_intro4 = [
+        { area = 2, leafs = [67, 70, 74, 75, 84, 93, 97, 98, 104, 376, 400, 417, 418, 433, 434, 487, 488, 491, 542, 547, 550, 771, 781, 784, 794, 1072, 1055, 1059, 1068, 1075, 1080, 1088] },
+        { area = 3, leafs = [51, 234, 761, 792, 797, 856, 937, 970, 979, 1077, 1086, 1090, 1101, 1105, 1107, 1108, 1118, 1123] },
+        { area = 6, leafs = [234, 761, 792, 797, 856, 937, 970, 979, 1077, 1086, 1090, 1101, 1105, 1107, 1108, 1118, 1123] }
+    ]
+
+    sp_a1_intro7 = [
+        { area = 6, leafs = [601, 607, 633, 643, 959, 968, 978] },
+        { area = 7, leafs = [632, 633, 640, 643, 646, 884, 915, 965, 984] }
+    ]
+
+    sp_a1_wakeup = [
+        { area = 1, leafs = [5, 10, 16, 156, 160, 167, 168, 236, 238, 277, 283, 289, 604, 615, 673, 704, 709, 763, 766, 891, 894, 896, 897, 908, 911, 949, 956] }
+    ]
+
+    sp_a2_bridge_intro = [
+        { area = 2, leafs = [161, 228, 237, 260, 298, 541, 544, 592] }
+    ]
+
+    sp_a2_bts1 = [
+        { area = 12, leafs = [1357, 1367, 1368, 1485, 1547] }
+    ]
+
+    sp_a2_column_blocker = [
+        { area = 1, leafs = [432] }
+    ]
+
+    sp_a4_finale2 = [
+        { area = 1, leafs = [554, 591, 630, 633] },
+        { area = 4, leafs = [53, 62, 134, 135, 150, 156] }
+]
+
+
+# Spawn unique markers that can be used as anchor meshes - You can spawn duplicates
+[MARKER]
+    sp_a1_intro1 = [
+        { marker = 0, position = [-4600, 1380, 1320] }
+    ]
+
+    sp_a1_intro2 = [
+        { marker = 2, position = [-500, 180, 430] }
+    ]
+
+    sp_a1_intro3 = [
+        { marker = 5, position = [-380, 840, -250] },
+        { marker = 6, position = [18, 2283, -363] },
+        { marker = 7, position = [-500, -500, 1150] }
+    ]
+
+    sp_a1_wakeup = [
+        { marker = 1, position = [7240, 940, 350] }
+    ]
+
+    sp_a4_finale4 = [
+        { marker = 99, position = [-16, 95, -65] }
+    ]
+
+
+# Remix variable configs - startup: load configs on map load, config matching the map name will load automatically and does not need to be specified
+[CONFIGVARS]
+    sp_a1_intro2 = { startup = ["chromatic.conf"], transitions = [
+        { leaf = 321, conf = ["third.conf"] },
+        { leaf = 521, conf = ["asd.conf"] },
+    ]}
+
+
+# Spawns portals using the remix api
+[PORTALS]
+    sp_a1_wakeup = [
+        { pair = 0, portals = [
+            { position = [6144, 3456, 1662], rotation = [-90, 0, 0], scale = [127, 127], square_mask = 1 },
+            { position = [10375, 1216, 290], rotation = [90, 0, 0], scale = [127, 127], square_mask = 0 }
+        ]}
+    ]
+
+    # first portal in first pair will be moved to "2108 774 -18" when a certain '.vcd' finishes (because it would be randomly floating in the air otherwise)
+    sp_a4_finale2 = [
+        { pair = 0, portals = [
+            { position = [0, 0, 0], rotation = [-90, 180, 0], scale = [260, 130], square_mask = 1 },
+            { position = [12347, 11782, 8190], rotation = [90, 0, 0], scale = [260, 130], square_mask = 1 }
+        ]},
+        { pair = 1, portals = [
+            { position = [11665, 11712, 8256], rotation = [0, 0, -90], scale = [128, 128], square_mask = 1 },
+            { position = [1406, 704, 192], rotation = [0, 0, 90], scale = [128, 128], square_mask = 1 }
+        ]}
+    ]

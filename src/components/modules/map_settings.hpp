@@ -24,9 +24,10 @@ namespace components
 
 		struct marker_settings_s
 		{
+			std::uint32_t index = 0;
 			float origin[3] = {};
 			void* handle = nullptr;
-			bool active = false;
+			//bool active = false;
 		};
 
 		struct api_config_var
@@ -163,7 +164,7 @@ namespace components
 		static inline std::vector<std::string> m_args;
 		static inline bool m_spawned_markers = false;
 
-		bool parse_ini();
+		bool parse_toml();
 		bool matches_map_name();
 		void parse_fog();
 		void parse_portal_pairs();

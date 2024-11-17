@@ -1,5 +1,10 @@
 #include "std_include.hpp"
 
+namespace glob
+{
+	bool spawned_external_console = false;
+}
+
 namespace game
 {
 	std::vector<std::string> loaded_modules;

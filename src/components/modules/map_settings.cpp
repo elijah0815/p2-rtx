@@ -8,7 +8,7 @@ namespace components
 		utils::replace_all(m_map_settings.mapname, std::string("maps/"), "");		// if sp map
 		utils::replace_all(m_map_settings.mapname, std::string(".bsp"), "");
 
-		parse_ini();
+		parse_toml();
 
 		static bool disable_map_configs = flags::has_flag("xo_disable_map_conf");
 		if (api::m_initialized && !disable_map_configs)
@@ -38,78 +38,63 @@ namespace components
 		m_spawned_markers = true;
 
 		// spawn map markers
-		for (auto i = 0u; i < m_map_settings.map_markers.size(); i++)
+		for (auto& m : m_map_settings.map_markers)
 		{
-			auto& m = m_map_settings.map_markers[i];
-			if (m.active)
+			const auto mdl_num = m.index / 10u;
+			const auto skin_num = m.index % 10u;
+			const auto model_name = utils::va("models/props_xo/mapmarker%03d.mdl", mdl_num * 10);
+
+			void* mdlcache = reinterpret_cast<void*>(*(DWORD*)(SERVER_BASE + USE_OFFSET(0x86B07C, 0x8618FC)));
+
+			// mdlcache->BeginLock
+			utils::hook::call_virtual<30, void>(mdlcache);
+
+			// mdlcache->FindMDL
+			const auto mdl_handle = utils::hook::call_virtual<9, std::uint16_t>(mdlcache, model_name);
+			if (mdl_handle != 0xFFFF)
 			{
-				if (i > 99) {
-					continue; // safety check
-				}
+				// save precache state - CBaseEntity::m_bAllowPrecache
+				const bool old_precache_state = *reinterpret_cast<bool*>(SERVER_BASE + USE_OFFSET(0x7BC2B0, 0x7B2C58));
 
-				const auto mdl_num = i / 10u;
-				const auto skin_num = i % 10u;
+				// allow precaching - CBaseEntity::m_bAllowPrecache
+				*reinterpret_cast<bool*>(SERVER_BASE + USE_OFFSET(0x7BC2B0, 0x7B2C58)) = true;
 
-				const auto model_name = utils::va("models/props_xo/mapmarker%03d.mdl", mdl_num * 10);
+				// CreateEntityByName - CBaseEntity *__cdecl CreateEntityByName(const char *className, int iForceEdictIndex, bool bNotify)
+				m.handle = utils::hook::call<void* (__cdecl)(const char* className, int iForceEdictIndex, bool bNotify)>(SERVER_BASE + USE_OFFSET(0x19F2C0, 0x19A090))
+					("dynamic_prop", -1, true);
 
-				void* mdlcache = reinterpret_cast<void*>(*(DWORD*)(SERVER_BASE + USE_OFFSET(0x86B07C, 0x8618FC)));
-
-				// mdlcache->BeginLock
-				utils::hook::call_virtual<30, void>(mdlcache);
-
-				// mdlcache->FindMDL
-				const auto mdl_handle = utils::hook::call_virtual<9, std::uint16_t>(mdlcache, model_name);
-				if (mdl_handle != 0xFFFF)
+				if (m.handle)
 				{
-					// save precache state - CBaseEntity::m_bAllowPrecache
-					const bool old_precache_state = *reinterpret_cast<bool*>(SERVER_BASE + USE_OFFSET(0x7BC2B0, 0x7B2C58));
+					// ent->KeyValue
+					utils::hook::call_virtual<35, void>(m.handle, "origin", utils::va("%.10f %.10f %.10f", m.origin[0], m.origin[1], m.origin[2]));
+					utils::hook::call_virtual<35, void>(m.handle, "model", model_name);
+					utils::hook::call_virtual<35, void>(m.handle, "solid", "2");
 
-					// allow precaching - CBaseEntity::m_bAllowPrecache
-					*reinterpret_cast<bool*>(SERVER_BASE + USE_OFFSET(0x7BC2B0, 0x7B2C58)) = true;
-
-					// CreateEntityByName - CBaseEntity *__cdecl CreateEntityByName(const char *className, int iForceEdictIndex, bool bNotify)
-					m.handle = utils::hook::call<void* (__cdecl)(const char* className, int iForceEdictIndex, bool bNotify)>(SERVER_BASE + USE_OFFSET(0x19F2C0, 0x19A090))
-						("dynamic_prop", -1, true);
-
-					if (m.handle)
+					struct skin_offset
 					{
-						// ent->KeyValue
-						utils::hook::call_virtual<35, void>(m.handle, "origin", utils::va("%.10f %.10f %.10f", m.origin[0], m.origin[1], m.origin[2]));
-						utils::hook::call_virtual<35, void>(m.handle, "model", model_name);
-						utils::hook::call_virtual<35, void>(m.handle, "solid", "2");
+						char pad[0x37C];
+						int m_nSkin;
+					}; STATIC_ASSERT_OFFSET(skin_offset, m_nSkin, 0x37C);
 
-						struct skin_offset
-						{
-							char pad[0x37C];
-							int m_nSkin;
-						}; STATIC_ASSERT_OFFSET(skin_offset, m_nSkin, 0x37C);
+					auto skin_val = static_cast<skin_offset*>(m.handle);
+					skin_val->m_nSkin = skin_num;
 
-						auto skin_val = static_cast<skin_offset*>(m.handle);
-						skin_val->m_nSkin = skin_num;
+					// ent->Precache
+					utils::hook::call_virtual<25, void>(m.handle);
 
-						// ent->Precache
-						utils::hook::call_virtual<25, void>(m.handle);
+					// DispatchSpawn
+					utils::hook::call<void(__cdecl)(void* pEntity, bool bRunVScripts)>(SERVER_BASE + USE_OFFSET(0x27F520, 0x279480))
+						(m.handle, true);
 
-						// DispatchSpawn
-						utils::hook::call<void(__cdecl)(void* pEntity, bool bRunVScripts)>(SERVER_BASE + USE_OFFSET(0x27F520, 0x279480))
-							(m.handle, true);
-
-						// ent->Activate
-						utils::hook::call_virtual<37, void>(m.handle);
-					}
-					else {
-						m.active = false;
-					}
-
-					// restore precaching state - CBaseEntity::m_bAllowPrecache
-					*reinterpret_cast<bool*>(SERVER_BASE + USE_OFFSET(0x7BC2B0, 0x7B2C58)) = old_precache_state;
-				}
-				else {
-					m.active = false;
+					// ent->Activate
+					utils::hook::call_virtual<37, void>(m.handle);
 				}
 
-				utils::hook::call_virtual<31, void>(mdlcache); // mdlcache->EndLock
+				// restore precaching state - CBaseEntity::m_bAllowPrecache
+				*reinterpret_cast<bool*>(SERVER_BASE + USE_OFFSET(0x7BC2B0, 0x7B2C58)) = old_precache_state;
 			}
+
+			utils::hook::call_virtual<31, void>(mdlcache); // mdlcache->EndLock
 		}
 	}
 
@@ -129,295 +114,293 @@ namespace components
 		m_spawned_markers = false;
 	}
 
-	bool map_settings::parse_ini()
+	bool map_settings::parse_toml()
 	{
-		std::ifstream file;
-		if (utils::open_file_homepath("portal2-rtx", "map_settings.ini", file))
+		try 
 		{
-			std::string input;
-			auto parse_mode = PARSE_MODE::CULL;
+			auto config = toml::parse("portal2-rtx\\map_settings.toml");
 
-			// read line by line
-			while (std::getline(file, input))
-			{
-				// ignore comment
-				if (input.starts_with("//")) {
-					continue;
-				}
-
-				if (input.empty()) {
-					continue;
-				}
-
-				if (input.starts_with("#FOG")) {
-					parse_mode = FOG; continue;
-				}
-
-				if (input.starts_with("#API_PORTAL_PAIRS")) {
-					parse_mode = API_PORTALS; continue;
-				}
-
-				if (input.starts_with("#CULL")) {
-					parse_mode = CULL; continue;
-				}
-
-				if (input.starts_with("#MARKER")) {
-					parse_mode = MARKER; continue;
-				}
-
-				if (input.starts_with("#API_CONFIGVARS")) {
-					parse_mode = API_VARS; continue;
-				}
-
-				// split string on ','
-				m_args = utils::split(input, ',');
-
-				switch (parse_mode)
+			// #
+			auto to_float = [](const toml::value& entry)
 				{
-				case FOG:
-					parse_fog(); break;
+					if (entry.is_floating()) {
+						return static_cast<float>(entry.as_floating());
+					}
 
-				case API_PORTALS: 
-					parse_portal_pairs(); break;
+					if (entry.is_integer()) {
+						return static_cast<float>(entry.as_integer());
+					}
 
-				case CULL: 
-					parse_culling(); break;
+					try { // this will fail and let the user know whats wrong
+						return static_cast<float>(entry.as_floating());
+					}
+					catch (toml::type_error& err) {
+						game::console(); printf("%s\n", err.what());
+					}
 
-				case MARKER: 
-					parse_markers(); break;
+					return 0.0f;
+				};
 
-				case API_VARS:
-					parse_api_var_configs(); break;
+			// #
+			auto to_int = [](const toml::value& entry)
+				{
+					if (entry.is_floating()) {
+						return static_cast<int>(entry.as_floating());
+					}
+
+					if (entry.is_integer()) {
+						return static_cast<int>(entry.as_integer());
+					}
+
+					try { // this will fail and let the user know whats wrong
+						return static_cast<int>(entry.as_integer());
+					}
+					catch (toml::type_error& err) {
+						game::console(); printf("%s\n", err.what());
+					}
+
+					return 0;
+				};
+
+
+			// ####################
+			// parse 'FOG' table
+			{
+				auto& fog_table = config["FOG"];
+
+				// try to find the loaded map
+				if (fog_table.contains(m_map_settings.mapname))
+				{
+					if (const auto map = fog_table[m_map_settings.mapname];
+						!map.is_empty())
+					{
+						m_map_settings.fog_dist = 0.0f;
+						m_map_settings.fog_color = 0xFFFFFFFF;
+
+						if (map.contains("distance") && map.contains("color"))
+						{
+							const auto dist = map.at("distance");
+							m_map_settings.fog_dist = to_float(dist);
+
+							if (const auto& color = map.at("color").as_array(); 
+								color.size() == 3)
+							{
+								const auto r = static_cast<std::uint8_t>(to_int(color[0]));
+								const auto g = static_cast<std::uint8_t>(to_int(color[1]));
+								const auto b = static_cast<std::uint8_t>(to_int(color[2]));
+								m_map_settings.fog_color = D3DCOLOR_XRGB(r, g, b);
+							}
+						}
+					}
 				}
-			}
+			} // end 'CULL'
 
-			file.close();
-			return true;
+
+			// ####################
+			// parse 'CULL' table
+			{
+				auto& cull_table = config["CULL"];
+
+				// #
+				auto process_cull_entry = [to_int](const toml::value& entry)
+					{
+						if (entry.contains("area") && entry.contains("leafs"))
+						{
+							const auto area = to_int(entry.at("area")); //toml::find<std::uint32_t>(entry, "area");
+							auto& leafs = entry.at("leafs").as_array();
+
+							std::unordered_set<std::uint32_t> leaf_set;
+							for (const auto& leaf : leafs) {
+								leaf_set.insert(to_int(leaf));
+							}
+
+							m_map_settings.area_settings.emplace(area, std::move(leaf_set));
+						}
+						
+					};
+
+				// try to find the loaded map
+				if (cull_table.contains(m_map_settings.mapname))
+				{
+					if (const auto map = cull_table[m_map_settings.mapname]; 
+						!map.is_empty() && !map.as_array().empty())
+					{
+						m_map_settings.area_settings.clear();
+						for (const auto& entry : map.as_array()) {
+							process_cull_entry(entry);
+						}
+					}
+				}
+			} // end 'CULL'
+
+
+			// ####################
+			// parse 'MARKER' table
+			{
+				auto& marker_table = config["MARKER"];
+
+				// #
+				auto process_marker_entry = [to_int, to_float](const toml::value& entry)
+					{
+						if (entry.contains("marker") && entry.contains("position"))
+						{
+							if (const auto& pos = entry.at("position").as_array();
+								pos.size() == 3)
+							{
+								m_map_settings.map_markers.emplace_back(
+									marker_settings_s
+									{
+										.index = static_cast<std::uint32_t>(to_int(entry.at("marker"))),
+										.origin = {to_float(pos[0]), to_float(pos[1]), to_float(pos[2])}
+									});
+							}
+						}
+					};
+
+				// try to find the loaded map
+				if (marker_table.contains(m_map_settings.mapname))
+				{
+					if (const auto map = marker_table[m_map_settings.mapname];
+						!map.is_empty() && !map.as_array().empty())
+					{
+						destroy_markers();
+						for (const auto& entry : map.as_array()) {
+							process_marker_entry(entry);
+						}
+					}
+				}
+			} // end 'MARKER'
+
+
+			// ####################
+			// parse 'CONFIGVARS' table
+			{
+				auto& configvar_table = config["CONFIGVARS"];
+
+				// #TODO
+				/*auto process_transition_entry = [to_int, to_float](const toml::value& entry)
+					{
+						
+					};*/
+
+				// try to find the loaded map
+				if (configvar_table.contains(m_map_settings.mapname))
+				{
+					if (const auto map = configvar_table[m_map_settings.mapname];
+						!map.is_empty())
+					{
+						m_map_settings.api_var_configs.clear();
+
+						if (map.contains("startup"))
+						{
+							if (auto& startup = map.at("startup").as_array(); 
+								!startup.empty())
+							{
+								for (const auto& conf : startup)
+								{
+									try {
+										m_map_settings.api_var_configs.emplace_back(conf.as_string());
+									}
+									catch (toml::type_error& err) {
+										game::console(); printf("%s\n", err.what());
+									}
+
+								}
+							}
+						}
+
+						/*if (map.contains("transitions"))
+						{
+							if (auto& transitions = map.at("transitions").as_array();
+								!transitions.empty())
+							{
+								for (const auto& entry : transitions) {
+									process_transition_entry(entry);
+								}
+							}
+						}*/
+					}
+				}
+			} // end 'CONFIGVARS'
+
+
+			// ####################
+			// parse 'PORTALS' table
+			{
+				auto& portal_table = config["PORTALS"];
+
+				// #
+				auto process_portal_pair_entry = [to_int, to_float](const toml::value& entry)
+					{
+						if (entry.contains("pair") && entry.contains("portals"))
+						{
+							if (auto& portals = entry.at("portals");
+								!portals.is_empty())
+							{
+								if (const auto& parray = entry.at("portals").as_array();
+									!parray.empty() && parray.size() == 2)
+								{
+									if (parray[0].contains("position") && parray[0].contains("rotation") && parray[0].contains("scale") && parray[0].contains("square_mask")
+										&& parray[1].contains("position") && parray[1].contains("rotation") && parray[1].contains("scale") && parray[1].contains("square_mask"))
+									{
+										const auto& p0_pos = parray[0].at("position").as_array();
+										const auto& p0_rot = parray[0].at("rotation").as_array();
+										const auto& p0_scale = parray[0].at("scale").as_array();
+										const auto& p0_mask = to_int(parray[0].at("square_mask"));
+
+										const auto& p1_pos = parray[1].at("position").as_array();
+										const auto& p1_rot = parray[1].at("rotation").as_array();
+										const auto& p1_scale = parray[1].at("scale").as_array();
+										const auto& p1_mask = to_int(parray[1].at("square_mask"));
+
+										if (p0_pos.size() == 3 && p0_rot.size() == 3 && p0_scale.size() == 2
+											&& p1_pos.size() == 3 && p1_rot.size() == 3 && p1_scale.size() == 2)
+										{
+											api::remix_rayportal::get()->add_pair(
+												(api::remix_rayportal::PORTAL_PAIR)static_cast<std::uint32_t>(to_int(entry.at("pair"))),
+												{ to_float(p0_pos[0]),   to_float(p0_pos[1]), to_float(p0_pos[2]) },
+												{ to_float(p0_rot[0]),   to_float(p0_rot[1]), to_float(p0_rot[2]) },
+												{ to_float(p0_scale[0]), to_float(p0_scale[1]) },
+												p0_mask,
+												{ to_float(p1_pos[0]),   to_float(p1_pos[1]), to_float(p1_pos[2]) },
+												{ to_float(p1_rot[0]),   to_float(p1_rot[1]), to_float(p1_rot[2]) },
+												{ to_float(p1_scale[0]), to_float(p1_scale[1]) },
+												p1_mask);
+										}
+									}
+								}
+							}
+						}
+					};
+
+				// try to find the loaded map
+				if (portal_table.contains(m_map_settings.mapname))
+				{
+					if (const auto& map = portal_table[m_map_settings.mapname];
+						!map.is_empty() && !map.as_array().empty())
+					{
+						// clear portals here?
+						for (const auto& entry : map.as_array()) {
+							process_portal_pair_entry(entry);
+						}
+					}
+				}
+			} // end 'PORTALS'
 		}
 
-		return false;
+		catch (const toml::syntax_error& err)
+		{
+			game::console();
+			printf("%s\n", err.what());
+			return false;
+		}
+
+		return true;
 	}
 
 	bool map_settings::matches_map_name()
 	{
 		return utils::str_to_lower(m_args[0]) == m_map_settings.mapname;
-	}
-
-	void map_settings::parse_fog()
-	{
-		if (matches_map_name())
-		{
-			m_map_settings.fog_dist = utils::try_stof(m_args[1], 0.0f);
-			m_map_settings.fog_color = D3DCOLOR_XRGB
-			(
-				utils::try_stoi(m_args[2], 255),
-				utils::try_stoi(m_args[3], 255),
-				utils::try_stoi(m_args[4], 255)
-			);
-		}
-	}
-
-	void map_settings::parse_portal_pairs()
-	{
-		if (matches_map_name())
-		{
-			std::unordered_set<int> added_pairs;
-
-			// for each portal pair
-			for (auto a = 1u; a < m_args.size(); a++)
-			{
-				const auto& str = m_args[a];
-
-				if (str.empty()) {
-					continue;
-				}
-
-				if (!utils::has_matching_symbols(str, '[', ']', true) || !utils::has_matching_symbols(str, '(', ')', false) || !utils::has_matching_symbols(str, '{', '}', false)) {
-					continue;
-				}
-
-				// which pair are we writing settings for?
-				if (const auto	pair_index = utils::try_stoi(utils::split_string_between_delims(str, '[', ']'), -1);
-					pair_index >= 0)
-				{
-					// ignore duplicate pairs or pairs that are out of bounds (3rd pair and up)
-					if (added_pairs.contains(pair_index) || pair_index > 2) {
-						continue;
-					}
-
-					// track added pairs
-					added_pairs.emplace(pair_index);
-
-					// string holding definition of the two portals of the pair
-					const auto pair_creation_string = utils::split_string_between_delims(str, '(', ')');
-
-					// split into two separate portals
-					const auto individual_portals = utils::split(pair_creation_string, '&');
-
-					if (individual_portals.size() == 2)
-					{
-						{
-							// split portal 0 args
-							auto p0_args = utils::split(individual_portals[0], '}');
-							if (p0_args.size() == 4)
-							{
-								// remove starting {
-								for (auto& arg : p0_args) 
-								{
-									// remove trailing and leading spaces
-									arg = utils::trim(arg);
-
-									if (arg.starts_with('{')) {
-										utils::erase_substring(arg, "{");
-									}
-								}
-
-								Vector p0_pos, p0_rot, p1_pos, p1_rot;
-								Vector2D p0_scale, p1_scale;
-
-								{	// portal0
-									const auto p0_pos_str = utils::split(p0_args[0], ' ');		if (p0_pos_str.size() != 3) continue;
-									const auto p0_rot_str = utils::split(p0_args[1], ' ');		if (p0_rot_str.size() != 3) continue;
-									const auto p0_scale_str = utils::split(p0_args[2], ' ');	if (p0_scale_str.size() != 2) continue;
-
-									p0_pos = { utils::try_stof(p0_pos_str[0]), utils::try_stof(p0_pos_str[1]), utils::try_stof(p0_pos_str[2]) };
-									p0_rot = { utils::try_stof(p0_rot_str[0]), utils::try_stof(p0_rot_str[1]), utils::try_stof(p0_rot_str[2]) };
-									p0_scale = { utils::try_stof(p0_scale_str[0]), utils::try_stof(p0_scale_str[1]) };
-								}
-								
-								const auto p0_mask = utils::try_stoi(p0_args[3], 1);
-
-								{
-									auto p1_args = utils::split(individual_portals[1], '}');
-									if (p1_args.size() == 4)
-									{
-										// remove starting {
-										for (auto& arg : p1_args) 
-										{
-											// remove trailing and leading spaces
-											arg = utils::trim(arg);
-
-											if (arg.starts_with("{")) {
-												utils::erase_substring(arg, "{");
-											}
-										}
-
-										{	// portal1
-											const auto p1_pos_str = utils::split(p1_args[0], ' ');		if (p1_pos_str.size() != 3) continue;
-											const auto p1_rot_str = utils::split(p1_args[1], ' ');		if (p1_rot_str.size() != 3) continue;
-											const auto p1_scale_str = utils::split(p1_args[2], ' ');	if (p1_scale_str.size() != 2) continue;
-
-											p1_pos = { utils::try_stof(p1_pos_str[0]), utils::try_stof(p1_pos_str[1]), utils::try_stof(p1_pos_str[2]) };
-											p1_rot = { utils::try_stof(p1_rot_str[0]), utils::try_stof(p1_rot_str[1]), utils::try_stof(p1_rot_str[2]) };
-											p1_scale = { utils::try_stof(p1_scale_str[0]), utils::try_stof(p1_scale_str[1]) };
-										}
-										
-										const auto p1_mask = utils::try_stoi(p1_args[3], 1);
-
-										// finally add the pair
-										api::remix_rayportal::get()->add_pair((api::remix_rayportal::PORTAL_PAIR)pair_index,
-											p0_pos, p0_rot, p0_scale, p0_mask,
-											p1_pos, p1_rot, p1_scale, p1_mask);
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	void map_settings::parse_culling()
-	{
-		if (matches_map_name())
-		{
-			m_map_settings.area_settings.clear();
-
-			// for each area with it's forced leafs with format -> [cell](index index index)
-			for (auto a = 1u; a < m_args.size(); a++)
-			{
-				const auto& str = m_args[a];
-
-				if (str.empty()) {
-					continue;
-				}
-
-				if (!utils::has_matching_symbols(str, '[', ']', true) || !utils::has_matching_symbols(str, '(', ')', true)) {
-					continue;
-				}
-
-				// which leaf are we writing settings for?
-				if (const auto	leaf_idx = utils::try_stoi(utils::split_string_between_delims(str, '[', ']'), -1); 
-								leaf_idx >= 0)
-				{
-					// ignore duplicate leafs
-					if (m_map_settings.area_settings.contains(leaf_idx)) {
-						continue;
-					}
-
-					const auto elem = m_map_settings.area_settings.emplace(leaf_idx, std::unordered_set<std::uint32_t>()).first;
-
-					// get leaf inidices
-					const auto indices_str = utils::split_string_between_delims(str, '(', ')');
-					const auto split_indices = utils::split(indices_str, ' ');
-
-					for (const auto& i : split_indices)
-					{
-						if (const auto n = utils::try_stoi(i, -1); n >= 0) {
-							elem->second.emplace(n);
-						}
-					}
-				}
-			}
-		}
-	}
-
-	void map_settings::parse_markers()
-	{
-		if (matches_map_name())
-		{
-			destroy_markers();
-			m_map_settings.map_markers.resize(100);
-
-			for (auto a = 1u; a < m_args.size(); a++)
-			{
-				const auto& str = m_args[a];
-
-				if (str.empty()) {
-					continue;
-				}
-
-				// which marker are we writing settings for?
-				const auto marker_index = utils::try_stoi(utils::split_string_between_delims(str, '[', ']'), -1);
-				if (marker_index >= 0)
-				{
-					// limit the vector to 100 entries
-					if (marker_index >= 100) {
-						continue;
-					}
-
-					// get marker
-					const auto m = &m_map_settings.map_markers[marker_index];
-
-					// ignore duplicate markers
-					if (m->active) {
-						continue;
-					}
-
-					// get and assign origin
-					const auto origin_str = utils::split_string_between_delims(str, '(', ')');
-					if (const auto	xyz = utils::split(origin_str, ' ');
-									xyz.size() == 3u)
-					{
-						m->origin[0] = utils::try_stof(xyz[0], 0.0f);
-						m->origin[1] = utils::try_stof(xyz[1], 0.0f);
-						m->origin[2] = utils::try_stof(xyz[2], 0.0f);
-						m->active = true;
-					}
-				}
-			}
-		}
 	}
 
 	void map_settings::open_and_set_var_config(const std::string& config, const bool ignore_hashes, const char* custom_path)
@@ -464,24 +447,6 @@ namespace components
 		}
 	}
 
-	void map_settings::parse_api_var_configs()
-	{
-		if (matches_map_name())
-		{
-			m_map_settings.api_var_configs.clear();
-			for (auto a = 1u; a < m_args.size(); a++)
-			{
-				auto str = m_args[a];
-				if (str.empty()) {
-					continue;
-				}
-
-				utils::trim(str);
-				m_map_settings.api_var_configs.emplace_back(str);
-			}
-		}
-	}
-
 	void map_settings::on_map_load(const std::string& map_name)
 	{
 		get()->set_settings_for_map(map_name);
@@ -506,6 +471,6 @@ namespace components
 
 	map_settings::map_settings()
 	{
-		game::con_add_command(&xo_mapsettings_update, "xo_mapsettings_update", xo_mapsettings_update_fn, "Reloads the map_settings.ini file + map.conf");
+		game::con_add_command(&xo_mapsettings_update, "xo_mapsettings_update", xo_mapsettings_update_fn, "Reloads the map_settings.toml file + map.conf");
 	}
 }

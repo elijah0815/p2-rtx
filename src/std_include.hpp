@@ -52,7 +52,7 @@
 
 #include "MinHook.h"
 #include "hlsl++.h"
-
+#include "toml.hpp"
 #include "bridge_remix_api.h"
 
 #include "utils/vector.hpp"

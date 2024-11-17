@@ -10,6 +10,11 @@
 
 using namespace components;
 
+namespace glob
+{
+	extern bool spawned_external_console;
+}
+
 namespace game
 {
 	extern std::vector<std::string> loaded_modules;
@@ -80,5 +85,25 @@ namespace game
 
 		// CClientState::IsPaused
 		return utils::hook::call<BOOL(__fastcall)(void* this_ptr, void* null)>(ENGINE_BASE + USE_OFFSET(0xAB850, 0xAB140))(cclientstate_ptr, nullptr);
+	}
+
+	/**
+	 * Creates an external console
+	 */
+	inline void console()
+	{
+		if (!glob::spawned_external_console)
+		{
+			glob::spawned_external_console = true;
+			setvbuf(stdout, nullptr, _IONBF, 0);
+			if (AllocConsole())
+			{
+				FILE* file = nullptr;
+				freopen_s(&file, "CONIN$", "r", stdin);
+				freopen_s(&file, "CONOUT$", "w", stdout);
+				freopen_s(&file, "CONOUT$", "w", stderr);
+				SetConsoleTitleA("P2-RTX Debug Console");
+			}
+		}
 	}
 }

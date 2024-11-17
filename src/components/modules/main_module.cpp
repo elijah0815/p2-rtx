@@ -1388,15 +1388,7 @@ namespace components
 		main_module::setup_required_cvars();
 
 #if defined(BENCHMARK)
-		setvbuf(stdout, nullptr, _IONBF, 0);
-		if (AllocConsole())
-		{
-			FILE* file = nullptr;
-			freopen_s(&file, "CONIN$", "r", stdin);
-			freopen_s(&file, "CONOUT$", "w", stdout);
-			freopen_s(&file, "CONOUT$", "w", stderr);
-			SetConsoleTitleA("Benchmark Console");
-		}
+		game::console();
 #endif
 
 		// #
