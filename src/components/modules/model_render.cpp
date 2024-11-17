@@ -2659,7 +2659,9 @@ namespace components
 					}
 				}*/
 
+				ctx.save_tss(dev, D3DTSS_ALPHAARG2);
 				ctx.save_tss(dev, D3DTSS_ALPHAOP);
+				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
 				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
 
 				bool modulate_alpha = false;
@@ -2830,7 +2832,7 @@ namespace components
 										//float r = static_cast<float>((src->color >> 16) & 0xFF) / 255.0f * 1.0f;
 										//float g = static_cast<float>((src->color >> 8) & 0xFF) / 255.0f * 1.0f;
 										//float b = static_cast<float>((src->color >> 0) & 0xFF) / 255.0f * 1.0f;
-										float a = static_cast<float>((src->color >> 24) & 0xFF) / 255.0f * 0.1f;
+										float a = static_cast<float>((src->color >> 24) & 0xFF) / 255.0f * 0.05f;
 										//src->color = D3DCOLOR_COLORVALUE(r, g, b, a);
 										src->color = (src->color & 0x00FFFFFF) | (static_cast<unsigned char>(a * 255.0f) << 24);
 									}
