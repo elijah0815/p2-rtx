@@ -607,14 +607,34 @@ namespace components
 	// works good on some maps but breaks on others?
 	void RenderSpriteTrail_mid_hk(CMeshBuilder* builder, int type)
 	{
-		using namespace hlslpp;
+		// TODO: use hlslpp
+		//using namespace hlslpp;
+
 		const auto dev = game::get_d3d_device();
 
-		//if (builder->m_VertexBuilder.m_VertexSize_Position != 112)
-		//{
-		//	//return;
-		//	int x = 1;
-		//}
+		/*if (builder->m_VertexBuilder.m_VertexSize_Position == 144)
+		{
+			int x = 1;
+		}*/
+
+		int orientation = 0;
+		if (const auto shaderapi = game::get_shaderapi();
+			shaderapi)
+		{
+			if (const auto material = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr);
+				material)
+			{
+				//const auto name = material->vftable->GetName(material);
+
+				IMaterialVar* var_out = nullptr;
+				if (has_materialvar(material, "$ORIENTATION", &var_out))
+				{
+					if (var_out) {
+						orientation = var_out->vftable->GetIntValueInternal(var_out) != 0;
+					}
+				}
+			}
+		}
 
 		// #
 		// #
@@ -638,10 +658,10 @@ namespace components
 			RADIUSTFADE = v[3];
 		}
 
-		float3 eyePos;
+		Vector eyePos;
 		{
 			float v[4] = {}; dev->GetVertexShaderConstantF(2, v, 1);
-			eyePos = float3(v[0], v[1], v[2]);
+			eyePos = Vector(v[0], v[1], v[2]);
 		}
 
 		if (type)
@@ -668,6 +688,9 @@ namespace components
 			const auto src_vTexCoordRange = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[4] + v_pos_in_src_buffer));
 			const auto src_vEndPointColor = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[5] + v_pos_in_src_buffer));
 
+			const auto src_vNormal0 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[6] + v_pos_in_src_buffer));
+			const auto src_vNormal1 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[7] + v_pos_in_src_buffer));
+
 			// save vParms (because we will be overriding them when writing pos)
 			const float parmsX = src_vParms->x;
 			const float parmsY = src_vParms->y;
@@ -681,8 +704,17 @@ namespace components
 			auto posrad = CatmullRomSpline(P0, P1, P2, P3, parmsX);
 			posrad.w *= std::lerp(1.0f, RADIUSTFADE, parmsX);
 
-			//if (ORIENTATION == 0) v2p = posrad.xyz - cEyePos;	// screen aligned
-			Vector v2p = { posrad.x - eyePos[0], posrad.y - eyePos[1], posrad.z - eyePos[2] };
+			Vector v2p = { 0.0f, 0.0f, 1.0f };
+			if (orientation == 0) {
+				v2p = { posrad.x - eyePos.x, posrad.y - eyePos.y, posrad.z - eyePos.z }; // screen aligned
+			}
+			else if (orientation == 3) 
+			{
+				v2p.x = std::lerp(src_vNormal0->x, src_vNormal1->x, parmsX);
+				v2p.y = std::lerp(src_vNormal0->y, src_vNormal1->y, parmsX);
+				v2p.z = std::lerp(src_vNormal0->z, src_vNormal1->z, parmsX);
+			}
+			
 			Vector tangent = DCatmullRomSpline3(P0, P1, P2, P3, parmsX);
 
 			//float3 ofs = normalize(cross(v2p, normalize(tangent)));
@@ -709,7 +741,7 @@ namespace components
 			color.x = static_cast<float>((*src_vTint >> 16) & 0xFF) / 255.0f * 1.0f;
 			color.y = static_cast<float>((*src_vTint >> 8) & 0xFF) / 255.0f * 1.0f;
 			color.z = static_cast<float>((*src_vTint >> 0) & 0xFF) / 255.0f * 1.0f;
-			color.w = static_cast<float>((*src_vTint >> 24) & 0xFF) / 255.0f * 0.1f;
+			color.w = static_cast<float>((*src_vTint >> 24) & 0xFF) / 255.0f * 0.1f; // ! 0.1
 
 			color.x = std::lerp(color.x, src_vEndPointColor->x, parmsX);
 			color.y = std::lerp(color.y, src_vEndPointColor->y, parmsX);
@@ -2844,10 +2876,12 @@ namespace components
 					}
 				}
 #endif
-				//ctx.save_vs(dev);
-				//dev->SetVertexShader(nullptr);
-				//dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX2);
-				//dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
+				/*ctx.save_vs(dev);
+				dev->SetVertexShader(nullptr);
+				dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX2);
+				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
+				dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);
+				dev->SetTransform(D3DTS_PROJECTION, &ctx.info.buffer_state.m_Transform[2]);*/
 			}
 
 			// paint blobs (blob only, not the painted surfs)
@@ -3527,6 +3561,7 @@ namespace components
 		HOOK_RETN_PLACE(RenderSpriteCardFastRopeVertexNormal_retn_addr, CLIENT_BASE + USE_OFFSET(0x62005C, 0x617BCC));
 
 		// C_OP_RenderRope::RenderSpriteCard_Internal<FastRopeVertexNormalCacheAligned_t>
+		// not in use?
 		utils::hook::nop(CLIENT_BASE + USE_OFFSET(0x621649, 0x6191B9), 6);
 		utils::hook(CLIENT_BASE + USE_OFFSET(0x621649, 0x6191B9), RenderSpriteCardFastRopeVertexNormalCache_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(RenderSpriteCardFastRopeVertexNormalCache_retn_addr, CLIENT_BASE + USE_OFFSET(0x62164F, 0x6191BF));
