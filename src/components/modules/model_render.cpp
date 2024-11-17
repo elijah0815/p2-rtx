@@ -602,7 +602,7 @@ namespace components
 		}
 	}
 
-//#define SPRITE_TRAIL_TEST
+#define SPRITE_TRAIL_TEST
 #ifdef SPRITE_TRAIL_TEST
 	// works good on some maps but breaks on others?
 	void RenderSpriteTrail_mid_hk(CMeshBuilder* builder, int type)
@@ -610,10 +610,11 @@ namespace components
 		using namespace hlslpp;
 		const auto dev = game::get_d3d_device();
 
-		if (builder->m_VertexBuilder.m_VertexSize_Position != 112)
-		{
-			return;
-		}
+		//if (builder->m_VertexBuilder.m_VertexSize_Position != 112)
+		//{
+		//	//return;
+		//	int x = 1;
+		//}
 
 		// #
 		// #
@@ -748,8 +749,8 @@ namespace components
 		//}
 	}
 
-	HOOK_RETN_PLACE_DEF(RenderSpriteTrail_retn_addr);
-	void __declspec(naked) RenderSpriteTrail_stub()
+	HOOK_RETN_PLACE_DEF(RenderSpriteCardFastRopeVertex_retn_addr);
+	void __declspec(naked) RenderSpriteCardFastRopeVertex_stub()
 	{
 		__asm
 		{
@@ -762,13 +763,48 @@ namespace components
 
 			// og
 			mov     ecx, [edi + 0xF4];
-			jmp		RenderSpriteTrail_retn_addr;
+			jmp		RenderSpriteCardFastRopeVertex_retn_addr;
 		}
 	}
 
+	HOOK_RETN_PLACE_DEF(RenderSpriteCardFastRopeVertexNormal_retn_addr);
+	void __declspec(naked) RenderSpriteCardFastRopeVertexNormal_stub()
+	{
+		__asm
+		{
+			pushad;
+			push	0;
+			push	edi; // builder
+			call	RenderSpriteTrail_mid_hk;
+			add		esp, 8;
+			popad;
 
-	HOOK_RETN_PLACE_DEF(RenderSpriteTrailXX_retn_addr);
-	void __declspec(naked) RenderSpriteTrailXX_stub()
+			// og
+			mov     ecx, [edi + 0xF4];
+			jmp		RenderSpriteCardFastRopeVertexNormal_retn_addr;
+		}
+	}
+
+	HOOK_RETN_PLACE_DEF(RenderSpriteCardFastRopeVertexNormalCache_retn_addr);
+	void __declspec(naked) RenderSpriteCardFastRopeVertexNormalCache_stub()
+	{
+		__asm
+		{
+			pushad;
+			push	0;
+			push	edi; // builder
+			call	RenderSpriteTrail_mid_hk;
+			add		esp, 8;
+			popad;
+
+			// og
+			mov     ecx, [edi + 0xF4];
+			jmp		RenderSpriteCardFastRopeVertexNormalCache_retn_addr;
+		}
+	}
+
+	HOOK_RETN_PLACE_DEF(RenderSpritesTrail_Render_retn_addr);
+	void __declspec(naked) RenderSpritesTrail_Render_stub()
 	{
 		__asm
 		{
@@ -782,7 +818,7 @@ namespace components
 
 			// og
 			mov     ecx, [ebp - 0x128];
-			jmp		RenderSpriteTrailXX_retn_addr;
+			jmp		RenderSpritesTrail_Render_retn_addr;
 		}
 	}
 #endif
@@ -1211,10 +1247,10 @@ namespace components
 			}
 		}
 
-		/*if (ctx.info.material_name.contains("portal_cleanser"))
-		{
-			int break_me = 1;    
-		}*/
+		//if (ctx.info.material_name.contains("rain"))
+		//{
+		//	int break_me = 1;    
+		//}
 
 		if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x2480033)
 		{
@@ -1547,7 +1583,6 @@ namespace components
 				//	dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
 				//	dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_ADD);
 
-				//	// already saved in fix_sprite_trail_particles
 				//	ctx.save_tss(dev, D3DTSS_ALPHAARG1);
 				//	ctx.save_tss(dev, D3DTSS_ALPHAARG2);
 				//	ctx.save_tss(dev, D3DTSS_ALPHAOP);
@@ -2090,55 +2125,107 @@ namespace components
 					fAdditiveSelfBlendWeight = v[2];
 				}
 
+#ifndef SPRITE_TRAIL_TEST
 				const bool is_cleanser = ctx.info.material_name == "effects/portal_cleanser"
 									  || ctx.info.material_name == "effects/cleanser_edge";
+#endif
 
 				// FF sparks look really good but are heavy on the framerate + it messes up the trail shot by the portal gun ....
 				const bool is_spark = ctx.info.material_name.starts_with("particle/sparks/"); //|| ctx.info.material_name == "particle/particle_glow_02_additive_trail";
 
-				// fix portal gun beams / cleanser particles / sparks
+#ifdef SPRITE_TRAIL_TEST
+				if (is_spline)
+				{
+#else
 				if (is_spline && !is_spark &&
-					 (   is_cleanser
-					  //|| is_spark
-					  || map_settings::is_level.sp_a1_wakeup
-					  || ctx.info.buffer_state.m_Transform[2].m[3][2] > -2.0f // portal gun pickup beams (the two materials in the next check)
-					  || (g_player_current_area == 2 && map_settings::is_level.sp_a1_intro3) // allow in this area
-					  || (g_player_current_area == 5 && map_settings::is_level.sp_a2_intro) // allow in this area
-					 )
+					(is_cleanser
+						//|| is_spark
+						|| map_settings::is_level.sp_a1_wakeup
+						|| ctx.info.buffer_state.m_Transform[2].m[3][2] > -2.0f // portal gun pickup beams (the two materials in the next check)
+						|| (g_player_current_area == 2 && map_settings::is_level.sp_a1_intro3) // allow in this area
+						|| (g_player_current_area == 5 && map_settings::is_level.sp_a2_intro) // allow in this area
+						)
 					)
 				{
-					if (   is_cleanser
+#endif
+#ifndef SPRITE_TRAIL_TEST
+					if (is_cleanser
 						//|| is_spark
 						|| map_settings::is_level.sp_a1_wakeup
 						|| ctx.info.material_name.starts_with("particle/beam_generic")
 						|| ctx.info.material_name.ends_with("electricity_beam_01"))
+#endif
 					{
-						auto v_color = model_render_hlslpp::fix_sprite_trail_particles(ctx, primlist); 
-
 						ctx.save_vs(dev);
 						dev->SetVertexShader(nullptr);
 						//dev->SetPixelShader(nullptr);
 						dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX8);
 
-						// base sparks
-						//if (is_spark && !add_self) 
-						//{
-						//	ctx.save_tss(dev, D3DTSS_COLORARG1);
-						//	ctx.save_tss(dev, D3DTSS_COLORARG2);
-						//	ctx.save_tss(dev, D3DTSS_COLOROP);
-						//	dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-						//	dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
-						//	dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
+#ifdef SPRITE_TRAIL_TEST
+						if (is_spark && !add_self)
+						{
+							//ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
+							//dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(0.25f, 0.25f, 0.25f, 1.0f));
 
-						//	ctx.save_rs(dev, D3DRS_SRCBLEND);
-						//	ctx.save_rs(dev, D3DRS_DESTBLEND);
-						//	dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
-						//	dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVDESTALPHA); // no alpha but lights up the scene
-						//}
+							ctx.save_tss(dev, D3DTSS_COLORARG1);
+							ctx.save_tss(dev, D3DTSS_COLORARG2);
+							ctx.save_tss(dev, D3DTSS_COLOROP);
+							dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+							dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_DIFFUSE);
+							dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_MODULATE);
 
+							//ctx.save_tss(dev, D3DTSS_ALPHAARG1);
+							//ctx.save_tss(dev, D3DTSS_ALPHAOP);
+							//dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TFACTOR);
+							//dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+
+							ctx.save_rs(dev, D3DRS_SRCBLEND);
+							ctx.save_rs(dev, D3DRS_DESTBLEND);
+							dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
+							//dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
+							dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVDESTALPHA); // no alpha but lights up the scene
+						}
+#endif
+						
 						// if overbright
 						if (add_self)
 						{
+							//const auto v_color = model_render_hlslpp::get_sprite_trail_particle_color(primlist);
+
+							Vector4D v_color = {};
+							{
+								IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
+								dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
+
+								IDirect3DIndexBuffer9* ib = nullptr;
+								if (SUCCEEDED(dev->GetIndices(&ib)))
+								{
+									void* ib_data; // retrieve a single vertex index (*2 because WORD)
+									if (SUCCEEDED(ib->Lock(primlist->m_FirstIndex * 2, 2, &ib_data, D3DLOCK_READONLY)))
+									{
+										const auto first_index = *static_cast<std::uint16_t*>(ib_data);
+										ib->Unlock();
+
+										void* src_buffer_data; // retrieve single indexed vertex
+										if (SUCCEEDED(vb->Lock(first_index * t_stride, t_stride, &src_buffer_data, D3DLOCK_READONLY)))
+										{
+											struct src_vert {
+												Vector vParms; D3DCOLOR vTint;
+											};
+
+											const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data));
+
+											// unpack color
+											v_color.x = static_cast<float>((src->vTint >> 16) & 0xFF) / 255.0f * 1.0f;
+											v_color.y = static_cast<float>((src->vTint >> 8) & 0xFF) / 255.0f * 1.0f;
+											v_color.z = static_cast<float>((src->vTint >> 0) & 0xFF) / 255.0f * 1.0f;
+											v_color.w = static_cast<float>((src->vTint >> 24) & 0xFF) / 255.0f * 1.0f;
+											vb->Unlock();
+										}
+									}
+								}
+							}
+
 							ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
 							dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(fAdditiveSelfBlendWeight - (1.0f - v_color.x), fAdditiveSelfBlendWeight - (1.0f - v_color.y), fAdditiveSelfBlendWeight - (1.0f - v_color.z), v_color.w));
 
@@ -2149,13 +2236,17 @@ namespace components
 							dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
 							dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_ADD);
 
-							// already saved in fix_sprite_trail_particles
 							ctx.save_tss(dev, D3DTSS_ALPHAARG1);
 							ctx.save_tss(dev, D3DTSS_ALPHAARG2);
 							ctx.save_tss(dev, D3DTSS_ALPHAOP);
 							dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-							dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
+							dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
 							dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE2X);
+
+							//ctx.save_rs(dev, D3DRS_SRCBLEND);
+							//ctx.save_rs(dev, D3DRS_DESTBLEND);
+							//dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
+							//dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_SRCALPHA); // no alpha but lights up the scene
 						}
 
 						// fix out of bounds point (dirty)
@@ -2171,24 +2262,6 @@ namespace components
 				}
 				else if (is_spark)
 				{
-					//auto v_color = model_render_hlslpp::get_sprite_trail_particle_color(primlist);
-					/* ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
-					dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(v_color.x, v_color.y, v_color.z, v_color.w));
-
-					ctx.save_tss(dev, D3DTSS_COLORARG1);
-					ctx.save_tss(dev, D3DTSS_COLORARG2);
-					ctx.save_tss(dev, D3DTSS_COLOROP);
-					dev->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-					dev->SetTextureStageState(0, D3DTSS_COLORARG2, D3DTA_TFACTOR);
-					dev->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG2);
-
-					ctx.save_tss(dev, D3DTSS_ALPHAARG1);
-					ctx.save_tss(dev, D3DTSS_ALPHAARG2);
-					ctx.save_tss(dev, D3DTSS_ALPHAOP);
-					dev->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-					dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_TFACTOR);
-					dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG2);*/
-
 					ctx.save_rs(dev, D3DRS_TEXTUREFACTOR);
 					dev->SetRenderState(D3DRS_TEXTUREFACTOR, D3DCOLOR_COLORVALUE(0.25f, 0.25f, 0.25f, 1.0f)); // v_color.w
 
@@ -2473,14 +2546,21 @@ namespace components
 				//int break_me = 0;
 				//lookat_vertex_decl(dev, primlist);
 
+#ifdef SPRITE_TRAIL_TEST
+				{
+#else
 				if (map_settings::is_level.sp_a4_finale4)
 				{
 					model_render_hlslpp::fix_sprite_trail_particles(ctx, primlist);
-
-					ctx.save_vs(dev);
+#endif
+					ctx.save_vs(dev); 
 					dev->SetVertexShader(nullptr);
 					dev->SetPixelShader(nullptr);
 					dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX8); // fill up to stride? - 112
+
+					dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
+					dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);
+					dev->SetTransform(D3DTS_PROJECTION, &ctx.info.buffer_state.m_Transform[2]);
 
 					// fix out of bounds point (dirty)
 					ctx.modifiers.as_portalgun_pickup_beam = true;
@@ -3433,13 +3513,26 @@ namespace components
 
 		// modify trail vertices upon creation, before the mesh gets unlocked - works good on some maps but breaks on others?
 #ifdef SPRITE_TRAIL_TEST
-		utils::hook::nop(CLIENT_BASE + USE_OFFSET(0x0, 0x6165E4), 6);
-		utils::hook(CLIENT_BASE + USE_OFFSET(0x0, 0x6165E4), RenderSpriteTrail_stub, HOOK_JUMP).install()->quick();
-		HOOK_RETN_PLACE(RenderSpriteTrail_retn_addr, CLIENT_BASE + USE_OFFSET(0x0, 0x6165EA));
 
-		utils::hook::nop(CLIENT_BASE + USE_OFFSET(0x0, 0x61A0EE), 6);
-		utils::hook(CLIENT_BASE + USE_OFFSET(0x0, 0x61A0EE), RenderSpriteTrailXX_stub, HOOK_JUMP).install()->quick();
-		HOOK_RETN_PLACE(RenderSpriteTrailXX_retn_addr, CLIENT_BASE + USE_OFFSET(0x0, 0x61A0F4));
+		// C_OP_RenderRope::RenderSpriteCard_Internal<FastRopeVertex_t>
+		utils::hook::nop(CLIENT_BASE + USE_OFFSET(0x61EA74, 0x6165E4), 6);
+		utils::hook(CLIENT_BASE + USE_OFFSET(0x61EA74, 0x6165E4), RenderSpriteCardFastRopeVertex_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(RenderSpriteCardFastRopeVertex_retn_addr, CLIENT_BASE + USE_OFFSET(0x61EA7A, 0x6165EA));
+
+		// C_OP_RenderRope::RenderSpriteCard_Internal<FastRopeVertexNormal_t>
+		utils::hook::nop(CLIENT_BASE + USE_OFFSET(0x620056, 0x617BC6), 6);
+		utils::hook(CLIENT_BASE + USE_OFFSET(0x620056, 0x617BC6), RenderSpriteCardFastRopeVertexNormal_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(RenderSpriteCardFastRopeVertexNormal_retn_addr, CLIENT_BASE + USE_OFFSET(0x62005C, 0x617BCC));
+
+		// C_OP_RenderRope::RenderSpriteCard_Internal<FastRopeVertexNormalCacheAligned_t>
+		utils::hook::nop(CLIENT_BASE + USE_OFFSET(0x621649, 0x6191B9), 6);
+		utils::hook(CLIENT_BASE + USE_OFFSET(0x621649, 0x6191B9), RenderSpriteCardFastRopeVertexNormalCache_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(RenderSpriteCardFastRopeVertexNormalCache_retn_addr, CLIENT_BASE + USE_OFFSET(0x62164F, 0x6191BF));
+
+		// C_OP_RenderSpritesTrail::Render
+		utils::hook::nop(CLIENT_BASE + USE_OFFSET(0x62257E, 0x61A0EE), 6);
+		utils::hook(CLIENT_BASE + USE_OFFSET(0x62257E, 0x61A0EE), RenderSpritesTrail_Render_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(RenderSpritesTrail_Render_retn_addr, CLIENT_BASE + USE_OFFSET(0x622584, 0x61A0F4));
 #endif
 	}
 }
