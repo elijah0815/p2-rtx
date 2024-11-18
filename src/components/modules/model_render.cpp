@@ -870,8 +870,7 @@ namespace components
 			if (const auto material = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr);
 				material)
 			{
-				const auto name = material->vftable->GetName(material);
-
+				//const auto name = material->vftable->GetName(material);
 				IMaterialVar* var_out = nullptr;
 				if (has_materialvar(material, "$CROPFACTOR", &var_out))
 				{
