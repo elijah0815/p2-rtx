@@ -2,9 +2,6 @@ name: Build-Release
 
 on:
   workflow_dispatch: {}
-  push:
-    paths:
-      - 'src/**'
 
 jobs:
   build:
