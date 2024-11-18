@@ -1336,8 +1336,6 @@ namespace components
 		game::cvar_uncheat_and_set_float("r_paintblob_highres_cube", 1.0);
 
 		// lvl 3
-		game::cvar_uncheat_and_set_int("cl_detaildist", 1024);
-		game::cvar_uncheat_and_set_int("cl_detailfade", 400);
 		game::cvar_uncheat_and_set_int("r_decals", 2048);
 		game::cvar_uncheat_and_set_int("r_decal_overlap_count", 3);
 

@@ -855,89 +855,89 @@ namespace components
 	}
 #endif
 
-	
 
-	// Fixes sprite texcoords
-	// Expensive - use with caution. A drawcall with lots of verts is okay. A lot of smaller ones are not
-	// TODO: handle '$CROPFACTOR'
-	void fix_sprite_particles([[maybe_unused]] prim_fvf_context& ctx, CPrimList* primlist)
+	/**
+	 * Called right before unlocking the sprite mesh. m_nCurrentVertex should match m_nVertexCount
+	 */
+	void fix_sprite_card_texcoords_mid_hk(CMeshBuilder* builder, [[maybe_unused]] int type)
 	{
 		const auto dev = game::get_d3d_device();
 
-		float g_vCropFactor[4] = {};
-		dev->GetVertexShaderConstantF(15, g_vCropFactor, 1);
-		bool use_crop = false; //g_vCropFactor[0] != 1.0f || g_vCropFactor[1] != 1.0f; // not save
-
-		IMaterialVar* var_out = nullptr;
-		if (has_materialvar(ctx.info.material, "$CROPFACTOR", &var_out))
+		bool use_crop = false;
+		if (const auto shaderapi = game::get_shaderapi();
+			shaderapi)
 		{
-			if (var_out) {
-				//auto xx = var_out->vftable->GetStringValue(var_out);
-				use_crop = var_out->vftable->GetVecValueInternal1(var_out)[0] != 1.0f || var_out->vftable->GetVecValueInternal1(var_out)[1] != 1.0f;
+			if (const auto material = shaderapi->vtbl->GetBoundMaterial(shaderapi, nullptr);
+				material)
+			{
+				const auto name = material->vftable->GetName(material);
+
+				IMaterialVar* var_out = nullptr;
+				if (has_materialvar(material, "$CROPFACTOR", &var_out))
+				{
+					if (var_out) {
+						use_crop = var_out->vftable->GetVecValueInternal1(var_out)[0] != 1.0f || var_out->vftable->GetVecValueInternal1(var_out)[1] != 1.0f;
+					}
+				}
 			}
 		}
 
-		IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u;
-		dev->GetStreamSource(0, &vb, &t_offset, &t_stride);
+		float g_vCropFactor[4] = {};
+		dev->GetVertexShaderConstantF(15, g_vCropFactor, 1);
 
-		IDirect3DIndexBuffer9* ib = nullptr;
-		if (SUCCEEDED(dev->GetIndices(&ib)))
+		// meshBuilder positions are set to the last vertex it created
+		for (auto v = builder->m_VertexBuilder.m_nVertexCount; v > 0; v--)
 		{
-			void* ib_data; // lock index buffer to retrieve the relevant vertex indices
-			if (SUCCEEDED(ib->Lock(0, 0, &ib_data, D3DLOCK_READONLY)))
+			const auto v_pos_in_src_buffer = v * builder->m_VertexBuilder.m_VertexSize_Position;
+
+			//const auto src_vParms = reinterpret_cast<Vector*>(((DWORD)builder->m_VertexBuilder.m_pCurrPosition + v_pos_in_src_buffer));
+			//const auto dest_pos = reinterpret_cast<Vector*>(src_vParms);
+			//const auto src_vTint = reinterpret_cast<D3DCOLOR*>(((DWORD)builder->m_VertexBuilder.m_pCurrColor + v_pos_in_src_buffer));
+
+			const auto src_tc0 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[0] - v_pos_in_src_buffer));
+			const auto dest_tc = reinterpret_cast<Vector2D*>(src_tc0);
+
+			//const auto src_tc1 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[1] + v_pos_in_src_buffer));
+			//const auto src_tc2 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[2] + v_pos_in_src_buffer));
+			const auto src_tc3 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[3] - v_pos_in_src_buffer));
+			//const auto src_tc4 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[4] + v_pos_in_src_buffer));
+			//const auto src_tc5 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[5] + v_pos_in_src_buffer));
+
+			if (use_crop) 
 			{
-				// add relevant indices without duplicates
-				std::unordered_set<std::uint16_t> indices; indices.reserve(primlist->m_NumIndices);
-
-				for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++) {
-					indices.insert(static_cast<std::uint16_t*>(ib_data)[primlist->m_FirstIndex + i]);
-				}
-
-				ib->Unlock();
-
-				// get the range of vertices that we are going to work with
-				UINT min_vert = 0u, max_vert = 0u;
-				{
-					auto [min_it, max_it] = std::minmax_element(indices.begin(), indices.end());
-					min_vert = *min_it;
-					max_vert = *max_it;
-				}
-
-				void* src_buffer_data;
-
-				// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
-				if (SUCCEEDED(vb->Lock(min_vert * t_stride, max_vert * t_stride, &src_buffer_data, 0)))
-				{
-					struct src_vert
-					{
-						Vector pos; D3DCOLOR color; Vector4D tc0; Vector4D tc1; Vector4D tc2; Vector2D tc3; Vector4D tc4;
-					};
-
-					for (auto i : indices)
-					{
-						// we need to subtract min_vert because we locked @ min_vert which is the start of our lock
-						i -= static_cast<std::uint16_t>(min_vert);
-
-						const auto v_pos_in_src_buffer = i * t_stride;
-						const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
-
-						if (use_crop)
-						{
-							src->tc0.x = std::lerp(src->tc0.z, src->tc0.x, src->tc3.x * g_vCropFactor[0] + g_vCropFactor[2]);
-							src->tc0.y = std::lerp(src->tc0.w, src->tc0.y, src->tc3.y * g_vCropFactor[1] + g_vCropFactor[3]);
-						}
-						else
-						{
-							src->tc0.x = std::lerp(src->tc0.z, src->tc0.x, src->tc3.x);
-							src->tc0.y = std::lerp(src->tc0.w, src->tc0.y, src->tc3.y);
-						}
-					}
-
-					vb->Unlock();
-				}
+				dest_tc->x = std::lerp(src_tc0->z, src_tc0->x, src_tc3->x * g_vCropFactor[0] + g_vCropFactor[2]);
+				dest_tc->y = std::lerp(src_tc0->w, src_tc0->y, src_tc3->y * g_vCropFactor[1] + g_vCropFactor[3]);
+			}
+			else
+			{
+				dest_tc->x = std::lerp(src_tc0->z, src_tc0->x, src_tc3->x);
+				dest_tc->y = std::lerp(src_tc0->w, src_tc0->y, src_tc3->y);
 			}
 		}
 	}
+
+	HOOK_RETN_PLACE_DEF(RenderSpriteCardNew_retn_addr);
+	void __declspec(naked) RenderSpriteCardNew_stub()
+	{
+		__asm
+		{
+			pushad;
+			push	0;
+			lea     eax, [ebp - 0x25C]
+			push	eax; // builder
+			call	fix_sprite_card_texcoords_mid_hk;
+			add		esp, 8;
+			popad;
+
+			// og
+			mov     ecx, [ebp - 0x1A8];
+			jmp		RenderSpriteCardNew_retn_addr;
+		}
+	}
+
+
+	// ##
+	// ##
 
 	void render_emancipation_grill(prim_fvf_context& ctx)
 	{
@@ -1332,8 +1332,15 @@ namespace components
 			}*/
 
 			dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
-			dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);
-			dev->SetTransform(D3DTS_PROJECTION, &ctx.info.buffer_state.m_Transform[2]);
+
+			// #TODO - dirty hack .. why is this changing the camera before the surprise?
+			if (!map_settings::is_level.sp_a2_column_blocker)
+			{
+				dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);
+				dev->SetTransform(D3DTS_PROJECTION, &ctx.info.buffer_state.m_Transform[2]);
+			}
+			
+
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX6);
 			dev->SetVertexShader(nullptr); // vertexformat 0x00000000000a0003 
 		}
@@ -2392,10 +2399,11 @@ namespace components
 			// on portal open
 			// portal gun pickup effect (pusling lights (not the beam))
 			// other particles like smoke - wakeup scene ring - water splash
+#if 1
 			else if (mesh->m_VertexFormat == 0x114900005) // stride 96 
 			{
+				//const auto is_spritecard = ctx.info.material->vftable->IsSpriteCard(ctx.info.material);
 				//ctx.modifiers.do_not_render = true;
-				fix_sprite_particles(ctx, primlist);  
 
 				// scale the projection matrix for viewmodel particles so that they match the scaled remix viewmodel (currently set to a scale of 0.4)
 				if (ctx.info.buffer_state.m_Transform[2].m[3][2] == -1.00003529f) 
@@ -2550,7 +2558,7 @@ namespace components
 				dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);
 				dev->SetTransform(D3DTS_PROJECTION, &ctx.info.buffer_state.m_Transform[2]);
 			}
-
+#endif
 			// on portal open - blob in the middle (impact)
 			// water drops on glados wakeup
 			else if (mesh->m_VertexFormat == 0x80037) // TODO - test with buffer_state transforms  
@@ -3568,9 +3576,8 @@ namespace components
 
 		// ----
 
-		// modify trail vertices upon creation, before the mesh gets unlocked - works good on some maps but breaks on others?
+		// modify trail vertices upon creation, right before the mesh gets unlocked
 #ifdef SPRITE_TRAIL_TEST
-
 		// C_OP_RenderRope::RenderSpriteCard_Internal<FastRopeVertex_t>
 		utils::hook::nop(CLIENT_BASE + USE_OFFSET(0x61EA74, 0x6165E4), 6);
 		utils::hook(CLIENT_BASE + USE_OFFSET(0x61EA74, 0x6165E4), RenderSpriteCardFastRopeVertex_stub, HOOK_JUMP).install()->quick();
@@ -3592,6 +3599,11 @@ namespace components
 		utils::hook(CLIENT_BASE + USE_OFFSET(0x62257E, 0x61A0EE), RenderSpritesTrail_Render_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(RenderSpritesTrail_Render_retn_addr, CLIENT_BASE + USE_OFFSET(0x622584, 0x61A0F4));
 #endif
+
+		// C_OP_RenderSprites::Render :: fix SpriteCard UV's
+		utils::hook::nop(CLIENT_BASE + USE_OFFSET(0x622030, 0x619BA0), 6);
+		utils::hook(CLIENT_BASE + USE_OFFSET(0x622030, 0x619BA0), RenderSpriteCardNew_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(RenderSpriteCardNew_retn_addr, CLIENT_BASE + USE_OFFSET(0x622036, 0x619BA6));
 	}
 }
 
