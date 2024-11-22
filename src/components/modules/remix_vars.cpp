@@ -296,14 +296,17 @@ namespace components::api
 
 	/**
 	 * Parses a .conf within the map_configs folder lerps to contained values
-	 * @param conf_name			config name without extension
-	 * @param style				interpolation style
-	 * @param duration_or_speed	duration in s or speed scalar if using progressive lerp
+	 * @param conf_name				config name without extension
+	 * @param identifier			unique identifier so one can check if it exists within the interpolate_stack
+	 * @param ease					[EASE_TYPE] ease mode
+	 * @param duration				duration of the transition (in seconds)
+	 * @param delay					delay transition start (in seconds)
+	 * @param delay_transition_back	delay between end of transition and transition back to the initial starting value (in seconds) - only active if value > 0
 	 */
-	void remix_vars::parse_and_apply_conf_with_lerp(const std::string& conf_name, INTERPOLATE_TYPE style, const float duration_or_speed)
+	void remix_vars::parse_and_apply_conf_with_lerp(const std::string& conf_name, const std::uint64_t& identifier, const EASE_TYPE ease, const float duration, const float delay, const float delay_transition_back)
 	{
 		std::ifstream file;
-		if (utils::open_file_homepath("portal2-rtx\\map_configs", conf_name + ".conf", file))
+		if (utils::open_file_homepath("portal2-rtx\\map_configs", conf_name, file))
 		{
 			std::string input;
 			while (std::getline(file, input))
@@ -326,21 +329,7 @@ namespace components::api
 					{
 						const auto& v = string_to_option_value(o->second.type, pair[1]);
 
-						switch(style)
-						{
-						case INTERPOLATE_TYPE_LINEAR:
-							add_linear_interpolate_entry(o, v, (uint32_t)main_module::framecount, duration_or_speed);
-							break;
-
-						case INTERPOLATE_TYPE_SMOOTH:
-							add_smooth_interpolate_entry(o, v, (uint32_t)main_module::framecount, duration_or_speed);
-							break;
-
-						case INTERPOLATE_TYPE_PROGRESSIVE:
-							add_progressive_interpolate_entry(o, v, duration_or_speed);
-							break;
-						}
-
+						remix_vars::get()->add_interpolate_entry(identifier, o, v, duration, delay, delay_transition_back, ease);
 						//DEBUG_PRINT("[VAR-LERP] Start lerping var: %s to: %s\n", o->first.c_str(), pair[1].c_str());
 					}
 				}
@@ -354,15 +343,19 @@ namespace components::api
 	// #
 	// Interpolation
 
-	/**
-	 * Adds a remix var (option) to the interpolation stack and smoothly interpolates it
-	 * @param handle				handle of remix var option in the options map (can be nullptr if 'remix_var_name' is used instead) 
-	 * @param goal					transition goal
-	 * @param interpolation_speed	speed at which to interpolate between start and goal
-	 * @param remix_var_name		can be used to if handle = nullptr
-	 * @return 
-	 */
-	bool remix_vars::add_interpolate_entry(option_handle handle, const option_value& goal, const std::uint32_t time_start, const std::uint32_t duration, const float interpolation_speed, INTERPOLATE_TYPE style, const std::string& remix_var_name)
+	 /**
+	  * Adds a remix var (option) to the interpolation stack and linearly interpolates it
+	  *	@param identifier				unique identifier so one can check if it exists within the interpolate_stack
+	  * @param handle					handle of remix var option in the options map (can be nullptr if 'remix_var_name' is used instead)
+	  * @param goal						transition goal
+	  * @param duration					duration of the transition (in seconds)
+	  * @param delay					delay transition start (seconds)
+	  *	@param delay_transition_back	delay between end of transition and transition back to the initial starting value (in seconds) - only active if value > 0
+	  * @param ease						[EASE_TYPE] ease mode
+	  * @param remix_var_name			can be used if handle = nullptr
+	  * @return
+	  */
+	bool remix_vars::add_interpolate_entry(const std::uint64_t& identifier, option_handle handle, const option_value& goal, const float duration, const float delay, const float delay_transition_back, EASE_TYPE ease, const std::string& remix_var_name)
 	{
 		option_handle h = handle;
 		if (!h)
@@ -384,12 +377,13 @@ namespace components::api
 				if (ip.option == h)
 				{
 					// update
+					ip.identifier = identifier;
 					ip.start = h->second.current;
 					ip.goal = goal;
-					ip.style = style;
-					ip.interpolation_speed = interpolation_speed;
-					ip.time_start = time_start;
-					ip.duration = duration;
+					ip.style = ease;
+					ip.time_duration = duration;
+					ip.time_delay_transition_back = delay_transition_back;
+					ip._time_elapsed = -delay;
 
 					exists = true;
 					break;
@@ -399,7 +393,7 @@ namespace components::api
 			if (!exists)
 			{
 				interpolate_stack.emplace_back(interpolate_entry_s
-					{ h, h->second.current ,goal, h->second.type, style, interpolation_speed, time_start, duration, false });
+					{ identifier, h, h->second.current, goal, h->second.type, ease, duration, delay_transition_back, -delay });
 			}
 
 			return true;
@@ -408,69 +402,73 @@ namespace components::api
 		return false;
 	}
 
-	/**
-	 * Adds a remix var (option) to the interpolation stack and linearly interpolates it
-	 * @param handle				handle of remix var option in the options map (can be nullptr if 'remix_var_name' is used instead)
-	 * @param goal					transition goal
-	 * @param time_start			time when transition starts (usually cgs->time)
-	 * @param duration				duration of transition in seconds
-	 * @param remix_var_name		can be used to if handle = nullptr
-	 * @return
-	 */
-	bool remix_vars::add_linear_interpolate_entry(option_handle handle, const option_value& goal, const std::uint32_t time_start, const float duration, const std::string& remix_var_name)
-	{
-		return remix_vars::get()->add_interpolate_entry(handle, goal, time_start, (uint32_t)(duration * 1000.0f), 0.0f, INTERPOLATE_TYPE_LINEAR, remix_var_name);
-	}
 
-	/**
-	 * Adds a remix var (option) to the interpolation stack and smoothly interpolates it
-	 * @param handle				handle of remix var option in the options map (can be nullptr if 'remix_var_name' is used instead)
-	 * @param goal					transition goal
-	 * @param time_start			time when transition starts (usually cgs->time)
-	 * @param duration				duration of transition in seconds
-	 * @param remix_var_name		can be used to if handle = nullptr
-	 * @return
-	 */
-	bool remix_vars::add_smooth_interpolate_entry(option_handle handle, const option_value& goal, const std::uint32_t time_start, const float duration, const std::string& remix_var_name)
-	{
-		return remix_vars::get()->add_interpolate_entry(handle, goal, time_start, (uint32_t)(duration * 1000.0f), 0.0f, INTERPOLATE_TYPE_LINEAR, remix_var_name);
-	}
-
-	/**
-	 * Adds a remix var (option) to the interpolation stack and progressivly interpolates it
-	 * @param handle				handle of remix var option in the options map (can be nullptr if 'remix_var_name' is used instead)
-	 * @param goal					transition goal
-	 * @param speed					speed at which to interpolate between start and goal
-	 * @param remix_var_name		can be used to if handle = nullptr
-	 * @return
-	 */
-	bool remix_vars::add_progressive_interpolate_entry(option_handle handle, const option_value& goal, const float speed, const std::string& remix_var_name)
-	{
-		return remix_vars::get()->add_interpolate_entry(handle, goal, 0u, 0u, speed, INTERPOLATE_TYPE_PROGRESSIVE, remix_var_name);
-	}
-
-	void lerp_float(float* current, const float from, const float to, float fraction, remix_vars::INTERPOLATE_TYPE style, const float delta = 0.0f, const float speed = 0.0f)
+	void lerp_float(float* current, const float from, const float to, float fraction, remix_vars::EASE_TYPE style)
 	{
 		if (current)
 		{
-			switch (style)
+			const float distance = to - *current;
+			if (std::fabs(distance) < 1e-8f)
 			{
-			case remix_vars::INTERPOLATE_TYPE_LINEAR:
-				*current = (to - from) * fraction + from;
-				return;
-
-			case remix_vars::INTERPOLATE_TYPE_SMOOTH:
-				fraction = fraction * M_PI * 0.5f;
-				fraction = sinf(fraction);
-				*current = (to - from) * fraction + from;
-				return;
-
-			case remix_vars::INTERPOLATE_TYPE_PROGRESSIVE:
-				*current = utils::finterp_to(*current, to, delta, speed);
+				*current = to;
 				return;
 			}
 
-			*current = to;
+			float e = fraction;
+
+			switch (style)
+			{
+			default:
+			case remix_vars::EASE_TYPE_LINEAR:
+				break;
+
+			case remix_vars::EASE_TYPE_SIN_IN:
+				e = 1.0f - cosf((fraction * M_PI) * 0.5f);
+				break;
+
+			case remix_vars::EASE_TYPE_SIN_OUT:
+				e = sinf((fraction * M_PI) * 0.5f);
+				break;
+
+			case remix_vars::EASE_TYPE_SIN_INOUT:
+				e = -(cosf(M_PI * fraction) - 1.0f) * 0.5f;
+				break;
+
+			case remix_vars::EASE_TYPE_CUBIC_IN:
+				e = fraction * fraction * fraction;
+				break;
+
+			case remix_vars::EASE_TYPE_CUBIC_OUT:
+				e = 1.0f - powf(1.0f - fraction, 3.0f);
+				break;
+
+			case remix_vars::EASE_TYPE_CUBIC_INOUT:
+				e = fraction < 0.5
+					? 4.0f * fraction * fraction * fraction
+					: 1.0f - powf(-2.0f * fraction + 2.0f, 3.0f) * 0.5f;
+				break;
+
+			case remix_vars::EASE_TYPE_EXPO_IN:
+				e = fraction == 0.0f
+					? 0.0f
+					: powf(2.0f, 10.0f * fraction - 10.0f);
+				break;
+
+			case remix_vars::EASE_TYPE_EXPO_OUT:
+				e = fraction == 1.0f
+					? 1.0f
+					: 1.0f - powf(2.0f, -10.0f * fraction);
+				break;
+
+			case remix_vars::EASE_TYPE_EXPO_INOUT:
+				e = fraction == 0.0f ? 0.0f : fraction == 1.0f ? 1.0f
+						: fraction < 0.5f
+							? powf(2.0f, 20.0f * fraction - 10.0f) * 0.5f
+							: (2.0f - powf(2.0f, -20.0f * fraction + 10.0f)) * 0.5f;
+				break;
+			}
+
+			*current = from + (to - from) * e;
 		}
 	}
 
@@ -483,110 +481,105 @@ namespace components::api
 	}
 
 	// Interpolates all variables on the 'interpolate_stack' and removes them once they reach their goal. \n
-	// Called once per client frame (main_module::on_set_cgame_time()) (CL_Frame - after updating the delta time).
 	void remix_vars::on_client_frame()
 	{
-		//if (game::sp::clientUI->connectionState == game::CA_ACTIVE)
+		if (!game::is_paused())
 		{
-			if (!remix_vars::interpolate_stack.empty())
+			if (!interpolate_stack.empty())
 			{
 				// remove completed transitions - we do that in-front of the loop so that the final values (complete) can be used for the entire frame
-				auto completed_condition = [](const remix_vars::interpolate_entry_s& ip)
+				auto completed_condition = [](const interpolate_entry_s& ip)
 					{
 						/*if (ip.complete)
 						{
 							DEBUG_PRINT("[VAR-LERP] Complete: %s\n", ip.option->first.c_str());
 						}*/
 
-						return ip.complete;
+						return ip._complete;
 					};
 
-				const auto it = std::remove_if(remix_vars::interpolate_stack.begin(), remix_vars::interpolate_stack.end(), completed_condition);
-				remix_vars::interpolate_stack.erase(it, remix_vars::interpolate_stack.end());
+				const auto it = std::remove_if(interpolate_stack.begin(), interpolate_stack.end(), completed_condition);
+				interpolate_stack.erase(it, interpolate_stack.end());
 
 				// #
 
 				const auto globalv = game::get_global_vars();
-				const auto delta = globalv->absoluteframetime; //static_cast<float>(game::sp::client->serverTimeDelta) * 0.0001f;
-				const auto delta_abs = fabsf(delta);
-				const auto time = main_module::framecount;
+				//const auto delta_abs = globalv->absoluteframetime;
 
-				for (auto& ip : remix_vars::interpolate_stack)
+				for (auto& ip : interpolate_stack)
 				{
-					const bool transition_time_exceeded = ip.time_start + ip.duration < (uint32_t)time && ip.style != remix_vars::INTERPOLATE_TYPE_PROGRESSIVE;
+					ip._time_elapsed += globalv->frametime;
 
-					const auto f = (float)(time - ip.time_start) / (float)ip.duration;
-					float fraction = f;
-
-					if ((f - 1.0f) >= 0.0f) {
-						fraction = 1.0f;
+					// initial 'time_elapsed' value can be negative because of transition delay
+					// or if transitioning backwards with delay 
+					if (ip._time_elapsed < 0.0f) {
+						continue;
 					}
 
-					if ((0.0f - f) >= 0.0f) {
-						fraction = 0.0f;
-					}
+					const auto f = ip._time_elapsed / ip.time_duration;
+					const bool transition_time_exceeded = ip._time_elapsed >= ip.time_duration;
 
 					switch (ip.type)
 					{
-						case remix_vars::OPTION_TYPE_INT:
+						case OPTION_TYPE_INT:
 						{
 							if (!transition_time_exceeded)
 							{
 								float temp = (float)ip.option->second.current.integer;
-								lerp_float(&temp, (float)ip.start.integer, (float)ip.goal.integer, fraction, ip.style, delta_abs, ip.interpolation_speed);
+								lerp_float(&temp, (float)ip.start.integer, (float)ip.goal.integer, f, ip.style);
 								ip.option->second.current.integer = (int)temp;
 
-								ip.complete = ip.option->second.current.integer == ip.goal.integer;
+								ip._complete = ip.option->second.current.integer == ip.goal.integer;
 							}
 							else
 							{
 								ip.option->second.current.integer = ip.goal.integer;
-								ip.complete = true;
+								ip._complete = true;
 							}
 							break;
 						}
 							
-						case remix_vars::OPTION_TYPE_FLOAT:
+						case OPTION_TYPE_FLOAT:
 						{
 							if (!transition_time_exceeded)
 							{
-								lerp_float(&ip.option->second.current.value, ip.start.value, ip.goal.value, fraction, ip.style, delta_abs, ip.interpolation_speed);
-								ip.complete = utils::float_equal(ip.option->second.current.value, ip.goal.value);
+								lerp_float(&ip.option->second.current.value, ip.start.value, ip.goal.value, f, ip.style);
+								ip._complete = utils::float_equal(ip.option->second.current.value, ip.goal.value);
 							}
 							else
 							{
 								ip.option->second.current.value = ip.goal.value;
-								ip.complete = true;
+								ip._complete = true;
 							}
 							break;
 						}
 
-						case remix_vars::OPTION_TYPE_VEC2:
+						case OPTION_TYPE_VEC2:
 						{
 							if (!transition_time_exceeded)
 							{
-								lerp_float(&ip.option->second.current.vector[0], ip.start.vector[0], ip.goal.vector[0], fraction, ip.style, delta_abs, ip.interpolation_speed);
-								lerp_float(&ip.option->second.current.vector[1], ip.start.vector[1], ip.goal.vector[1], fraction, ip.style, delta_abs, ip.interpolation_speed);
-								ip.complete =  utils::float_equal(ip.option->second.current.vector[0], ip.goal.vector[0])
+								lerp_float(&ip.option->second.current.vector[0], ip.start.vector[0], ip.goal.vector[0], f, ip.style);
+								lerp_float(&ip.option->second.current.vector[1], ip.start.vector[1], ip.goal.vector[1], f, ip.style);
+								ip._complete =  utils::float_equal(ip.option->second.current.vector[0], ip.goal.vector[0])
 											&& utils::float_equal(ip.option->second.current.vector[1], ip.goal.vector[1]);
 							}
 							else
 							{
 								ip.option->second.current.vector[0] = ip.goal.vector[0];
 								ip.option->second.current.vector[1] = ip.goal.vector[1];
-								ip.complete = true;
+								ip._complete = true;
 							}
 							break;
 						}
 
-						case remix_vars::OPTION_TYPE_VEC3:
+						case OPTION_TYPE_VEC3:
 						{
 							if (!transition_time_exceeded)
 							{
-								lerp_float(&ip.option->second.current.vector[0], ip.start.vector[0], ip.goal.vector[0], fraction, ip.style, delta_abs, ip.interpolation_speed);
-								lerp_float(&ip.option->second.current.vector[1], ip.start.vector[1], ip.goal.vector[1], fraction, ip.style, delta_abs, ip.interpolation_speed);
-								lerp_float(&ip.option->second.current.vector[2], ip.start.vector[2], ip.goal.vector[2], fraction, ip.style, delta_abs, ip.interpolation_speed);
-								ip.complete =  utils::float_equal(ip.option->second.current.vector[0], ip.goal.vector[0])
+								lerp_float(&ip.option->second.current.vector[0], ip.start.vector[0], ip.goal.vector[0], f, ip.style);
+								lerp_float(&ip.option->second.current.vector[1], ip.start.vector[1], ip.goal.vector[1], f, ip.style);
+								lerp_float(&ip.option->second.current.vector[2], ip.start.vector[2], ip.goal.vector[2], f, ip.style);
+								ip._complete =  utils::float_equal(ip.option->second.current.vector[0], ip.goal.vector[0])
 											&& utils::float_equal(ip.option->second.current.vector[1], ip.goal.vector[1])
 											&& utils::float_equal(ip.option->second.current.vector[2], ip.goal.vector[2]);
 							}
@@ -595,25 +588,46 @@ namespace components::api
 								ip.option->second.current.vector[0] = ip.goal.vector[0];
 								ip.option->second.current.vector[1] = ip.goal.vector[1];
 								ip.option->second.current.vector[2] = ip.goal.vector[2];
-								ip.complete = true;
+								ip._complete = true;
 							}
 							break;
 						}
 
-						case remix_vars::OPTION_TYPE_BOOL:
+						case OPTION_TYPE_BOOL:
 						{
-							ip.option->second.current.enabled = ip.goal.enabled;
-							ip.complete = true;
+							// "complete" the transition when the rest finishes
+							if (transition_time_exceeded) {
+								ip._complete = true;
+							}
+
+							// on forward transition: set goal on start of transition
+							// on backward transition: set goal when transition is completed
+							if (!transition_time_exceeded && ip._in_backwards_transition) {
+								break;
+							}
+
+							ip.option->second.current.enabled = ip.goal.enabled; 
 							break;
 						}
 
-						case remix_vars::OPTION_TYPE_NONE:
-							ip.complete = true; // remove none type
+						case OPTION_TYPE_NONE:
+							ip._complete = true; // remove none type
 							continue;
 					}
 
 					if (!ip.option->second.not_a_remix_var) {
 						remix_vars::get()->set_option(ip.option, ip.option->second.current, false);
+					}
+
+					// detect completion of first transition - check / setup backwards transition
+					if (ip._complete && !ip._in_backwards_transition && ip.time_delay_transition_back > 0.0f)
+					{
+						// swap start/goal
+						std::swap(ip.start, ip.goal);
+
+						ip._time_elapsed = -ip.time_delay_transition_back;
+						ip._in_backwards_transition = true;
+						ip._complete = false;
 					}
 				}
 			}

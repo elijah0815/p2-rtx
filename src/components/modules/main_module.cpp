@@ -517,7 +517,6 @@ namespace components
 	void on_map_load_hk(const char* map_name)
 	{
 		// ALL RESETS first because 'on_host_disconnect_hk' is not reliable
-		map_settings::on_map_exit();
 		choreo_events::reset_all();
 
 		model_render::vgui_progress_board_scalar = 1.0f;
@@ -797,11 +796,17 @@ namespace components
 		// CM_LeafArea :: get current player area
 		const auto current_area = utils::hook::call<int(__cdecl)(int leafnum)>(ENGINE_BASE + USE_OFFSET(0x15ACE0, 0x159470))(current_leaf);
 
+		// only run logic when the leaf changes
+		const bool leaf_update = current_leaf != g_player_current_leaf;
+
+		// only run logic when the area changes
+		const bool area_update = current_leaf != g_player_current_area;
+
 		g_player_current_area = current_area;
 		g_player_current_node = -1;
 		g_player_current_leaf = -1;
 
-		const auto map_settings = map_settings::get_map_settings();
+		auto& map_settings = map_settings::get_map_settings();
 
 		// find the bsp node the player is currently in + visualize node / leaf using the remix api
 		// - skip if map settings contains no overrides for current map and debug vis is not active
@@ -888,23 +893,95 @@ namespace components
 		// We have to set all nodes from the target leaf to the root node or the node the the player is in to the current visframe
 		// Otherwise, 'R_RecursiveWorldNode' will never reach the target leaf
 
-#if 1
-		if (!map_settings.area_settings.empty())
+		if (area_update && !map_settings.area_settings.empty())
 		{
-			if (map_settings.area_settings.contains(current_area))
+			if (const auto& t = map_settings.area_settings.find(current_area);
+				t != map_settings.area_settings.end())
 			{
-				auto tweaks = map_settings.area_settings.find(current_area);
-				for (auto l : tweaks->second)
+				for (auto l : t->second)
 				{
-					if (l < static_cast<std::uint32_t>(world->numleafs)) 
-					{
-						// force leaf to be visible
-						force_leaf_vis(l, &world->nodes[g_player_current_node]);
+					if (l < static_cast<std::uint32_t>(world->numleafs)) {
+						force_leaf_vis(l, &world->nodes[g_player_current_node]); // force leaf to be visible
 					}
 				}
 			}
 		}
-#endif
+
+
+		// leaf transitions
+		if (leaf_update && !map_settings.leaf_transitions.empty())
+		{
+			for (auto t = map_settings.leaf_transitions.begin(); t != map_settings.leaf_transitions.end();)
+			{
+				bool iterpp = false;
+				bool trigger_transition = false;
+
+				const bool keep_transition = t->mode >= map_settings::ALWAYS_ON_ENTER;
+				const bool trigger_on_enter = t->mode == map_settings::ONCE_ON_ENTER || t->mode == map_settings::ALWAYS_ON_ENTER;
+				const bool trigger_on_leave = t->mode == map_settings::ONCE_ON_LEAVE || t->mode == map_settings::ALWAYS_ON_LEAVE;
+
+				if (t->leafs.contains(current_leaf))
+				{
+					if (!t->_state_enter) // first time we enter the leafset
+					{
+						if (trigger_on_enter) {
+							trigger_transition = true;
+						}
+
+						t->_state_enter = true;
+					}
+				}
+
+				// no longer touching any leaf in this set
+				else
+				{
+					if (t->_state_enter) // player just moved out of the leafset
+					{
+						if (trigger_on_leave) {
+							trigger_transition = true;
+						}
+					}
+
+					t->_state_enter = false;
+				}
+
+				if (trigger_transition)
+				{
+					bool can_add_transition = true;
+
+					// do not allow the same transition twice
+					for (const auto& ip : api::remix_vars::interpolate_stack)
+					{
+						if (ip.identifier == t->hash)
+						{
+							can_add_transition = false;
+							break;
+						}
+					}
+
+					if (can_add_transition)
+					{
+						api::remix_vars::parse_and_apply_conf_with_lerp(
+							t->config_name,
+							t->hash,
+							t->interpolate_type,
+							t->duration,
+							t->delay_in,
+							t->delay_out);
+
+						if (!keep_transition)
+						{
+							t = map_settings.leaf_transitions.erase(t);
+							iterpp = true; // erase returns the next iterator
+						}
+					}
+				}
+
+				if (!iterpp) {
+					++t;
+				}
+			}
+		}
 
 		//force_node_vis(1095, &world->nodes[player_node_index], r_visframecount);
 		//force_leaf_vis(1123, &world->nodes[player_node_index], r_visframecount);

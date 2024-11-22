@@ -11,11 +11,18 @@ namespace components::api
 		static inline remix_vars* p_this = nullptr;
 		static remix_vars* get() { return p_this; }
 
-		enum INTERPOLATE_TYPE
+		enum EASE_TYPE
 		{
-			INTERPOLATE_TYPE_LINEAR = 0,
-			INTERPOLATE_TYPE_SMOOTH = 1,
-			INTERPOLATE_TYPE_PROGRESSIVE = 2,
+			EASE_TYPE_LINEAR,
+			EASE_TYPE_SIN_IN,
+			EASE_TYPE_SIN_OUT,
+			EASE_TYPE_SIN_INOUT,
+			EASE_TYPE_CUBIC_IN,
+			EASE_TYPE_CUBIC_OUT,
+			EASE_TYPE_CUBIC_INOUT,
+			EASE_TYPE_EXPO_IN,
+			EASE_TYPE_EXPO_OUT,
+			EASE_TYPE_EXPO_INOUT,
 		};
 
 		enum OPTION_TYPE : uint8_t
@@ -83,31 +90,32 @@ namespace components::api
 		static option_value		string_to_option_value(OPTION_TYPE type, const std::string& str);
 		static option_s			string_to_option(const std::string& str);
 		static void				parse_rtx_options();
-		static void				parse_and_apply_conf_with_lerp(const std::string& conf_name, INTERPOLATE_TYPE style, float duration_or_speed);
+		static void				parse_and_apply_conf_with_lerp(const std::string& conf_name, const std::uint64_t& identifier, const EASE_TYPE ease, float duration, float delay = 0.0f, float delay_transition_back = 0.0f);
 
 		static void				on_map_load();
 		static void				on_client_frame();
 
 		struct interpolate_entry_s
 		{
+			std::uint64_t identifier;
 			option_handle option;
 			option_value start;
 			option_value goal;
 			OPTION_TYPE type;
-			INTERPOLATE_TYPE style;
-			float interpolation_speed;
-			std::uint32_t time_start;
-			std::uint32_t duration;
-			bool complete;
+			EASE_TYPE style;
+			float time_duration;
+			float time_delay_transition_back;
+			float _time_elapsed;
+			bool _in_backwards_transition;
+			bool _complete;
 		};
 
 		static inline std::vector<interpolate_entry_s> interpolate_stack;
 
-		static bool add_linear_interpolate_entry(option_handle handle, const option_value& goal, std::uint32_t time_start, float duration, const std::string& remix_var_name = "");
-		static bool add_smooth_interpolate_entry(option_handle handle, const option_value& goal, std::uint32_t time_start, float duration, const std::string& remix_var_name = "");
-		static bool add_progressive_interpolate_entry(option_handle handle, const option_value& goal, float speed, const std::string& remix_var_name = "");
+		//static bool add_linear_interpolate_entry(option_handle handle, const option_value& goal, float duration, const std::string& remix_var_name = "");
+		//static bool add_smooth_interpolate_entry(option_handle handle, const option_value& goal, float duration, const std::string& remix_var_name = "");
+		//static bool add_progressive_interpolate_entry(option_handle handle, const option_value& goal, float speed, const std::string& remix_var_name = "");
 
-	private:
-		bool add_interpolate_entry(option_handle handle, const option_value& goal, std::uint32_t time_start, std::uint32_t duration, float interpolation_speed, INTERPOLATE_TYPE style, const std::string& remix_var_name = "");
+		bool add_interpolate_entry(const std::uint64_t& identifier, option_handle handle, const option_value& goal, float duration, float delay, float delay_transition_back, EASE_TYPE ease, const std::string& remix_var_name = "");
 	};
 }

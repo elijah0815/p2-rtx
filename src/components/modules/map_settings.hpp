@@ -11,15 +11,26 @@ namespace components
 		static inline map_settings* p_this = nullptr;
 		static map_settings* get() { return p_this; }
 
-		
-
-		enum PARSE_MODE : std::uint32_t
+		enum LEAF_TRANS_MODE : uint8_t
 		{
-			FOG,
-			API_PORTALS,
-			CULL,
-			MARKER,
-			API_VARS
+			ONCE_ON_ENTER = 0,
+			ONCE_ON_LEAVE = 1,
+			ALWAYS_ON_ENTER = 2,
+			ALWAYS_ON_LEAVE = 3,
+		};
+
+
+		struct leaf_transition_s
+		{
+			std::unordered_set<std::uint32_t> leafs;
+			std::string config_name;
+			LEAF_TRANS_MODE mode;
+			api::remix_vars::EASE_TYPE interpolate_type;
+			float delay_in = 0.0f;
+			float delay_out = 0.0f;
+			float duration = 0.0f;
+			std::uint64_t hash;
+			bool _state_enter = false;
 		};
 
 		struct marker_settings_s
@@ -27,7 +38,6 @@ namespace components
 			std::uint32_t index = 0;
 			float origin[3] = {};
 			void* handle = nullptr;
-			//bool active = false;
 		};
 
 		struct api_config_var
@@ -42,6 +52,7 @@ namespace components
 			float fog_dist = 0.0f;
 			DWORD fog_color = 0xFFFFFFFF;
 			std::unordered_map<std::uint32_t, std::unordered_set<std::uint32_t>> area_settings;
+			std::vector<leaf_transition_s> leaf_transitions;
 			std::vector<marker_settings_s> map_markers;
 			std::vector<std::string> api_var_configs;
 		};
@@ -49,22 +60,11 @@ namespace components
 		static map_settings_s& get_map_settings() { return m_map_settings; }
 		static const std::string& get_map_name() { return m_map_settings.mapname; }
 
-		static void clear_map_settings()
-		{
-			m_map_settings.area_settings.clear();
-
-			destroy_markers();
-			m_map_settings.map_markers.clear();
-
-			m_map_settings.api_var_configs.clear();
-			m_map_settings = {};
-		}
-
 		void set_settings_for_map(const std::string& map_name);
 		static void spawn_markers_once();
 		static void destroy_markers();
 		static void on_map_load(const std::string& map_name);
-		static void on_map_exit();
+		static void clear_map_settings();
 
 		struct level_bool_s
 		{
@@ -166,11 +166,6 @@ namespace components
 
 		bool parse_toml();
 		bool matches_map_name();
-		void parse_fog();
-		void parse_portal_pairs();
-		void parse_culling();
-		void parse_markers();
 		void open_and_set_var_config(const std::string& config, bool ignore_hashes = false, const char* custom_path = nullptr);
-		void parse_api_var_configs();
 	};
 }

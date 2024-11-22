@@ -1,4 +1,9 @@
-# Fog Settings - distance: larger distance means less fog - color is actually transmission
+# Fog Settings
+# Parameters ---------------------------------------------------------------------------------------------------------------------------------
+#
+# distance:     larger distance == less fog
+# color:        R G B (0-255) transmission
+
 [FOG]
     sp_a1_intro1 = { distance = 150000, color = [180, 160, 120] }
     sp_a1_intro2 = { distance = 20000, color = [250, 250, 250] }
@@ -9,6 +14,11 @@
 
 
 # Override culling - Specified leafs will always be rendered when in the specified area
+# Parameters ---------------------------------------------------------------------------------------------------------------------------------
+#
+# area:     the area the player has to be in
+# leafs:    leaf/s with forced visibility [array]
+
 [CULL]
     sp_a1_intro1 = [
         { area = 4, leafs = [370, 371, 449, 452, 708, 841, 950] }
@@ -62,6 +72,11 @@
 
 
 # Spawn unique markers that can be used as anchor meshes - You can spawn duplicates
+# Parameters ---------------------------------------------------------------------------------------------------------------------------------
+#
+# marker:       number of unique marker mesh (the same marker can be spawned multiple times per map)
+# position:     X Y Z position of the marker mesh [3D array]
+
 [MARKER]
     sp_a1_intro1 = [
         { marker = 0, position = [-4600, 1380, 1320] }
@@ -86,15 +101,40 @@
     ]
 
 
-# Remix variable configs - startup: load configs on map load, config matching the map name will load automatically and does not need to be specified
+# Remix variable configs
+# Parameters ---------------------------------------------------------------------------------------------------------------------------------
+#
+# startup:      configs that will be loaded on map-load, conf matching the map name will be loaded automatically and does not need to be specified
+# conf:         name of config containing remix options (goal values)
+# leafs:        leaf's that will trigger the transition [array] (moving from one leaf to another connected & defined leaf will not trigger the transition)
+#
+# mode:         [0] ONCE_ON_ENTER ---- [1] ONCE_ON_LEAVE    // transition will only be activated once (until map reload or map_settings reload)
+#               [2] ALWAYS_ON_ENTER -- [3] ALWAYS_ON_LEAVE
+#
+# ease:         [0] LINEAR 
+#               [1] SIN_IN -----[2] SIN_OUT ---- [3] SIN_INOUT
+#               [4] CUBIC_IN -- [5] CUBIC_OUT -- [6] CUBIC_INOUT
+#               [7] EXPO_IN --- [8] EXPO_OUT --- [9] EXPO_INOUT
+#
+# duration:     transition time (in seconds)
+# delay_in:     delay start of transition (in seconds)
+# delay_out:    delay between end of transition and transition back to the initial starting value (in seconds) - only active if value > 0
+
 [CONFIGVARS]
     sp_a1_intro2 = { startup = ["chromatic.conf"], transitions = [
-        { leaf = 321, conf = ["third.conf"] },
-        { leaf = 521, conf = ["asd.conf"] }
+        { conf = "chromatic_explosion.conf", leafs = [424], mode = 0, ease = 8, duration = 0.5, delay_in = 0.0, delay_out = 0.1 }
     ]}
 
 
-# Spawns portals using the remix api
+# Spawns portals using the remix api - useful for area-connecting portals (between doors / rooms)
+# Parameters ---------------------------------------------------------------------------------------------------------------------------------
+#
+# pair:         number of pair (0 to 1 - only two pairs are currently supported)
+# position:     X Y Z coordinates of portal center [3D array]
+# rotation:     X Y Z rotation of portal [3D array] 
+# scale:        scale of portal [2D array]
+# square_mask:  0 = ellipse, 1 = square
+
 [PORTALS]
     sp_a1_wakeup = [
         { pair = 0, portals = [

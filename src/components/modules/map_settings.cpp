@@ -116,6 +116,13 @@ namespace components
 
 	bool map_settings::parse_toml()
 	{
+		/*destroy_markers();
+		m_map_settings.fog_dist = 0.0f;
+		m_map_settings.fog_color = 0xFFFFFFFF;
+		m_map_settings.area_settings.clear();
+		m_map_settings.api_var_configs.clear();
+		m_map_settings.leaf_transitions.clear();*/
+
 		try 
 		{
 			auto config = toml::parse("portal2-rtx\\map_settings.toml");
@@ -174,9 +181,6 @@ namespace components
 					if (const auto map = fog_table[m_map_settings.mapname];
 						!map.is_empty())
 					{
-						m_map_settings.fog_dist = 0.0f;
-						m_map_settings.fog_color = 0xFFFFFFFF;
-
 						if (map.contains("distance") && map.contains("color"))
 						{
 							const auto dist = map.at("distance");
@@ -225,7 +229,6 @@ namespace components
 					if (const auto map = cull_table[m_map_settings.mapname]; 
 						!map.is_empty() && !map.as_array().empty())
 					{
-						m_map_settings.area_settings.clear();
 						for (const auto& entry : map.as_array()) {
 							process_cull_entry(entry);
 						}
@@ -263,7 +266,6 @@ namespace components
 					if (const auto map = marker_table[m_map_settings.mapname];
 						!map.is_empty() && !map.as_array().empty())
 					{
-						destroy_markers();
 						for (const auto& entry : map.as_array()) {
 							process_marker_entry(entry);
 						}
@@ -278,10 +280,73 @@ namespace components
 				auto& configvar_table = config["CONFIGVARS"];
 
 				// #TODO
-				/*auto process_transition_entry = [to_int, to_float](const toml::value& entry)
+				auto process_transition_entry = [to_int, to_float](const toml::value& entry)
 					{
-						
-					};*/
+						// we NEED conf, leafs and duration or speed
+						if (entry.contains("conf") && entry.contains("leafs") && (entry.contains("duration") || entry.contains("speed")))
+						{
+							std::string config_name;
+
+							try { config_name = entry.at("conf").as_string(); }
+							catch (toml::type_error& err) {
+								game::console(); printf("%s\n", err.what());
+							}
+
+							if (!config_name.empty()) 
+							{
+								std::unordered_set<std::uint32_t> leaf_set;
+								if (const auto& leafs = entry.at("leafs").as_array();
+									!leafs.empty())
+								{
+									for (const auto& leaf : leafs) {
+										leaf_set.insert(to_int(leaf));
+									}
+
+									LEAF_TRANS_MODE mode = ONCE_ON_ENTER;
+									api::remix_vars::EASE_TYPE ease = api::remix_vars::EASE_TYPE_LINEAR;
+									float delay_in = 0.0f, delay_out = 0.0f, duration = 0.0f;
+
+									if (entry.contains("mode")) {
+										mode = (LEAF_TRANS_MODE)to_int(entry.at("mode"));
+									}
+
+									if (entry.contains("ease")) {
+										ease = (api::remix_vars::EASE_TYPE)to_int(entry.at("ease"));
+									}
+
+									if (entry.contains("delay_in")) {
+										delay_in = to_float(entry.at("delay_in"));
+									}
+
+									if (entry.contains("delay_out")) {
+										delay_out = to_float(entry.at("delay_out"));
+									}
+
+									if (entry.contains("duration")) {
+										duration = to_float(entry.at("duration"));
+									}
+
+									// create a unique hash for this transition
+									int leaf_sum = 0;
+									for (const auto& leaf : leaf_set) {
+										leaf_sum += leaf;
+									}
+
+									const auto& hash = utils::string_hash64(utils::va("%d%s%.2f", leaf_sum, config_name.c_str(), duration));
+
+									m_map_settings.leaf_transitions.emplace_back(
+										std::move(leaf_set),
+										config_name,
+										mode,
+										ease,
+										delay_in,
+										delay_out,
+										duration,
+										hash);
+								}
+							}
+						}
+					};
 
 				// try to find the loaded map
 				if (configvar_table.contains(m_map_settings.mapname))
@@ -289,8 +354,6 @@ namespace components
 					if (const auto map = configvar_table[m_map_settings.mapname];
 						!map.is_empty())
 					{
-						m_map_settings.api_var_configs.clear();
-
 						if (map.contains("startup"))
 						{
 							if (auto& startup = map.at("startup").as_array(); 
@@ -304,12 +367,11 @@ namespace components
 									catch (toml::type_error& err) {
 										game::console(); printf("%s\n", err.what());
 									}
-
 								}
 							}
 						}
 
-						/*if (map.contains("transitions"))
+						if (map.contains("transitions"))
 						{
 							if (auto& transitions = map.at("transitions").as_array();
 								!transitions.empty())
@@ -318,7 +380,7 @@ namespace components
 									process_transition_entry(entry);
 								}
 							}
-						}*/
+						}
 					}
 				}
 			} // end 'CONFIGVARS'
@@ -379,7 +441,6 @@ namespace components
 					if (const auto& map = portal_table[m_map_settings.mapname];
 						!map.is_empty() && !map.as_array().empty())
 					{
-						// clear portals here?
 						for (const auto& entry : map.as_array()) {
 							process_portal_pair_entry(entry);
 						}
@@ -449,23 +510,31 @@ namespace components
 
 	void map_settings::on_map_load(const std::string& map_name)
 	{
+		get()->clear_map_settings();
 		get()->set_settings_for_map(map_name);
 
 		is_level.reset();
 		is_level.update(get_map_name());
 	}
 
-	void map_settings::on_map_exit()
+	void map_settings::clear_map_settings()
 	{
 		api::remix_rayportal::get()->destroy_all_pairs();
-		clear_map_settings();
+
+		m_map_settings.area_settings.clear();
+		m_map_settings.leaf_transitions.clear();
+
+		destroy_markers();
+		m_map_settings.map_markers.clear();
+
+		m_map_settings.api_var_configs.clear();
+		m_map_settings = {};
 	}
 
 	ConCommand xo_mapsettings_update {};
 	void xo_mapsettings_update_fn()
 	{
-		api::remix_rayportal::get()->destroy_all_pairs();
-		map_settings::get()->destroy_markers();
+		map_settings::get()->clear_map_settings();
 		map_settings::get()->set_settings_for_map("");
 	}
 
