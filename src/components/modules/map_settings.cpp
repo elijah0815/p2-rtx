@@ -506,6 +506,11 @@ namespace components
 
 			file.close();
 		}
+		else
+		{
+			game::console();
+			printf("[MapSettings] Failed to find config: \"%s\" in %s \n", config.c_str(), custom_path ? custom_path : "\"portal2-rtx\\map_configs\"");
+		}
 	}
 
 	void map_settings::on_map_load(const std::string& map_name)

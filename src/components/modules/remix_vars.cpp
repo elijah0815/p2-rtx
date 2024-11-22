@@ -337,6 +337,11 @@ namespace components::api
 
 			file.close();
 		}
+		else
+		{
+			game::console();
+			printf("[RemixVars] Failed to find config: \"%s\" in \"portal2-rtx\\map_configs\"\n", conf_name.c_str());
+		}
 	}
 
 
