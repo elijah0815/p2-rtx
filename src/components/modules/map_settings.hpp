@@ -19,12 +19,32 @@ namespace components
 			ALWAYS_ON_LEAVE = 3,
 		};
 
-
 		struct leaf_transition_s
 		{
 			std::unordered_set<std::uint32_t> leafs;
 			std::string config_name;
 			LEAF_TRANS_MODE mode;
+			api::remix_vars::EASE_TYPE interpolate_type;
+			float delay_in = 0.0f;
+			float delay_out = 0.0f;
+			float duration = 0.0f;
+			std::uint64_t hash;
+			bool _state_enter = false;
+		};
+
+		enum CHOREO_TRANS_MODE : uint8_t
+		{
+			ONCE_ON_START = 0,
+			ONCE_ON_END = 1,
+			ALWAYS_ON_START = 2,
+			ALWAYS_ON_END = 3,
+		};
+
+		struct choreo_transition_s
+		{
+			std::string choreo_name;
+			std::string config_name;
+			CHOREO_TRANS_MODE mode;
 			api::remix_vars::EASE_TYPE interpolate_type;
 			float delay_in = 0.0f;
 			float delay_out = 0.0f;
@@ -53,6 +73,7 @@ namespace components
 			DWORD fog_color = 0xFFFFFFFF;
 			std::unordered_map<std::uint32_t, std::unordered_set<std::uint32_t>> area_settings;
 			std::vector<leaf_transition_s> leaf_transitions;
+			std::vector<choreo_transition_s> choreo_transitions;
 			std::vector<marker_settings_s> map_markers;
 			std::vector<std::string> api_var_configs;
 		};

@@ -116,13 +116,6 @@ namespace components
 
 	bool map_settings::parse_toml()
 	{
-		/*destroy_markers();
-		m_map_settings.fog_dist = 0.0f;
-		m_map_settings.fog_color = 0xFFFFFFFF;
-		m_map_settings.area_settings.clear();
-		m_map_settings.api_var_configs.clear();
-		m_map_settings.leaf_transitions.clear();*/
-
 		try 
 		{
 			auto config = toml::parse("portal2-rtx\\map_settings.toml");
@@ -283,66 +276,99 @@ namespace components
 				auto process_transition_entry = [to_int, to_float](const toml::value& entry)
 					{
 						// we NEED conf, leafs and duration or speed
-						if (entry.contains("conf") && entry.contains("leafs") && (entry.contains("duration") || entry.contains("speed")))
+						if (entry.contains("conf") && (entry.contains("leafs") || entry.contains("choreo")) && (entry.contains("duration") || entry.contains("speed")))
 						{
 							std::string config_name;
 
 							try { config_name = entry.at("conf").as_string(); }
-							catch (toml::type_error& err) {
+							catch (toml::type_error& err) 
+							{
 								game::console(); printf("%s\n", err.what());
+								return;
 							}
 
 							if (!config_name.empty()) 
 							{
-								std::unordered_set<std::uint32_t> leaf_set;
-								if (const auto& leafs = entry.at("leafs").as_array();
-									!leafs.empty())
+								std::uint8_t mode = 0u;
+								api::remix_vars::EASE_TYPE ease = api::remix_vars::EASE_TYPE_LINEAR;
+								float delay_in = 0.0f, delay_out = 0.0f, duration = 0.0f;
+
+								if (entry.contains("mode")) {
+									mode = (std::uint8_t)to_int(entry.at("mode"));
+								}
+
+								if (entry.contains("ease")) {
+									ease = (api::remix_vars::EASE_TYPE)to_int(entry.at("ease"));
+								}
+
+								if (entry.contains("delay_in")) {
+									delay_in = to_float(entry.at("delay_in"));
+								}
+
+								if (entry.contains("delay_out")) {
+									delay_out = to_float(entry.at("delay_out"));
+								}
+
+								if (entry.contains("duration")) {
+									duration = to_float(entry.at("duration"));
+								}
+
+								const bool choreo_mode = entry.contains("choreo");
+								if (choreo_mode)
 								{
-									for (const auto& leaf : leafs) {
-										leaf_set.insert(to_int(leaf));
+									std::string choreo_name;
+									try { choreo_name = entry.at("choreo").as_string(); }
+									catch (toml::type_error& err)
+									{
+										game::console(); printf("%s\n", err.what());
+										return;
 									}
 
-									LEAF_TRANS_MODE mode = ONCE_ON_ENTER;
-									api::remix_vars::EASE_TYPE ease = api::remix_vars::EASE_TYPE_LINEAR;
-									float delay_in = 0.0f, delay_out = 0.0f, duration = 0.0f;
-
-									if (entry.contains("mode")) {
-										mode = (LEAF_TRANS_MODE)to_int(entry.at("mode"));
+									if (!choreo_name.empty())
+									{
+										const auto hash = utils::string_hash64(utils::va("%s%s%.2f", choreo_name.c_str(), config_name.c_str(), duration));
+										m_map_settings.choreo_transitions.emplace_back(
+											std::move(choreo_name),
+											config_name,
+											(CHOREO_TRANS_MODE)mode,
+											ease,
+											delay_in,
+											delay_out,
+											duration,
+											hash);
 									}
+								}
+								else
+								{
+									const bool leaf_mode = !choreo_mode && entry.contains("leafs");
+									if (leaf_mode)
+									{
+										std::unordered_set<std::uint32_t> leaf_set;
+										const auto& leafs = entry.at("leafs").as_array();
+										if (!leafs.empty())
+										{
+											for (const auto& leaf : leafs) {
+												leaf_set.insert(to_int(leaf));
+											}
 
-									if (entry.contains("ease")) {
-										ease = (api::remix_vars::EASE_TYPE)to_int(entry.at("ease"));
+											// create a unique hash for this transition
+											int leaf_sum = 0;
+											for (const auto& leaf : leaf_set) {
+												leaf_sum += leaf;
+											}
+
+											const auto hash = utils::string_hash64(utils::va("%d%s%.2f", leaf_sum, config_name.c_str(), duration));
+											m_map_settings.leaf_transitions.emplace_back(
+												std::move(leaf_set),
+												config_name,
+												(LEAF_TRANS_MODE)mode,
+												ease,
+												delay_in,
+												delay_out,
+												duration,
+												hash);
+										}
 									}
-
-									if (entry.contains("delay_in")) {
-										delay_in = to_float(entry.at("delay_in"));
-									}
-
-									if (entry.contains("delay_out")) {
-										delay_out = to_float(entry.at("delay_out"));
-									}
-
-									if (entry.contains("duration")) {
-										duration = to_float(entry.at("duration"));
-									}
-
-									// create a unique hash for this transition
-									int leaf_sum = 0;
-									for (const auto& leaf : leaf_set) {
-										leaf_sum += leaf;
-									}
-
-									const auto& hash = utils::string_hash64(utils::va("%d%s%.2f", leaf_sum, config_name.c_str(), duration));
-
-									m_map_settings.leaf_transitions.emplace_back(
-										std::move(leaf_set),
-										config_name,
-										mode,
-										ease,
-										delay_in,
-										delay_out,
-										duration,
-										hash);
 								}
 							}
 						}
@@ -528,6 +554,7 @@ namespace components
 
 		m_map_settings.area_settings.clear();
 		m_map_settings.leaf_transitions.clear();
+		m_map_settings.choreo_transitions.clear();
 
 		destroy_markers();
 		m_map_settings.map_markers.clear();

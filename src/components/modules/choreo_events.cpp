@@ -30,6 +30,58 @@ namespace components
 	// #
 	// #
 
+	void handle_confvar_transition(const std::string_view& sname, const bool is_start)
+	{
+		auto& map_settings = map_settings::get_map_settings();
+		for (auto t = map_settings.choreo_transitions.begin(); t != map_settings.choreo_transitions.end();)
+		{
+			bool iterpp = false;
+
+			const bool mode = is_start
+				? (t->mode == map_settings::CHOREO_TRANS_MODE::ONCE_ON_START || t->mode == map_settings::CHOREO_TRANS_MODE::ALWAYS_ON_START)
+				: (t->mode == map_settings::CHOREO_TRANS_MODE::ONCE_ON_END || t->mode == map_settings::CHOREO_TRANS_MODE::ALWAYS_ON_END);
+
+			if (mode)
+			{
+				if (sname.contains(t->choreo_name))
+				{
+					bool can_add_transition = true;
+
+					// do not allow the same transition twice
+					for (const auto& ip : api::remix_vars::interpolate_stack)
+					{
+						if (ip.identifier == t->hash)
+						{
+							can_add_transition = false;
+							break;
+						}
+					}
+
+					if (can_add_transition)
+					{
+						api::remix_vars::parse_and_apply_conf_with_lerp(
+							t->config_name,
+							t->hash,
+							t->interpolate_type,
+							t->duration,
+							t->delay_in,
+							t->delay_out);
+
+						if (t->mode <= map_settings::CHOREO_TRANS_MODE::ONCE_ON_END)
+						{
+							t = map_settings.choreo_transitions.erase(t);
+							iterpp = true; // erase returns the next iterator
+						}
+					}
+				}
+			}
+
+			if (!iterpp) {
+				++t;
+			}
+		}
+	}
+
 	// 'CSceneEntity::StartEvent' :: triggered on event start
 	void scene_ent_on_start_event_hk([[maybe_unused]] CChoreoEvent* ev)
 	{
@@ -54,6 +106,11 @@ namespace components
 							api::remix_vars::set_option(api::remix_vars::get_option("rtx.playerModel.enableInPrimarySpace"), { false });
 						}
 					}
+
+					// ------
+
+					// handle remix config transitions added via mapsettings
+					handle_confvar_transition(sname, true);
 				}
 			}
 		}
@@ -98,6 +155,11 @@ namespace components
 						choreo_events::ev_a4_f2_api_portal_spawn.trigger();
 					}
 				}
+
+				// ------
+
+				// handle remix config transitions added via mapsettings
+				handle_confvar_transition(sname, false);
 			}
 		}
 	}

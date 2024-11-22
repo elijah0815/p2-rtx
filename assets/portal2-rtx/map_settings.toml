@@ -106,10 +106,12 @@
 #
 # startup:      configs that will be loaded on map-load, conf matching the map name will be loaded automatically and does not need to be specified
 # conf:         name of config containing remix options (goal values)
-# leafs:        leaf's that will trigger the transition [array] (moving from one leaf to another connected & defined leaf will not trigger the transition)
 #
-# mode:         [0] ONCE_ON_ENTER ---- [1] ONCE_ON_LEAVE    // transition will only be activated once (until map reload or map_settings reload)
-#               [2] ALWAYS_ON_ENTER -- [3] ALWAYS_ON_LEAVE
+# leafs:    ]   THIS OR:    leaf's that will trigger the transition [array] (moving from one leaf to another connected & defined leaf will not trigger the transition)
+# choreo:   ]   THAT:       name of choreography (.vcd) that will trigger the transition (can be a substring - keep as short as possible) (has prio. over leafs param)
+#
+# mode:         [0] ONCE: On Enter/Start ---- [1] ONCE: On Leave/End    // transition will only be activated once (until map reload or map_settings reload)
+#               [2] ALWAYS: On Enter/Start -- [3] ALWAYS: On Leave/End
 #
 # ease:         [0] LINEAR 
 #               [1] SIN_IN -----[2] SIN_OUT ---- [3] SIN_INOUT
@@ -121,8 +123,14 @@
 # delay_out:    delay between end of transition and transition back to the initial starting value (in seconds) - only active if value > 0
 
 [CONFIGVARS]
+    # Hello Migraine
+    #sp_a1_intro1 = { transitions = [
+    #    { conf = "chromatic_explosion.conf", choreo = "npc\\sphere03\\OpeningHello", mode = 2, ease = 8, duration = 0.5, delay_in = 0.0, delay_out = 0.15 }
+    #]}
+
     sp_a1_intro2 = { startup = ["chromatic.conf"], transitions = [
-        { conf = "chromatic_explosion.conf", leafs = [424], mode = 0, ease = 8, duration = 0.5, delay_in = 0.0, delay_out = 0.1 }
+        { conf = "chromatic_explosion.conf", leafs = [424], mode = 0, ease = 8, duration = 0.5, delay_in = 0.0, delay_out = 0.1 },
+        #{ conf = "chromatic_explosion.conf", choreo = "prehub28.vcd", mode = 0, ease = 8, duration = 2.5, delay_in = 0.0, delay_out = 1.0 }
     ]}
 
 
