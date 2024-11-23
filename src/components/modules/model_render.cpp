@@ -1694,7 +1694,7 @@ namespace components
 
 				// r_portal_stencil_depth 0 heavy influence
 				// TODO: is this check still needed?
-				if (ctx.info.material_name.contains("portal_stencil"))
+				if (ctx.info.material_name.contains("portal_stencil") || ctx.info.material_name.contains("portal_refract"))
 				{
 					was_portal_related = true; // prevent all other else's
 					ctx.modifiers.do_not_render = true;
