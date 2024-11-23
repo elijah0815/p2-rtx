@@ -5,7 +5,6 @@
 
 namespace components
 {
-	bool is_portalgun_viewmodel = false;
 	int	 is_rendering_paint = false;
 	int	 is_rendering_bmodel_paint = false;
 
@@ -339,9 +338,6 @@ namespace components
 		dev->GetVertexShader(&ff_model::s_shader);
 		dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
 
-		D3DMATRIX saved_view = {};
-		D3DMATRIX saved_proj = {};
-
 		// get origin of wheatly for flashlight calc. on bts3
 		if (pInfo.flags == 0x9 && pInfo.pModel->radius == 19.3280182f &&
 			map_settings::is_level.sp_a2_bts3)
@@ -374,35 +370,9 @@ namespace components
 
 			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m)); 
 		}
-		else if (pInfo.pModel->radius == 37.3153992f) // models/weapons/v_portalgun.mdl
-		{
-			dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
-
-			is_portalgun_viewmodel = true;
-			if (auto shaderapi = game::get_shaderapi(); shaderapi)
-			{
-				BufferedState_t buffer_state = {};
-				shaderapi->vtbl->GetBufferedState(shaderapi, nullptr, &buffer_state);
-
-				dev->GetTransform(D3DTS_VIEW, &saved_view);
-				dev->GetTransform(D3DTS_PROJECTION, &saved_proj);
-
-				dev->SetTransform(D3DTS_VIEW, &buffer_state.m_Transform[1]);
-				dev->SetTransform(D3DTS_PROJECTION, &buffer_state.m_Transform[2]);
-			}
-		}
-
 		
 		tbl_hk::model_renderer::table.original<FN>(Index)(ecx, edx, oo, state, pInfo, pCustomBoneToWorld);
 
-
-		if (is_portalgun_viewmodel)
-		{
-			dev->SetTransform(D3DTS_VIEW, &saved_view);
-			dev->SetTransform(D3DTS_PROJECTION, &saved_proj);
-		}
-
-		is_portalgun_viewmodel = false;
 		dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
 		dev->SetFVF(NULL);
 
@@ -1306,8 +1276,16 @@ namespace components
 		else if (ff_model::s_shader && mesh->m_VertexFormat == 0xa0003)
 		{
 			//ctx.modifiers.do_not_render = true;
-		
-			if (ctx.info.material_name.contains("models/props_destruction/glass_")) 
+
+			// viewmodel
+			if (ctx.info.buffer_state.m_Transform[2].m[3][2] == -1.00003529f)
+			{
+				ctx.save_view_transform(dev);
+				ctx.save_projection_transform(dev);
+				dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);
+				dev->SetTransform(D3DTS_PROJECTION, &ctx.info.buffer_state.m_Transform[2]);
+			}
+			else if (ctx.info.material_name.contains("models/props_destruction/glass_")) 
 			{
 				//ctx.modifiers.do_not_render = true;
 				if (tex_addons::glass_shards)
@@ -1325,21 +1303,8 @@ namespace components
 					dev->SetTexture(0, basemap2);
 				}
 			}
-			/*else if (cname.contains("chell"))
-			{
-				ctx.modifiers.do_not_render = true;
-			}*/
 
 			dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
-
-			// #TODO - dirty hack .. why is this changing the camera before the surprise?
-			if (!map_settings::is_level.sp_a2_column_blocker)
-			{
-				dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);
-				dev->SetTransform(D3DTS_PROJECTION, &ctx.info.buffer_state.m_Transform[2]);
-			}
-			
-
 			dev->SetFVF(D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX6);
 			dev->SetVertexShader(nullptr); // vertexformat 0x00000000000a0003 
 		}

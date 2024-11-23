@@ -232,6 +232,20 @@ namespace components
 			saved_texture_stage_state_[type] = temp;
 		}
 
+		// save D3DTS_VIEW
+		void save_view_transform(IDirect3DDevice9* device)
+		{
+			device->GetTransform(D3DTS_VIEW, &view_transform_);
+			view_transform_set_ = true;
+		}
+
+		// save D3DTS_PROJECTION
+		void save_projection_transform(IDirect3DDevice9* device)
+		{
+			device->GetTransform(D3DTS_PROJECTION, &projection_transform_);
+			projection_transform_set_ = true;
+		}
+
 		//// save steamsource data
 		//void save_streamsource_data(IDirect3DVertexBuffer9* buffer, UINT offset, UINT stride)
 		//{
@@ -302,6 +316,26 @@ namespace components
 			tex0_transform_set = false;
 		}
 
+		// restore saved D3DTS_VIEW
+		void restore_view_transform(IDirect3DDevice9* device)
+		{
+			if (view_transform_set_)
+			{
+				device->SetTransform(D3DTS_VIEW, &view_transform_);
+				view_transform_set_ = false;
+			}
+		}
+
+		// restore saved D3DTS_PROJECTION
+		void restore_projection_transform(IDirect3DDevice9* device)
+		{
+			if (projection_transform_set_)
+			{
+				device->SetTransform(D3DTS_PROJECTION, &projection_transform_);
+				projection_transform_set_ = false;
+			}
+		}
+
 		// restore all changes
 		void restore_all(IDirect3DDevice9* device)
 		{
@@ -309,6 +343,8 @@ namespace components
 			restore_texture(device, 0);
 			restore_texture(device, 1);
 			restore_texture_transform(device);
+			restore_view_transform(device);
+			restore_projection_transform(device);
 
 			for (auto& rs : saved_render_state_) {
 				device->SetRenderState(rs.first, rs.second);
@@ -330,6 +366,8 @@ namespace components
 			tex0_ = nullptr; tex0_set = false;
 			tex1_ = nullptr; tex1_set = false;
 			tex0_transform_set = false;
+			view_transform_set_ = false;
+			projection_transform_set_ = false;
 			saved_render_state_.clear();
 			saved_sampler_state_.clear();
 			saved_texture_stage_state_.clear();
@@ -401,12 +439,16 @@ namespace components
 	private:
 		// Render states to save
 		IDirect3DVertexShader9* vs_ = nullptr;
-		bool vs_set = false;
 		IDirect3DBaseTexture9* tex0_ = nullptr;
-		bool tex0_set = false;
 		IDirect3DBaseTexture9* tex1_ = nullptr;
+		bool vs_set = false;
+		bool tex0_set = false;
 		bool tex1_set = false;
 		bool tex0_transform_set = false;
+		D3DMATRIX view_transform_ = {};
+		D3DMATRIX projection_transform_ = {};
+		bool view_transform_set_ = false;
+		bool projection_transform_set_ = false;
 
 		// store saved render states (with the type as the key)
 		std::unordered_map<D3DRENDERSTATETYPE, DWORD> saved_render_state_;
