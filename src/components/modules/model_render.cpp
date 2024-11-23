@@ -1907,7 +1907,7 @@ namespace components
 				ctx.modifiers.with_high_gamma = true; 
 
 				// early out if vgui_white
-				if (ctx.info.material_name != "vgui_white")
+				if (ctx.info.material_name != "vgui_white" && ctx.info.buffer_state.m_Transform[0].m[3][0] != 0.0f)
 				{
 					// should be fine now that engine_post is the first hud elem
 					//if (ctx.info.material_name == "vgui__fontpage")
