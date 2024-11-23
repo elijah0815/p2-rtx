@@ -187,6 +187,6 @@ namespace components
 
 		bool parse_toml();
 		bool matches_map_name();
-		void open_and_set_var_config(const std::string& config, bool ignore_hashes = false, const char* custom_path = nullptr);
+		void open_and_set_var_config(const std::string& config, bool no_error = false, bool ignore_hashes = false, const char* custom_path = nullptr);
 	};
 }

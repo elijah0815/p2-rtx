@@ -17,7 +17,7 @@ namespace components
 			api::remix_vars::reset_all_modified();
 
 			// auto apply {map_name}.conf (if it exists)
-			open_and_set_var_config(m_map_settings.mapname + ".conf");
+			open_and_set_var_config(m_map_settings.mapname + ".conf", true);
 
 			// apply other manually defined configs
 			for (const auto& f : m_map_settings.api_var_configs) {
@@ -490,7 +490,7 @@ namespace components
 		return utils::str_to_lower(m_args[0]) == m_map_settings.mapname;
 	}
 
-	void map_settings::open_and_set_var_config(const std::string& config, const bool ignore_hashes, const char* custom_path)
+	void map_settings::open_and_set_var_config(const std::string& config, const bool no_error, const bool ignore_hashes, const char* custom_path)
 	{
 		std::string path = "portal2-rtx\\map_configs";
 		if (custom_path)
@@ -532,7 +532,7 @@ namespace components
 
 			file.close();
 		}
-		else
+		else if (!no_error)
 		{
 			game::console();
 			printf("[MapSettings] Failed to find config: \"%s\" in %s \n", config.c_str(), custom_path ? custom_path : "\"portal2-rtx\\map_configs\"");
