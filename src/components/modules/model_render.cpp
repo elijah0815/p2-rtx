@@ -861,16 +861,17 @@ namespace components
 
 			//const auto src_vParms = reinterpret_cast<Vector*>(((DWORD)builder->m_VertexBuilder.m_pCurrPosition + v_pos_in_src_buffer));
 			//const auto dest_pos = reinterpret_cast<Vector*>(src_vParms);
-			//const auto src_vTint = reinterpret_cast<D3DCOLOR*>(((DWORD)builder->m_VertexBuilder.m_pCurrColor + v_pos_in_src_buffer));
+			//const auto src_vTint = reinterpret_cast<D3DCOLOR*>(((DWORD)builder->m_VertexBuilder.m_pCurrColor - v_pos_in_src_buffer));
 
 			const auto src_tc0 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[0] - v_pos_in_src_buffer));
 			const auto dest_tc = reinterpret_cast<Vector2D*>(src_tc0);
 
 			//const auto src_tc1 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[1] + v_pos_in_src_buffer));
-			//const auto src_tc2 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[2] + v_pos_in_src_buffer));
+			//const auto src_vParms = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[2] - v_pos_in_src_buffer));
 			const auto src_tc3 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[3] - v_pos_in_src_buffer));
 			//const auto src_tc4 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[4] + v_pos_in_src_buffer));
 			//const auto src_tc5 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[5] + v_pos_in_src_buffer));
+			//const auto src_vParms1 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[7] - v_pos_in_src_buffer));
 
 			if (use_crop) 
 			{
@@ -882,6 +883,16 @@ namespace components
 				dest_tc->x = std::lerp(src_tc0->z, src_tc0->x, src_tc3->x);
 				dest_tc->y = std::lerp(src_tc0->w, src_tc0->y, src_tc3->y);
 			}
+
+			/*{
+				Vector4D color;
+				color.x = static_cast<float>((*src_vTint >> 16) & 0xFF) / 255.0f * 1.0f;
+				color.y = static_cast<float>((*src_vTint >> 8) & 0xFF) / 255.0f * 1.0f;
+				color.z = static_cast<float>((*src_vTint >> 0) & 0xFF) / 255.0f * 1.0f;
+				color.w = static_cast<float>((*src_vTint >> 24) & 0xFF) / 255.0f * 1.0f;
+
+				*src_vTint = D3DCOLOR_COLORVALUE(color.x, color.y, color.z, color.w);
+			}*/
 		}
 	}
 
