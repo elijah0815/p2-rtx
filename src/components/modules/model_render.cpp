@@ -1298,6 +1298,18 @@ namespace components
 					dev->SetTexture(0, tex_addons::glass_shards);
 				}
 			}
+			else if (ctx.info.material_name.starts_with("gla"))
+			{
+				// glass/glasswindow_ ...
+				if (ctx.info.material_name.starts_with("glass/glassw"))
+				{
+					if (tex_addons::glass_window_lamps)
+					{
+						ctx.save_texture(dev, 0);
+						dev->SetTexture(0, tex_addons::glass_window_lamps);
+					}
+				}
+			}
 			// models/player/chell/gambler_eyeball_ l/r
 			else if (ctx.info.material_name.contains("models/player/chell/gambler_eyeball"))
 			{
