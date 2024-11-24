@@ -1276,13 +1276,6 @@ namespace components
 			}
 		}
 
-		// disable areaportals
-		else if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x80003 && ctx.info.material_name.starts_with("tools/")
-			&& !(g_player_current_area == 6 && map_settings::is_level.sp_a1_wakeup)) // do not disable elevator "door" on wakeup
-		{
-			ctx.modifiers.do_not_render = true; 
-		}
-
 		// player model - gun - grabable stuff - portal button - portal door - stairs
 		else if (ff_model::s_shader && mesh->m_VertexFormat == 0xa0003)
 		{
@@ -3520,11 +3513,14 @@ namespace components
 		HOOK_RETN_PLACE(cmeshdx8_renderpasswithvertexindexbuffer_retn_addr, RENDERER_BASE + 0xA68D);
 #endif
 
+		// C_FuncAreaPortalWindow::DrawModel :: disable drawing Area Portal Brushmodels
+		utils::hook::nop(CLIENT_BASE + USE_OFFSET(0xA15FE, 0x9DE9E), 2);
+
 		// C_Prop_Portal::ClientThink :: hook to get portal 1/2 m_fOpenAmount member var
 		utils::hook(CLIENT_BASE + USE_OFFSET(0x285AD2, 0x280012), prop_portal_client_think_stub, HOOK_JUMP).install()->quick();
 
 		// #
-		// Area portals
+		// Window portals
 
 #if 0	// not helping with entity culling
 		// disable 'r_portal_stencil_depth' check in 'CPortalRender::DrawPortalsUsingStencils_Old'
