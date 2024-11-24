@@ -1018,6 +1018,61 @@ namespace components
 	}
 
 
+	// stub in 'R_RecursiveWorldNode' right on 'while (xnode->visframe == r_visframecount ... )'
+	int node_visframe_check(const mnode_t* xnode)
+	{
+		// check if this node would be excluded from rendering
+		if (xnode->visframe != game::get_visframecount())
+		{
+			// sort dimensions to identify height, width, and depth
+			float dims[3] = {
+				std::fabs(xnode->m_vecHalfDiagonal.x * 2.0f),
+				std::fabs(xnode->m_vecHalfDiagonal.y * 2.0f),
+				std::fabs(xnode->m_vecHalfDiagonal.z * 2.0f) };
+
+			std::sort(dims, dims + 3);
+
+			const auto width = dims[1];
+			const auto height = dims[2];
+			const auto depth = dims[0];
+
+			// try to find rectangular cuboids that could match emissive lights
+			if (height / width >= 2.0f && depth <= 35.0f) {
+				return 1;
+			}
+
+			// exlude node
+			return 0;
+		}
+
+		// node was marked as potentially visible by 'Map_VisSetup'
+		return 1;
+	}
+
+	HOOK_RETN_PLACE_DEF(while_recursive_world_node_og_retn);
+	HOOK_RETN_PLACE_DEF(while_recursive_world_node_skip_retn);
+	__declspec(naked) void while_recursive_world_node_stub()
+	{
+		__asm
+		{
+			pushad;
+			push	ebx;
+			call	node_visframe_check;
+			add		esp, 4;
+			cmp		eax, 1;
+			je		SKIP; // jump if eax = 1
+			popad;
+
+			jmp		while_recursive_world_node_og_retn;
+
+		SKIP:
+			popad;
+			jmp		while_recursive_world_node_skip_retn;
+
+		}
+	}
+
+
 	// #
 	// Portal anti cull
 
@@ -1515,6 +1570,12 @@ namespace components
 		// stub before calling 'R_RecursiveWorldNode' to override node/leaf vis
 		utils::hook(ENGINE_BASE + USE_OFFSET(0xE76CD, 0xE6D6D), pre_recursive_world_node_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(pre_recursive_world_node_retn, ENGINE_BASE + USE_OFFSET(0xE76D2, 0xE6D72));
+
+		// ^ :: xnode->visframe == r_visframecount check - check for rectangular cuboids that could match emissive lights
+		utils::hook::nop(ENGINE_BASE + USE_OFFSET(0xE7246, 0xE68E6), 9);
+		utils::hook(ENGINE_BASE + USE_OFFSET(0xE7246, 0xE68E6), while_recursive_world_node_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(while_recursive_world_node_og_retn, ENGINE_BASE + USE_OFFSET(0xE73A2, 0xE6A42));
+		HOOK_RETN_PLACE(while_recursive_world_node_skip_retn, ENGINE_BASE + USE_OFFSET(0xE7255, 0xE68F5));
 
 		// ^ :: while( ... node->contents < -1 .. ) -> jl to jle
 		utils::hook::set<BYTE>(ENGINE_BASE + USE_OFFSET(0xE7258, 0xE68F8), 0x7E);
