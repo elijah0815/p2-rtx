@@ -407,16 +407,20 @@ namespace components
 #if defined(BENCHMARK)
 		if (model_render::m_benchmark.enabled && !model_render::m_benchmark.material_name.empty())
 		{
-			printf("[ %.3f ms ]\t vertex format [ 0x%llx ] using material [ %s ]\n",
+			const auto con = GetStdHandle(STD_OUTPUT_HANDLE);
+
+			SetConsoleTextAttribute(con, FOREGROUND_RED);
+			printf("[ %.3f ms ]\t vertex format [ 0x%llx ] using material [ %s ] - Longest\n",
 				model_render::m_benchmark.ms, model_render::m_benchmark.vertex_format, model_render::m_benchmark.material_name.c_str());
 
-			const auto con = GetStdHandle(STD_OUTPUT_HANDLE);
 			SetConsoleTextAttribute(con, FOREGROUND_RED | FOREGROUND_INTENSITY);
 			printf("[ %.3f ms ]\t frame total \n\n", model_render::m_benchmark.ms_total);
 			SetConsoleTextAttribute(con, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
-		}
 
-		model_render::m_benchmark.clear();
+			// bench one frame only
+			model_render::m_benchmark.enabled = false;
+			model_render::m_benchmark.clear();
+		}
 #endif
 
 		// needs portal fade-in effect fix:
@@ -1401,6 +1405,10 @@ namespace components
 	void xo_debug_toggle_benchmark_fn()
 	{
 		model_render::m_benchmark.enabled = !model_render::m_benchmark.enabled;
+
+		if (model_render::m_benchmark.enabled) {
+			system("cls");
+		}
 	}
 #endif
 

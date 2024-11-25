@@ -1205,7 +1205,7 @@ namespace components
 			// added format check
 			if (mesh->m_VertexFormat == 0x2480033 || mesh->m_VertexFormat == 0x80033) 
 			{
-				if (ctx.info.shader_name.starts_with("Wat") && ctx.info.shader_name.contains("Water"))
+				if (ctx.info.shader_name.starts_with("Wa") && ctx.info.shader_name.contains("Water"))
 				{
 					IMaterialVar* var = nullptr;
 					if (has_materialvar(ctx.info.material, "$basetexture", &var))
@@ -2914,13 +2914,27 @@ namespace components
 		}
 
 #if defined(BENCHMARK)
-		if (bench.now(&model_render::m_benchmark.ms)) 
+		if (model_render::m_benchmark.enabled)
 		{
-			model_render::m_benchmark.material_name = ctx.info.material_name;
-			model_render::m_benchmark.vertex_format = mesh ? mesh->m_VertexFormat : 0xDEADBEEF;
-		}
+			if (bench.now(&model_render::m_benchmark.ms))
+			{
+				model_render::m_benchmark.material_name = ctx.info.material_name;
+				model_render::m_benchmark.vertex_format = mesh ? mesh->m_VertexFormat : 0xDEADBEEF;
+			}
 
-		model_render::m_benchmark.ms_total += bench.get_ms();
+			model_render::m_benchmark.ms_total += bench.get_ms();
+
+			{
+				float now = 0.0f;
+				bench.now(&now);
+
+				const auto con = GetStdHandle(STD_OUTPUT_HANDLE);
+				SetConsoleTextAttribute(con, BACKGROUND_BLUE);
+
+				printf("[ %.3f ms ]\t vertex format [ 0x%llx ] using material [ %s ]\n",
+					now, mesh->m_VertexFormat, std::string(ctx.info.material_name).c_str());
+			}
+		}
 #endif
 	}
 
