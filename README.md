@@ -74,7 +74,8 @@ for Portal 2 (`bin/.trex/d3d9.dll`)
 - A. Commandline Arguments:  
 
   - `-xo_disable_map_conf` :: disable loading of map specific `.conf` files (remix variables)  
-  - `-xo_disable_all_culling` :: disables culling completely (same as enabling `r_novis`) 
+  - `-xo_disable_all_culling` :: disables culling completely (same as enabling `r_novis`)  
+  - `-xo_disable_lod_forcing` :: do not force LOD's to 0
 
 <br>
 

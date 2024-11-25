@@ -39,6 +39,7 @@ namespace game
 	extern const char* get_map_name();
 	extern int get_visframecount();
 
+	extern void cvar_uncheat(const char* name);
 	extern void cvar_uncheat_and_set_int(const char* name, const int val);
 	extern void cvar_uncheat_and_set_float(const char* name, const float val);
 

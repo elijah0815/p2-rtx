@@ -1414,6 +1414,21 @@ namespace components
 
 		//utils::benchmark bench;
 
+		// uncheat lod cvars but don't force them when commandline arg is set
+		if (static bool no_lod_forcing = flags::has_flag("xo_disable_lod_forcing");
+			no_lod_forcing)
+		{
+			game::cvar_uncheat("r_staticprop_lod");
+			game::cvar_uncheat("r_lod");
+			game::cvar_uncheat("r_lod_switch_scale"); // hidden cvar
+		}
+		else
+		{
+			game::cvar_uncheat_and_set_int("r_staticprop_lod", 0);
+			game::cvar_uncheat_and_set_int("r_lod", 0);
+			game::cvar_uncheat_and_set_int("r_lod_switch_scale", 1); // hidden cvar
+		}
+
 		game::cvar_uncheat_and_set_int("r_PortalTestEnts", 0);
 		game::cvar_uncheat_and_set_int("portal_ghosts_disable", 0);
 		game::cvar_uncheat_and_set_int("r_portal_earlyz", 0);
@@ -1422,14 +1437,13 @@ namespace components
 		game::cvar_uncheat_and_set_int("r_portalstencildisable", 1);
 		game::cvar_uncheat_and_set_int("r_portal_stencil_depth", 0);
 		game::cvar_uncheat_and_set_int("portal_draw_ghosting", 0);
-		game::cvar_uncheat_and_set_int("r_staticprop_lod", 0);
-		game::cvar_uncheat_and_set_int("r_lod", 0);
+		
 		game::cvar_uncheat_and_set_int("r_threaded_particles", 0);
 		game::cvar_uncheat_and_set_int("r_entityclips", 0);
 		game::cvar_uncheat_and_set_int("cl_brushfastpath", 0);
 		game::cvar_uncheat_and_set_int("cl_tlucfastpath", 0);
 		game::cvar_uncheat_and_set_int("cl_modelfastpath", 0);
-		game::cvar_uncheat_and_set_int("mat_queue_mode", 0);
+		game::cvar_uncheat_and_set_int("mat_queue_mode", 0); // does improve performance but breaks rendering
 		game::cvar_uncheat_and_set_int("mat_softwarelighting", 0);
 		game::cvar_uncheat_and_set_int("mat_parallaxmap", 0);
 		game::cvar_uncheat_and_set_int("mat_frame_sync_enable", 0);
@@ -1457,7 +1471,7 @@ namespace components
 		game::cvar_uncheat_and_set_int("cl_impacteffects_limit_water", 2);
 		game::cvar_uncheat_and_set_int("mat_depthfeather_enable", 0);
 		game::cvar_uncheat_and_set_int("mat_force_vertexfog", 1); // does not exist
-		game::cvar_uncheat_and_set_int("r_lod_switch_scale", 1);
+		
 		game::cvar_uncheat_and_set_int("cl_detaildist", 1024);
 		game::cvar_uncheat_and_set_int("cl_detailfade", 400);
 		game::cvar_uncheat_and_set_int("r_drawmodeldecals", 1);

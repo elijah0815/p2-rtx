@@ -79,6 +79,16 @@ namespace game
 		return utils::hook::call<const char*(__cdecl)()>(CLIENT_BASE + USE_OFFSET(0x1F4040, 0x1EEEE0))();
 	}
 
+	void cvar_uncheat(const char* name)
+	{
+		if (const auto ivar = game::get_icvar(); ivar)
+		{
+			if (auto var = ivar->vftable->FindVar(ivar, name); var) {
+				var->m_nFlags &= ~0x4000;
+			}
+		}
+	}
+
 	void cvar_uncheat_and_set_int(const char* name, const int val)
 	{
 		if (const auto ivar = game::get_icvar(); ivar)
