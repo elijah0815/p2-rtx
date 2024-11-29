@@ -190,6 +190,13 @@ namespace components
 		}
 	}
 
+	// uses unused Renderstate 149 to tweak the emissive intensity of remix legacy materials
+	void set_remix_emissive_intensity(IDirect3DDevice9* dev, prim_fvf_context& ctx, float intensity)
+	{
+		ctx.save_rs(dev, (D3DRENDERSTATETYPE)149);
+		dev->SetRenderState((D3DRENDERSTATETYPE)149, *reinterpret_cast<DWORD*>(&intensity));
+	}
+
 	// can be used to figure out the layout of the vertex buffer
 	void lookat_vertex_decl([[maybe_unused]] IDirect3DDevice9* dev, [[maybe_unused]] CPrimList* primlist = nullptr)
 	{
@@ -1473,7 +1480,7 @@ namespace components
 						ctx.save_tss(dev, D3DTSS_TEXTURETRANSFORMFLAGS);
 						dev->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_COUNT2);
 
-						ctx.modifiers.as_transport_beam = true;
+						ctx.modifiers.as_transport_beam = false;
 					}
 				}
 				// render bik using shaders
@@ -2172,6 +2179,10 @@ namespace components
 
 				// FF sparks look really good but are heavy on the framerate + it messes up the trail shot by the portal gun ....
 				const bool is_spark = ctx.info.material_name.starts_with("particle/sparks/"); //|| ctx.info.material_name == "particle/particle_glow_02_additive_trail";
+
+				if (is_spark || ctx.info.material_name.ends_with("additive_trail")) {
+					set_remix_emissive_intensity(dev, ctx, 2.0f);
+				}
 
 #ifdef SPRITE_TRAIL_TEST
 				if (is_spline)
