@@ -133,6 +133,11 @@
         #{ conf = "chromatic_explosion.conf", choreo = "prehub28.vcd", mode = 0, ease = 8, duration = 2.5, delay_in = 0.0, delay_out = 1.0 }
     ]}
 
+    sp_a4_finale4 = { transitions = [
+        { conf = "playermodel_primaryspace_on.conf", choreo = "button_press01.vcd", mode = 0, ease = 0, duration = 0.1, delay_in = 1.0 },
+        { conf = "playermodel_primaryspace_off.conf", choreo = "epilogue10.vcd", mode = 0, ease = 0, duration = 0.1, delay_in = 0.0 }
+    ]}
+
 
 # Spawns portals using the remix api - useful for area-connecting portals (between doors / rooms)
 # Parameters ---------------------------------------------------------------------------------------------------------------------------------

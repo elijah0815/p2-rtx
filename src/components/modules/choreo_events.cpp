@@ -94,18 +94,18 @@ namespace components
 				//if (!mapname.empty())
 				{
 					// fix invisible world model (arms/pgun) after expl.
-					if (map_settings::is_level.sp_a4_finale4)
-					{
-						// bw_finale04_button_press01.vcd
-						if (sname.ends_with("button_press01.vcd")) {
-							api::remix_vars::set_option(api::remix_vars::get_option("rtx.playerModel.enableInPrimarySpace"), { true });
-						}
+					//if (map_settings::is_level.sp_a4_finale4)
+					//{
+					//	// bw_finale04_button_press01.vcd
+					//	if (sname.ends_with("button_press01.vcd")) {
+					//		api::remix_vars::set_option(api::remix_vars::get_option("rtx.playerModel.enableInPrimarySpace"), { true });
+					//	}
 
-						// bw_finale04_button_press04.vcd
-						else if (sname.ends_with("epilogue10.vcd")) {
-							api::remix_vars::set_option(api::remix_vars::get_option("rtx.playerModel.enableInPrimarySpace"), { false });
-						}
-					}
+					//	// bw_finale04_button_press04.vcd
+					//	else if (sname.ends_with("epilogue10.vcd")) {
+					//		api::remix_vars::set_option(api::remix_vars::get_option("rtx.playerModel.enableInPrimarySpace"), { false });
+					//	}
+					//}
 
 					// ------
 
