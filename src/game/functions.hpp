@@ -43,6 +43,8 @@ namespace game
 	extern void cvar_uncheat_and_set_int(const char* name, const int val);
 	extern void cvar_uncheat_and_set_float(const char* name, const float val);
 
+	extern void print_ingame(const char* msg, ...);
+
 	// CRender gRender
 	inline components::CRender* get_engine_renderer() { return reinterpret_cast<components::CRender*>(ENGINE_BASE + USE_OFFSET(0x615100, 0x60F880)); }
 	inline IDirect3DDevice9* get_d3d_device() { return reinterpret_cast<IDirect3DDevice9*>(*(DWORD*)(RENDERER_BASE + USE_OFFSET(0xDA5D8, 0x179F38))); }

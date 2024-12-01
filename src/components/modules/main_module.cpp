@@ -28,9 +28,13 @@
 
 namespace components
 {
-	int g_player_current_node = -1;
 	int g_player_current_leaf = -1;
 	int g_player_current_area = -1;
+
+	// contains overrides for the current area, nullptr if no overrides exist
+	map_settings::area_overrides_s* g_player_current_area_override = nullptr;
+
+	bool g_cull_disable_frustum_culling = false;
 
 	namespace api
 	{
@@ -277,6 +281,14 @@ namespace components
 	// #
 	// #
 
+	struct portal_frustum_s
+	{
+		//VPlane frustum_planes[6];
+		VPlane* frustum_planes;
+	};
+
+	std::vector<portal_frustum_s> portal_frustums;
+
 
 	/**
 	 * Called from CViewRender::RenderView
@@ -312,6 +324,8 @@ namespace components
 		if (!game::is_paused()) {
 			main_module::framecount++; // used for debug anim
 		}
+
+		portal_frustums.clear();
 
 
 		// ----
@@ -525,6 +539,8 @@ namespace components
 
 		model_render::vgui_progress_board_scalar = 1.0f;
 		model_render::linked_area_portals.clear();
+
+		main_module::trigger_vis_logic();
 
 		// -------
 
@@ -748,7 +764,7 @@ namespace components
 	 * @param node_index	The node to force vis for
 	 * @param player_node	The node the player is currently in
 	 */
-	void force_node_vis(int node_index, mnode_t* player_node)
+	void force_node_vis(int node_index, bool hide = false)
 	{
 		const auto world = game::get_hoststate_worldbrush_data();
 		const auto root_node = &world->nodes[0];
@@ -758,11 +774,28 @@ namespace components
 		{
 			const auto node = &world->nodes[next_node_index];
 
-			// force node vis
-			node->visframe = game::get_visframecount();
+			if (!hide)
+			{
+				// node was already set to current visframe, do not continue
+				if (node->visframe == game::get_visframecount()) {
+					break;
+				}
 
-			// we only need to traverse to the root node or the player node
-			if (node == player_node || node == root_node) {
+				// force node vis
+				node->visframe = game::get_visframecount();
+			}
+			else
+			{
+				// nodes already hidden
+				if (node->visframe == 0) {
+					break;
+				}
+
+				node->visframe = 0;
+			}
+
+			// we only need to traverse to the root node
+			if (node == root_node) {
 				break;
 			}
 
@@ -775,18 +808,34 @@ namespace components
 	 * @param leaf_index   The leaf to force vis for
 	 * @param player_node  The node the player is currently in
 	 */
-	void force_leaf_vis(int leaf_index, mnode_t* player_node)
+	void force_leaf_vis(int leaf_index, bool hide = false)
 	{
 		const auto world = game::get_hoststate_worldbrush_data();
 		auto leaf_node = &world->leafs[leaf_index];
 		auto parent_node_index = &leaf_node->parent[0] - &world->nodes[0];
 
-		// force leaf vis
-		leaf_node->visframe = game::get_visframecount();
+		if (!hide)
+		{
+			// force leaf vis
+			leaf_node->visframe = game::get_visframecount();
+		}
+		else
+		{
+			leaf_node->visframe = 0;
+		}
 
 		// force nodes
-		force_node_vis(parent_node_index, player_node);
+		force_node_vis(parent_node_index, hide);
 	}
+
+
+	// Trigger leaf/node forcing logic and updates 'g_player_current_area_override' when 'pre_recursive_world_node()' gets called
+	void main_module::trigger_vis_logic()
+	{
+		g_player_current_leaf = -1;
+		g_player_current_area_override = nullptr;
+	}
+
 
 	// Called once before 'R_RecursiveWorldNode' is getting called for the first time
 	void pre_recursive_world_node()
@@ -795,7 +844,6 @@ namespace components
 
 		// CM_PointLeafnum :: get current leaf
 		const auto current_leaf = game::get_leaf_from_position(game::get_current_view_origin());
-		//utils::hook::call<int(__cdecl)(const float*)>(ENGINE_BASE + USE_OFFSET(0x159C80, 0x158540))(game::get_current_view_origin());
 
 		// CM_LeafArea :: get current player area
 		const auto current_area = utils::hook::call<int(__cdecl)(int leafnum)>(ENGINE_BASE + USE_OFFSET(0x15ACE0, 0x159470))(current_leaf);
@@ -804,87 +852,15 @@ namespace components
 		const bool leaf_update = current_leaf != g_player_current_leaf;
 
 		// only run logic when the area changes
-		const bool area_update = current_leaf != g_player_current_area;
+		//const bool area_update = current_area != g_player_current_area;
 
+		g_player_current_leaf = current_leaf;
 		g_player_current_area = current_area;
-		g_player_current_node = -1;
-		g_player_current_leaf = -1;
-
 		auto& map_settings = map_settings::get_map_settings();
 
-		// find the bsp node the player is currently in + visualize node / leaf using the remix api
-		// - skip if map settings contains no overrides for current map and debug vis is not active
-#if 0
-		if ((map_settings && map_settings->area_settings.contains(current_area)) || api::remix_debug_node_vis)
-		{
-			int node_index = 0, leaf_index = 0;
-			while (node_index >= 0)
-			{
-				const auto node = &world->nodes[node_index];
-
-				// check which child we should go to based on the players position
-				float dist = DotProduct(g_CurrentViewOrigin, node->plane->normal) - node->plane->dist;
-
-				// if the player is on the front side of the plane
-				if (dist > 0)
-				{
-					auto next_node_index = node->children[0] - &world->nodes[0]; // minus root node to get the index
-					if (next_node_index < 0)
-					{
-						leaf_index = reinterpret_cast<mleaf_t*>(node->children[0]) - &world->leafs[0];
-						break;
-					}
-					node_index = next_node_index; // go to the front child
-				}
-				else
-				{
-					auto next_node_index = node->children[1] - &world->nodes[0]; // minus root node to get the index
-					if (next_node_index < 0)
-					{
-						leaf_index = reinterpret_cast<mleaf_t*>(node->children[1]) - &world->leafs[0];
-						break;
-					}
-					node_index = next_node_index; // go to the back child
-				}
-			}
-
-			// show leaf index as 3D text
-			if (leaf_index < world->numleafs)
-			{
-				player_current_leaf = leaf_index;
-
-				if (api::remix_debug_node_vis)
-				{
-					const auto curr_leaf = &world->leafs[leaf_index];
-					game::debug_add_text_overlay(&curr_leaf->m_vecCenter.x, 0.0f, utils::va("Leaf: %i", leaf_index));
-					main_module::debug_draw_box(curr_leaf->m_vecCenter, curr_leaf->m_vecHalfDiagonal, 2.0f, api::DEBUG_REMIX_LINE_COLOR::GREEN);
-				}
-			}
-
-			/* // not that useful
-			// show node index as 3D text
-			if (node_index < world->numnodes)
-			{
-				player_current_node = node_index;
-
-				if (api::remix_debug_node_vis)
-				{
-					const auto node = &world->nodes[node_index];
-					Vector pos_copy = node->m_vecCenter;
-					pos_copy.z += 2.0f;
-
-					game::debug_add_text_overlay(&pos_copy.x, 0.0f, utils::va("Node: %i", node_index));
-					main_module::debug_draw_box(node->m_vecCenter, node->m_vecHalfDiagonal, 1.0f, api::DEBUG_REMIX_LINE_COLOR::TEAL);
-				}
-			}
-			*/
-		}
-#endif
 		// show leaf index as 3D text
 		if (current_leaf < world->numleafs)
 		{
-			g_player_current_leaf = current_leaf;
-
 			if (api::remix_debug_node_vis)
 			{
 				const auto curr_leaf = &world->leafs[current_leaf];
@@ -894,23 +870,98 @@ namespace components
 		}
 
 
+		// #
+		// leaf/node forcing
+
 		// We have to set all nodes from the target leaf to the root node or the node the the player is in to the current visframe
 		// Otherwise, 'R_RecursiveWorldNode' will never reach the target leaf
 
-		if (area_update && !map_settings.area_settings.empty())
+		if (!map_settings.area_settings.empty())
 		{
-			if (const auto& t = map_settings.area_settings.find(current_area);
-				t != map_settings.area_settings.end())
+			//if (leaf_update)
 			{
-				for (auto l : t->second)
+				g_player_current_area_override = nullptr;
+
+				if (const auto& t = map_settings.area_settings.find(current_area);
+					t != map_settings.area_settings.end())
 				{
-					if (l < static_cast<std::uint32_t>(world->numleafs)) {
-						force_leaf_vis(l, &world->nodes[g_player_current_node]); // force leaf to be visible
+					g_player_current_area_override = &t->second; // cache
+
+					// force all specified leafs/nodes
+					for (const auto& l : g_player_current_area_override->leafs)
+					{
+						if (l < static_cast<std::uint32_t>(world->numleafs)) {
+							force_leaf_vis(l); // force leaf to be visible
+						}
 					}
+
+					// force all leafs/nodes in specified areas
+					if (!g_player_current_area_override->areas.empty())
+					{
+						for (auto i = 0; i < world->numleafs; i++)
+						{
+							if (const auto& l = world->leafs[i];
+								g_player_current_area_override->areas.contains((std::uint32_t)l.area))
+							{
+								force_leaf_vis(i);
+							}
+						}
+					}
+
+
+					// hide all specified leafs/nodes
+					//for (const auto& l : g_player_current_area_override->hide_leafs)
+					//{
+					//	if (l < static_cast<std::uint32_t>(world->numleafs)) {
+					//		force_leaf_vis(l, true);
+					//	}
+					//}
+
+					//// hide all specified leafs/nodes in area
+					//for (const auto& a : g_player_current_area_override->hide_areas)
+					//{
+					//	// also force nodes?
+					//	for (auto i = 0; i < world->numleafs; i++)
+					//	{
+					//		if (auto& l = world->leafs[i];
+					//			(std::uint32_t)l.area == a)
+					//		{
+					//			//auto parent_node_index = &l.parent[0] - &world->nodes[0];
+					//			l.visframe = 0;
+
+					//			// force nodes
+					//			//force_node_vis(parent_node_index, true);
+					//		}
+					//	}
+
+					//	for (auto i = 0; i < world->numnodes; i++)
+					//	{
+					//		if (auto& l = world->nodes[i];
+					//			(std::uint32_t)l.area == a)
+					//		{
+					//			l.visframe = 0;
+					//		}
+					//	}
+					//}
 				}
 			}
 		}
+		else {
+			g_player_current_area_override = nullptr;
+		}
 
+		// MODE: force all leafs/nodes in current area
+		if (!g_player_current_area_override || g_player_current_area_override->cull_mode == map_settings::AREA_CULL_MODE_FRUSTUM_FORCE_AREA)
+		{
+			for (auto i = 0; i < world->numleafs; i++)
+			{
+				if (auto& l = world->leafs[i];
+					(int)l.area == g_player_current_area)
+				{
+					force_leaf_vis(i);
+				}
+			}
+		}
 
 		// leaf transitions
 		if (leaf_update && !map_settings.leaf_transitions.empty())
@@ -986,22 +1037,6 @@ namespace components
 				}
 			}
 		}
-
-		//force_node_vis(1095, &world->nodes[player_node_index], r_visframecount);
-		//force_leaf_vis(1123, &world->nodes[player_node_index], r_visframecount);
-
-		// force all nodes in area
-		//for (auto i = 0; i < world->numnodes; i++)
-		//{
-		//	// force leaf to be visible
-		//	world->nodes[i].visframe = game::get_visframecount();
-		//}
-
-		//for (auto i = 0; i < world->numleafs; i++)
-		//{
-		//	// force leaf to be visible
-		//	world->leafs[i].visframe = game::get_visframecount();
-		//}
 	}
 
 	HOOK_RETN_PLACE_DEF(pre_recursive_world_node_retn);
@@ -1077,6 +1112,151 @@ namespace components
 	}
 
 
+	//Frustum_t frustum_pre_portal_vis = {};
+	//Vector vieworigin_pre_portal_vis = {};
+
+	// return 0 to not cull the node
+	int r_cullnode_wrapper(mnode_t* node)
+	{
+		//auto& map_settings = map_settings::get_map_settings();
+		map_settings::AREA_CULL_MODE cmode = g_cull_disable_frustum_culling ? map_settings::AREA_CULL_MODE_NO_FRUSTUM : map_settings::AREA_CULL_MODE_DEFAULT;
+
+		int node_index = 0;
+
+		// this should have been cached in 'pre_recursive_world_node' 
+		if (g_player_current_area_override) 
+		{
+			cmode = g_player_current_area_override->cull_mode;
+
+			// calculate index of leaf/node
+			if (node->contents >= 0) { // this is a leaf
+				node_index = (mleaf_t*)node - &game::get_hoststate_worldbrush_data()->leafs[0];
+			}
+			else { // this is a node
+				node_index = node - &game::get_hoststate_worldbrush_data()->nodes[0];
+			}
+
+			// check if this node was forced visible
+			if (!g_player_current_area_override->leafs.contains(node_index))
+			{
+				// if node not forced, iterate all hidden area entries
+				for (const auto& hidden_area : g_player_current_area_override->hide_areas)
+				{
+					// check if node is part of a hidden area but only cull if the player is not in a specified leaf
+					if (hidden_area.areas.contains((std::uint32_t)node->area)
+						&& !hidden_area.when_not_in_leafs.contains(g_player_current_leaf))
+					{
+						return 1;
+					}
+				}
+
+				// hidden leafs
+				if (g_player_current_area_override->hide_leafs.contains(node_index)) {
+					return 1;
+				}
+			}
+		}
+
+		// no custom culling overrides for area - so skip everything else and render this node
+		if (cmode == map_settings::AREA_CULL_MODE_NO_FRUSTUM) {
+			return 0;
+		}
+
+
+		// #
+		// stock culling check
+
+		// R_CullNode
+		if (!utils::hook::call<bool(__cdecl)(mnode_t*)>(ENGINE_BASE + USE_OFFSET(0x10F950, 0x10E7E0))(node)) {
+			return 0;
+		}
+
+
+		// MODE: force all leafs/nodes in current area
+		if (!g_player_current_area_override || cmode == map_settings::AREA_CULL_MODE_FRUSTUM_FORCE_AREA)
+		{
+			// force draw this node/leaf if it's within the forced area
+			if ((int)node->area == g_player_current_area) {
+				return 0;
+			}
+		}
+
+		// this should have been cached in 'pre_recursive_world_node' 
+		if (g_player_current_area_override)
+		{
+			// check if this leaf/node is part of a forced area
+			if (g_player_current_area_override->areas.contains((std::uint32_t)node->area)) {
+				return 0;
+			}
+
+			// check if this leaf/node is force enabled
+			if (g_player_current_area_override->leafs.contains(node_index)) {
+				return 0;
+			}
+		}
+
+		// #
+		// check if node is visible through portals if above check would cull node
+
+		// using the 'OverrideViewFrustum' function overrides the global 'g_Frustum' so we have to save & restore it when we are done
+		Frustum_t* g_frustum_ptr = reinterpret_cast<Frustum_t*>(ENGINE_BASE + USE_OFFSET(0x615390, 0x60FC20));
+
+		Frustum_t frustum_backup = {};
+		memcpy_s(&frustum_backup, sizeof(Frustum_t), g_frustum_ptr, sizeof(Frustum_t));
+
+#if 1
+		for (auto& f : portal_frustums)
+		{
+			// CRender::OverrideViewFrustum - writes to 'g_Frustum' (g_frustum_ptr)
+			utils::hook::call<void(__fastcall)(void* null_ptr1, void* null_ptr2, VPlane* custom)>(ENGINE_BASE + USE_OFFSET(0xDD270, 0xDC8F0))(nullptr, nullptr, f.frustum_planes);
+
+			// CullNodeSIMD
+			if (!utils::hook::call<bool(__cdecl)(const Frustum_t* , mnode_t*)>(ENGINE_BASE + USE_OFFSET(0xC0840, 0xC0260))(g_frustum_ptr, node))
+			{
+				// restore frustum before returning
+				memcpy_s(g_frustum_ptr, sizeof(Frustum_t), &frustum_backup, sizeof(Frustum_t));
+				return 0;
+			}
+		}
+#endif
+
+		// restore frustum
+		memcpy_s(g_frustum_ptr, sizeof(Frustum_t), &frustum_backup, sizeof(Frustum_t));
+
+
+		// #
+		// we are still about to cull this node from here on out
+
+		
+
+		// cull node
+		return 1;
+	}
+
+	HOOK_RETN_PLACE_DEF(r_cullnode_cull_retn);
+	HOOK_RETN_PLACE_DEF(r_cullnode_skip_retn);
+	__declspec(naked) void r_cullnode_stub()
+	{
+		__asm
+		{
+			pushad;
+			push	ebx;
+			call	r_cullnode_wrapper; // return 0 to not jump
+			add		esp, 4;
+			test	eax, eax;
+			jz		SKIP; // jump if eax = 0
+			popad;
+
+			add     esp, 4; // og
+			jmp		r_cullnode_cull_retn;
+
+		SKIP:
+			popad;
+			add     esp, 4; // og
+			jmp		r_cullnode_skip_retn;
+		}
+	}
+
 	// #
 	// Portal anti cull
 
@@ -1088,6 +1268,11 @@ namespace components
 	// CViewRender* this
 	void viewdrawscene_custom_portal_vis(void* view_renderer, bool bDrew3dSkybox, int nSkyboxVisible, const CViewSetup* view, int nClearFlags, int viewID, bool bDrawViewModel, int baseDrawFlags, [[maybe_unused]] ViewCustomVisibility_t* pCustomVisibility)
 	{
+		//Frustum_t* g_frustum_ptr = reinterpret_cast<Frustum_t*>(ENGINE_BASE + USE_OFFSET(0xXXX, 0x60FC20));
+		//memcpy_s(&frustum_pre_portal_vis, sizeof(Frustum_t), g_frustum_ptr, sizeof(Frustum_t));
+		//vieworigin_pre_portal_vis = view->origin;
+
+
 		ViewCustomVisibility_t customVisibility = {};
 		customVisibility.m_VisData.m_fDistToAreaPortalTolerance = FLT_MAX;
 
@@ -1099,6 +1284,10 @@ namespace components
 			{
 				if (p->portal && p->portal->m_pLinkedPortal && p->portal->m_fOpenAmount != 0.0f)
 				{
+					if (p->portal->m_fOpenAmount < 0.1f) {
+						main_module::trigger_vis_logic();
+					}
+
 					// check if player view was added already
 					if (!*set_view_org)
 					{
@@ -1106,6 +1295,11 @@ namespace components
 						vis->m_rgVisOrigins[vis->m_nNumVisOrigins++] = view->origin;
 						*set_view_org = true;
 					}
+
+
+					portal_frustums.push_back({ &p->portal->m_pLinkedPortal->m_InternallyMaintainedData.m_BoundingPlanes[0] });
+
+					// this probably changes 'g_RenderAreaBits' - save and restore
 
 					//CPortalRenderable_FlatBasic::AddToVisAsExitPortal(CPortalRenderable_FlatBasic * this, ViewCustomVisibility_t * pCustomVisibility)
 					utils::hook::call<void(__fastcall)(void* this_ptr, void* null, ViewCustomVisibility_t*)>(CLIENT_BASE + USE_OFFSET(0x2C2830, 0x2BBDA0))
@@ -1314,6 +1508,36 @@ namespace components
 	}
 
 
+
+	void pre_build_worldlists_hk(VisOverrideData_t* pVisData)
+	{
+		/*if (pVisData)
+		{
+			pVisData->m_vecVisOrigin = vieworigin_pre_portal_vis;
+		}*/
+		pVisData = nullptr;
+	}
+
+	HOOK_RETN_PLACE_DEF(pre_build_worldlists_retn);
+	__declspec(naked) void pre_build_worldlists_stub()
+	{
+		__asm
+		{
+			mov     ecx, [ebp + 0x14] // og: pVisData
+			pushad;
+			push	ecx; // pVisData
+			call	pre_build_worldlists_hk;
+			add		esp, 4;
+			popad;
+
+			mov     ecx, [ebp + 0x14] // og: pVisData
+			mov     edx, [ebp + 0x10]; // og
+			jmp		pre_build_worldlists_retn;
+		}
+	}
+
+
+
 	int override_entity_vis(C_BaseEntity* ent)
 	{
 		if (ent && ent->model && std::string_view(ent->model->szPathName).contains("mapmarker")) {
@@ -1412,6 +1636,16 @@ namespace components
 	}
 #endif
 
+	ConCommand xo_cull_toggle_frustum_cmd{};
+	void xo_cull_toggle_frustum_fn()
+	{
+		g_cull_disable_frustum_culling = !g_cull_disable_frustum_culling;
+		game::print_ingame(
+			"[CMD] Set default culling mode to <%s>\n"
+			"|> Reload the map or use cmd: 'xo_mapsettings_update'\n"
+			, g_cull_disable_frustum_culling ? "None" : "Frustum Culling + Force Current Area");
+	}
+
 	// #
 	// #
 
@@ -1445,12 +1679,14 @@ namespace components
 		game::cvar_uncheat_and_set_int("r_portalstencildisable", 1);
 		game::cvar_uncheat_and_set_int("r_portal_stencil_depth", 0);
 		game::cvar_uncheat_and_set_int("portal_draw_ghosting", 0);
-		
+
+		game::cvar_uncheat_and_set_int("r_ClipAreaFrustums", 0); // needed for R_CullNode Mode 2
+
 		game::cvar_uncheat_and_set_int("r_threaded_particles", 0);
 		game::cvar_uncheat_and_set_int("r_entityclips", 0);
 		game::cvar_uncheat_and_set_int("cl_brushfastpath", 0);
 		game::cvar_uncheat_and_set_int("cl_tlucfastpath", 0);
-		game::cvar_uncheat_and_set_int("cl_modelfastpath", 0);
+		game::cvar_uncheat_and_set_int("cl_modelfastpath", 0); // gain 4-5 fps on some act 4 maps but FF rendering not implemented
 		game::cvar_uncheat_and_set_int("mat_queue_mode", 0); // does improve performance but breaks rendering
 		game::cvar_uncheat_and_set_int("mat_softwarelighting", 0);
 		game::cvar_uncheat_and_set_int("mat_parallaxmap", 0);
@@ -1552,6 +1788,9 @@ namespace components
 		game::con_add_command(&xo_debug_toggle_benchmark_cmd, "xo_debug_toggle_benchmark", xo_debug_toggle_benchmark_fn, "Toggle benchmark printing");
 #endif
 
+		game::con_add_command(&xo_cull_toggle_frustum_cmd, "xo_cull_toggle_frustum", xo_cull_toggle_frustum_fn, "Toggle frustum culling (sets default Mode of MapSetting -> CULL to Mode 0)");
+
+
 		// #
 		// events
 
@@ -1583,11 +1822,11 @@ namespace components
 
 		// same as r_novis 1
 		// def. needs 'r_portal_stencil_depth 1' if not enabled
-		if (flags::has_flag("xo_disable_all_culling"))
-		{
-			// R_RecursiveWorldNode :: while (node->visframe == r_visframecount .. ) -> renders the entire map if everything after this is enabled
-			utils::hook::nop(ENGINE_BASE + USE_OFFSET(0xE724F, 0xE68EF), 6);
-		}
+		//if (flags::has_flag("xo_disable_all_culling"))
+		//{
+		//	// R_RecursiveWorldNode :: while (node->visframe == r_visframecount .. ) -> renders the entire map if everything after this is enabled
+		//	utils::hook::nop(ENGINE_BASE + USE_OFFSET(0xE724F, 0xE68EF), 6);
+		//}
 
 		// stub before calling 'R_RecursiveWorldNode' to override node/leaf vis
 		utils::hook(ENGINE_BASE + USE_OFFSET(0xE76CD, 0xE6D6D), pre_recursive_world_node_stub, HOOK_JUMP).install()->quick();
@@ -1603,16 +1842,19 @@ namespace components
 		utils::hook::set<BYTE>(ENGINE_BASE + USE_OFFSET(0xE7258, 0xE68F8), 0x7E);
 
 		// ^ :: while( ... !R_CullNode) - needed for displacements
-		utils::hook::nop(ENGINE_BASE + USE_OFFSET(0xE7265, 0xE6905), 6);
+		//utils::hook::nop(ENGINE_BASE + USE_OFFSET(0xE7265, 0xE6905), 6); // heavy on performance
+		utils::hook(ENGINE_BASE + USE_OFFSET(0xE725B, 0xE68FB), r_cullnode_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(r_cullnode_cull_retn, ENGINE_BASE + USE_OFFSET(0xE73A2, 0xE6A42));
+		HOOK_RETN_PLACE(r_cullnode_skip_retn, ENGINE_BASE + USE_OFFSET(0xE726B, 0xE690B));
 
 		// ^ :: backface check -> je to jl
-		utils::hook::nop(ENGINE_BASE + USE_OFFSET(0xE7323, 0xE69C3), 2);
+		utils::hook::nop(ENGINE_BASE + USE_OFFSET(0xE7323, 0xE69C3), 2); // okay - draws a little more but not so heavy on perf.
 
 		// ^ :: backface check -> jnz to je
-		utils::hook::set<BYTE>(ENGINE_BASE + USE_OFFSET(0xE732D, 0xE69CD), 0x74);
+		utils::hook::set<BYTE>(ENGINE_BASE + USE_OFFSET(0xE732D, 0xE69CD), 0x74); // ^
 
 		// R_DrawLeaf :: backface check (emissive lamps) plane normal >= -0.00999f
-		utils::hook::nop(ENGINE_BASE + USE_OFFSET(0xE6F23, 0xE65C3), 6);
+		utils::hook::nop(ENGINE_BASE + USE_OFFSET(0xE6F23, 0xE65C3), 6); // ^ 
 
 		// CBrushBatchRender::DrawOpaqueBrushModel :: :: backface check - nop 'if ( bShadowDepth )' to disable culling
 		utils::hook::nop(ENGINE_BASE + USE_OFFSET(0x7196E, 0x7156E), 2);
@@ -1658,6 +1900,12 @@ namespace components
 		// - Add player vis and call 'CPortalRenderable_FlatBasic::AddToVisAsExitPortal' for both active portals before rendering the main scene
 		utils::hook(CLIENT_BASE + USE_OFFSET(0x1F2504, 0x1ECF04), viewdrawscene_push_args_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(viewdrawscene_push_args_retn, CLIENT_BASE + USE_OFFSET(0x1F2509, 0x1ECF09));
+
+
+		utils::hook::nop(ENGINE_BASE + USE_OFFSET(0xDD549, 0xDCBC9), 6);
+		utils::hook(ENGINE_BASE + USE_OFFSET(0xDD549, 0xDCBC9), pre_build_worldlists_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(pre_build_worldlists_retn, ENGINE_BASE + USE_OFFSET(0xDD54F, 0xDCBCF));
+
 
 
 		// C_BaseEntity::UpdateVisibility

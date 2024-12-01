@@ -1271,6 +1271,14 @@ namespace components
 			int break_me = 1;    
 		}*/
 
+		// hack for runtime hack: https://github.com/xoxor4d/dxvk-remix/commit/3867843a68db7ec8a5ab603a250689cca1505970
+		// TODO: fix this asap
+		if (static bool runtime_hack_once = false; !runtime_hack_once)
+		{
+			runtime_hack_once = true;
+			set_remix_emissive_intensity(dev, ctx, 0.0f);
+		}
+
 		if (ff_bmodel::s_shader && mesh->m_VertexFormat == 0x2480033)
 		{
 			//ctx.modifiers.do_not_render = true;
@@ -2260,11 +2268,11 @@ namespace components
 										void* src_buffer_data; // retrieve single indexed vertex
 										if (SUCCEEDED(vb->Lock(first_index * t_stride, t_stride, &src_buffer_data, D3DLOCK_READONLY)))
 										{
-											struct src_vert {
+											struct src_vert_x {
 												Vector vParms; D3DCOLOR vTint;
 											};
 
-											const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data));
+											const auto src = reinterpret_cast<src_vert_x*>(((DWORD)src_buffer_data));
 
 											// unpack color
 											v_color.x = static_cast<float>((src->vTint >> 16) & 0xFF) / 255.0f * 1.0f;
@@ -2458,7 +2466,7 @@ namespace components
 								// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
 								if (SUCCEEDED(vb->Lock(min_vert * t_stride, max_vert * t_stride, &src_buffer_data, D3DLOCK_READONLY)))
 								{
-									struct src_vert {
+									struct src_vert_y {
 										Vector pos;
 									};
 
@@ -2468,7 +2476,7 @@ namespace components
 										i -= static_cast<std::uint16_t>(min_vert);
 
 										const auto v_pos_in_src_buffer = i * t_stride;
-										const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
+										const auto src = reinterpret_cast<src_vert_y*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
 
 										flashlight_pos += src->pos;
 									}

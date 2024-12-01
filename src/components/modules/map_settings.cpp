@@ -201,19 +201,101 @@ namespace components
 				// #
 				auto process_cull_entry = [to_int](const toml::value& entry)
 					{
-						if (entry.contains("area") && entry.contains("leafs"))
-						{
-							const auto area = to_int(entry.at("area")); //toml::find<std::uint32_t>(entry, "area");
-							auto& leafs = entry.at("leafs").as_array();
+						const auto contains_leafs = entry.contains("leafs");
+						const auto contains_areas = entry.contains("areas");
+						const auto contains_hidden_leafs = entry.contains("hide_leafs");
+						const auto contains_hidden_areas = entry.contains("hide_areas");
+						const auto contains_cull = entry.contains("cull");
 
+						if (entry.contains("area") && (contains_leafs || contains_areas || contains_hidden_leafs || contains_hidden_areas || contains_cull))
+						{
+							const auto area = to_int(entry.at("area"));
+
+							// forced leafs
 							std::unordered_set<std::uint32_t> leaf_set;
-							for (const auto& leaf : leafs) {
-								leaf_set.insert(to_int(leaf));
+							if (contains_leafs)
+							{
+								auto& leafs = entry.at("leafs").as_array();
+
+								for (const auto& leaf : leafs) {
+									leaf_set.insert(to_int(leaf));
+								}
 							}
 
-							m_map_settings.area_settings.emplace(area, std::move(leaf_set));
+							// forced areas
+							std::unordered_set<std::uint32_t> area_set;
+							if (contains_areas)
+							{
+								auto& areas = entry.at("areas").as_array();
+
+								for (const auto& a : areas) {
+									area_set.insert(to_int(a));
+								}
+							}
+
+							// culling mode
+							AREA_CULL_MODE cmode = g_cull_disable_frustum_culling ? map_settings::AREA_CULL_MODE_NO_FRUSTUM : map_settings::AREA_CULL_MODE_DEFAULT;
+							if (contains_cull)
+							{
+								auto m = to_int(entry.at("cull"));
+								if (m >= AREA_CULL_COUNT) 
+								{
+									game::console(); printf("MapSettings: param 'cull' was out-of-range (%d)\n", m);
+									m = 0u;
+								}
+								cmode = (AREA_CULL_MODE)(std::uint8_t)m;
+							}
+
+							// hidden leafs
+							std::unordered_set<std::uint32_t> hidden_leaf_set;
+							if (contains_hidden_leafs)
+							{
+								auto& leafs = entry.at("hide_leafs").as_array();
+
+								for (const auto& leaf : leafs) {
+									hidden_leaf_set.insert(to_int(leaf));
+								}
+							}
+
+							// hidden areas
+							std::vector<hide_area_s> temp_hidden_areas_set;
+							if (contains_hidden_areas)
+							{
+								auto& hide_areas = entry.at("hide_areas").as_array();
+								for (const auto& elem : hide_areas)
+								{
+									if (elem.contains("areas"))
+									{
+										std::unordered_set<std::uint32_t> temp_area_set;
+										const auto& areas = elem.at("areas").as_array();
+
+										for (const auto& a : areas) {
+											temp_area_set.insert(to_int(a));
+										}
+
+										std::unordered_set<std::uint32_t> temp_not_in_leaf_set;
+										if (elem.contains("N_leafs"))
+										{
+											const auto& nleafs = elem.at("N_leafs").as_array();
+											for (const auto& nl : nleafs) {
+												temp_not_in_leaf_set.insert(to_int(nl));
+											}
+										}
+
+										temp_hidden_areas_set.emplace_back(std::move(temp_area_set), std::move(temp_not_in_leaf_set));
+									}
+								}
+							}
+
+							m_map_settings.area_settings.emplace(area, 
+								area_overrides_s(
+									std::move(leaf_set), 
+									std::move(area_set), 
+									std::move(hidden_leaf_set), 
+									std::move(temp_hidden_areas_set),
+									cmode,
+									area));
 						}
-						
 					};
 
 				// try to find the loaded map
@@ -561,6 +643,8 @@ namespace components
 
 		m_map_settings.api_var_configs.clear();
 		m_map_settings = {};
+
+		main_module::trigger_vis_logic();
 	}
 
 	ConCommand xo_mapsettings_update {};

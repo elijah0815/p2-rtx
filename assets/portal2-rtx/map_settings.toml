@@ -7,6 +7,7 @@
 [FOG]
     sp_a1_intro1 = { distance = 150000, color = [180, 160, 120] }
     sp_a1_intro2 = { distance = 20000, color = [250, 250, 250] }
+    sp_a1_intro3 = { distance = 250000, color = [180, 160, 120] }
     sp_a1_wakeup = { distance = 60000, color = [180, 140, 100] }
     sp_a2_intro = { distance = 60000, color = [180, 140, 100] }
     sp_a2_core = { distance = 150000, color = [180, 140, 100] }
@@ -16,17 +17,33 @@
 # Override culling - Specified leafs will always be rendered when in the specified area
 # Parameters ---------------------------------------------------------------------------------------------------------------------------------
 #
-# area:     the area the player has to be in
-# leafs:    leaf/s with forced visibility [array]
+# area:         the area the player has to be in
+# leafs:        leaf/s with forced visibility [array]
+# areas:        area/s with forced visibility [array]
+# cull:         [0] disable frustum culling
+#               [1] frustum culling (still forces leaf/s)
+#               [2] frustum culling (still forces leaf/s + forces all leafs in current area) (default, even when parameter 'cull' is not used) 
+#
+# hide_leafs:   force hide leaf/s   [array]
+#
+# hide_areas:   force hide area/s   [array]
+# |>   areas:   area/s to hide      [array]
+# |> N_leafs:   only hide area/s when NOT in specified leaf/s [array]
+
 
 [CULL]
     sp_a1_intro1 = [
-        { area = 4, leafs = [370, 371, 449, 452, 708, 841, 950] }
+        { area = 2, leafs = [436, 950] },
+        { area = 3, leafs = [370, 621, 652, 697] },
+        { area = 4, leafs = [370, 371, 436, 449, 452, 466, 483, 708, 841, 950] },
+        { area = 5, leafs = [621] }
     ]
 
     sp_a1_intro2 = [
+        { area = 1, cull = 0 },
         { area = 4, leafs = [712, 713, 714, 780] },
-        { area = 6, leafs = [178, 179, 180, 236] }
+        { area = 6, leafs = [178, 179, 180, 236], cull = 0 },
+        { area = 8, areas = [6], cull = 0 }
     ]
 
     sp_a1_intro3 = [
@@ -35,13 +52,18 @@
         { area = 3, leafs = [19, 21, 30, 38, 52, 60, 71, 73, 77, 82, 118, 145, 148, 162, 175, 191, 193, 196, 209, 233, 238, 240, 246, 266, 277, 280, 397, 400, 406, 415, 426, 427, 428, 434, 437, 620, 622, 625, 635, 640, 662, 664, 666, 674, 681, 669, 744, 751, 752, 754, 790, 801, 802, 932, 1222, 1215] },
         { area = 4, leafs = [712, 713, 714, 780, 1215] },
         { area = 5, leafs = [861, 862, 1215] },
-        { area = 7, leafs = [699, 712, 713, 714, 945, 954, 1080, 1081, 1111] }
+        { area = 7, leafs = [699, 712, 713, 714, 945, 954, 1080, 1081, 1111, 1215] }
     ]
 
     sp_a1_intro4 = [
-        { area = 2, leafs = [67, 70, 74, 75, 84, 93, 97, 98, 104, 376, 400, 417, 418, 433, 434, 487, 488, 491, 542, 547, 550, 771, 781, 784, 794, 1072, 1055, 1059, 1068, 1075, 1080, 1088] },
-        { area = 3, leafs = [51, 234, 761, 792, 797, 856, 937, 970, 979, 1077, 1086, 1090, 1101, 1105, 1107, 1108, 1118, 1123] },
+        { area = 2, leafs = [89, 376, 400, 401, 433, 434, 472, 818, 1105] },
+        { area = 3, leafs = [51, 234, 761, 792, 797, 856, 937, 970, 979, 1018, 1026, 1077, 1086, 1090, 1101, 1105, 1107, 1108, 1118, 1123] },
         { area = 6, leafs = [234, 761, 792, 797, 856, 937, 970, 979, 1077, 1086, 1090, 1101, 1105, 1107, 1108, 1118, 1123] }
+    ]
+
+    sp_a1_intro6 = [
+        { area = 3, areas = [2, 4] },
+        { area = 4, leafs = [626, 654, 657, 668, 673] },
     ]
 
     sp_a1_intro7 = [
@@ -65,9 +87,40 @@
         { area = 1, leafs = [432] }
     ]
 
+    sp_a4_laser_platform = [
+        { area = 1, cull = 1 },
+        { area = 2, hide_leafs = [89, 99, 100, 158, 171, 178, 901], hide_areas = [
+            { areas = [0, 3, 4], N_leafs = [] }
+        ]},
+    ]
+
     sp_a4_finale2 = [
-        { area = 1, leafs = [554, 591, 630, 633] },
-        { area = 4, leafs = [53, 62, 134, 135, 150, 156] }
+        { area = 1, leafs = [554, 591, 630, 633, 646] },
+        { area = 4, leafs = [48, 53, 62, 134, 135, 150, 156] },
+        
+        { area = 9, cull = 2, leafs = [902], hide_areas = [
+            { areas = [10], N_leafs = [939, 942, 946] },
+            { areas = [11] },
+        ]},
+
+        { area = 10, cull = 2, hide_areas = [
+            { areas = [7] },
+            { areas = [9], N_leafs = [902, 906, 912, 918, 922, 926, 937, 940] },
+        ]},
+
+        { area = 12, cull = 2, hide_areas = [
+            { areas = [9] },
+        ]},
+
+        { area = 14, cull = 2, leafs = [1582, 1602, 1603], hide_areas = [
+            { areas = [9, 12], N_leafs = [1598, 1621] },
+        ]},
+
+        { area = 15, cull = 2, leafs = [1536, 1651, 1680], areas = [12], hide_areas = [
+            { areas = [9] },
+        ]},
+
+        { area = 16, areas = [17], leafs = [1536, 1582, 1602, 1603, 1615] },
 ]
 
 
@@ -159,7 +212,7 @@
     # first portal in first pair will be moved to "2108 774 -18" when a certain '.vcd' finishes (because it would be randomly floating in the air otherwise)
     sp_a4_finale2 = [
         { pair = 0, portals = [
-            { position = [0, 0, 0], rotation = [-90, 180, 0], scale = [260, 130], square_mask = 1 },
+            { position = [1780, 110, 1340], rotation = [-90, 180, 0], scale = [260, 130], square_mask = 1 },
             { position = [12347, 11782, 8190], rotation = [90, 0, 0], scale = [260, 130], square_mask = 1 }
         ]},
         { pair = 1, portals = [

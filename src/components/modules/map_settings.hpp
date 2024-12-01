@@ -66,12 +66,45 @@ namespace components
 			std::string value;
 		};
 
+		enum AREA_CULL_MODE : uint8_t
+		{
+			AREA_CULL_MODE_NO_FRUSTUM = 0,
+			AREA_CULL_MODE_FRUSTUM = 1,
+			AREA_CULL_MODE_FRUSTUM_FORCE_AREA = 2,
+			AREA_CULL_COUNT = 3,
+			// -------------------
+			AREA_CULL_MODE_DEFAULT = AREA_CULL_MODE_FRUSTUM_FORCE_AREA,
+		};
+
+		struct hide_area_s
+		{
+			std::unordered_set<std::uint32_t> areas;
+			std::unordered_set<std::uint32_t> when_not_in_leafs;
+		};
+
+		struct area_overrides_s
+		{
+			std::unordered_set<std::uint32_t> leafs;
+			std::unordered_set<std::uint32_t> areas;
+			std::unordered_set<std::uint32_t> hide_leafs;
+			//std::unordered_set<std::uint32_t> hide_areas;
+
+			// areas - when_not_in_leafs
+			//std::vector<std::unordered_set<std::uint32_t>, std::unordered_set<std::uint32_t>> hide_areas;
+			std::vector<hide_area_s> hide_areas;
+
+
+			AREA_CULL_MODE cull_mode;
+			std::uint32_t area_index;
+		};
+
 		struct map_settings_s
 		{
 			std::string	mapname;
 			float fog_dist = 0.0f;
 			DWORD fog_color = 0xFFFFFFFF;
-			std::unordered_map<std::uint32_t, std::unordered_set<std::uint32_t>> area_settings;
+			//std::unordered_map<std::uint32_t, std::unordered_set<std::uint32_t>> area_settings;
+			std::unordered_map<std::uint32_t, area_overrides_s> area_settings;
 			std::vector<leaf_transition_s> leaf_transitions;
 			std::vector<choreo_transition_s> choreo_transitions;
 			std::vector<marker_settings_s> map_markers;

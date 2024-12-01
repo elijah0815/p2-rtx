@@ -525,7 +525,7 @@ namespace components
 		struct game_portal_info_s
 		{
 			float open_amount = 0.0f;
-			const C_Prop_Portal* portal = nullptr;
+			C_Prop_Portal* portal = nullptr;
 			const C_BaseEntity* portal_owner = nullptr;
 			bool is_linked = false;
 		};

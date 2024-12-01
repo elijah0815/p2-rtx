@@ -2286,6 +2286,31 @@ namespace components
 		IMaterial* m_pMaterial;
 	};
 
+	struct m128_f
+	{
+		float m128_f32[4];
+	};
+
+	struct fourplanes_t
+	{
+		m128_f nX;
+		m128_f nY;
+		m128_f nZ;
+		m128_f dist;
+		m128_f xSign;
+		m128_f ySign;
+		m128_f zSign;
+		m128_f nXAbs;
+		m128_f nYAbs;
+		m128_f nZAbs;
+	};
+
+	struct Frustum_t
+	{
+		fourplanes_t planes[2];
+	}; STATIC_ASSERT_SIZE(Frustum_t, 0x140);
+
+
 	struct PropPortalRenderingMaterials_t
 	{
 		CMaterialReference m_PortalMaterials[2];
@@ -2309,11 +2334,32 @@ namespace components
 		PropPortalRenderingMaterials_t m_Materials;
 	};
 
+	enum SkyboxVisibility_t : __int32
+	{
+		SKYBOX_NOT_VISIBLE = 0x0,
+		SKYBOX_3DSKYBOX_VISIBLE = 0x1,
+		SKYBOX_2DSKYBOX_VISIBLE = 0x2,
+	};
+
+	struct FlatBasicPortal_InternalData_t
+	{
+		VPlane m_BoundingPlanes[14];
+		VisOverrideData_t m_VisData;
+		int m_iViewLeaf;
+		VMatrix m_DepthDoublerTextureView[2];
+		bool m_bUsableDepthDoublerConfiguration;
+		SkyboxVisibility_t m_nSkyboxVisibleFromCorners;
+		Vector m_ptForwardOrigin;
+		Vector m_ptCorners[4];
+		float m_fPlaneDist;
+	}; STATIC_ASSERT_SIZE(FlatBasicPortal_InternalData_t, 0x20C);
+
 	// same struct as C_Prop_Portal for ease of use
 	// m_pLinkedPortal points to an address that is 0xC infront of the C_Prop_Portal object?
 	struct CPortalRenderable_FlatBasic
 	{
-		char pad1[4112];
+		char pad1[0xE04];
+		FlatBasicPortal_InternalData_t m_InternallyMaintainedData;
 		CPortalRenderable_FlatBasic* m_pLinkedPortal; //0x1010 
 		Vector m_ptOrigin; //0x1014 
 		Vector m_vForward; //0x1020 
@@ -2329,6 +2375,7 @@ namespace components
 		float m_fSecondaryStaticAmount; //0x3514 
 		float m_fOpenAmount; //0x3518 
 	}; //Size=0x351C
+	STATIC_ASSERT_OFFSET(CPortalRenderable_FlatBasic, m_pLinkedPortal, 0x1010);
 
 	struct C_Prop_Portal_vtbl;
 	struct C_Prop_Portal
@@ -2339,7 +2386,8 @@ namespace components
 		int team_num;
 		char pad02[0x2EC];
 		int portal_index;
-		char pad03[0xC30];
+		char pad03[0xA24];
+		FlatBasicPortal_InternalData_t m_InternallyMaintainedData;
 		CPortalRenderable_FlatBasic* m_pLinkedPortal; //0x1004 
 		Vector m_ptOrigin; //0x1008 
 		Vector m_vForward; //0x1014 
@@ -2366,6 +2414,7 @@ namespace components
 	};
 	
 	STATIC_ASSERT_OFFSET(C_Prop_Portal, portal_index, 0x3D0);
+	STATIC_ASSERT_OFFSET(C_Prop_Portal, m_pLinkedPortal, 0x1004);
 	STATIC_ASSERT_OFFSET(C_Prop_Portal, m_fOpenAmount, 0x350C);
 
 	struct C_Team : C_BaseEntity

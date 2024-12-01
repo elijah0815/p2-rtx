@@ -2,9 +2,9 @@
 
 namespace components
 {
-	extern int g_player_current_node;
 	extern int g_player_current_leaf;
 	extern int g_player_current_area;
+	extern bool g_cull_disable_frustum_culling;
 
 	namespace api
 	{
@@ -39,6 +39,7 @@ namespace components
 
 		static void debug_draw_box(const VectorAligned& center, const VectorAligned& half_diagonal, const float width, const api::DEBUG_REMIX_LINE_COLOR& color);
 		static void setup_required_cvars();
+		static void trigger_vis_logic();
 
 	private:
 	};
