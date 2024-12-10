@@ -536,6 +536,7 @@ public:
 	vec_t x, y, z;
 };
 
+
 class __declspec(align(16))VectorAligned : public Vector
 {
 public:
@@ -595,6 +596,23 @@ namespace utils::vector
 			vForward->y = (cp * sy);
 			vForward->z = -sp;
 		}
+	}
+
+	inline vec_t dot_product(const Vector& a, const Vector& b)
+	{
+		return(a.x * b.x + a.y * b.y + a.z * b.z);
+	}
+
+	inline void vector_ma_inline(const Vector& start, float scale, const Vector& direction, Vector& dest)
+	{
+		dest.x = start.x + direction.x * scale;
+		dest.y = start.y + direction.y * scale;
+		dest.z = start.z + direction.z * scale;
+	}
+
+	inline void vector_ma(const Vector& start, float scale, const Vector& direction, Vector& dest)
+	{
+		vector_ma_inline(start, scale, direction, dest);
 	}
 
 	struct matrix3x3

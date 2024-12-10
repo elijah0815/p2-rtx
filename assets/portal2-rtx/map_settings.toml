@@ -14,7 +14,7 @@
     sp_a4_finale2 = { distance = 150000, color = [180, 140, 100] }
 
 
-# Override culling - Specified leafs will always be rendered when in the specified area
+# Override culling per game area
 # Parameters ---------------------------------------------------------------------------------------------------------------------------------
 #
 # area:         the area the player has to be in
@@ -29,7 +29,6 @@
 # hide_areas:   force hide area/s   [array]
 # |>   areas:   area/s to hide      [array]
 # |> N_leafs:   only hide area/s when NOT in specified leaf/s [array]
-
 
 [CULL]
     sp_a1_intro1 = [
@@ -88,18 +87,22 @@
     ]
 
     sp_a4_laser_platform = [
-        { area = 1, cull = 1 },
+        { area = 1, cull = 1, leafs = [133] },
         { area = 2, hide_leafs = [89, 99, 100, 158, 171, 178, 901], hide_areas = [
             { areas = [0, 3, 4], N_leafs = [] }
         ]},
     ]
 
+    sp_a4_speed_tb_catch = [
+        { area = 5, areas = [1] },
+    ]
+
     sp_a4_finale2 = [
-        { area = 1, leafs = [554, 591, 630, 633, 646] },
-        { area = 4, leafs = [48, 53, 62, 134, 135, 150, 156] },
+        { area = 1, areas = [4] },
+        { area = 4, leafs = [48, 53, 62, 134, 135, 150, 156], areas = [1] },
         
         { area = 9, cull = 2, leafs = [902], hide_areas = [
-            { areas = [10], N_leafs = [939, 942, 946] },
+            { areas = [10], N_leafs = [938, 939, 942, 946] },
             { areas = [11] },
         ]},
 
@@ -108,7 +111,7 @@
             { areas = [9], N_leafs = [902, 906, 912, 918, 922, 926, 937, 940] },
         ]},
 
-        { area = 12, cull = 2, hide_areas = [
+        { area = 12, cull = 2, areas = [15], hide_areas = [
             { areas = [9] },
         ]},
 
@@ -117,10 +120,10 @@
         ]},
 
         { area = 15, cull = 2, leafs = [1536, 1651, 1680], areas = [12], hide_areas = [
-            { areas = [9] },
+            { areas = [9, 16] },
         ]},
 
-        { area = 16, areas = [17], leafs = [1536, 1582, 1602, 1603, 1615] },
+        { area = 16, areas = [14, 15, 17], leafs = [1536, 1582, 1602, 1603, 1615] },
 ]
 
 
@@ -192,7 +195,7 @@
     ]}
 
 
-# Spawns portals using the remix api - useful for area-connecting portals (between doors / rooms)
+# Spawn portals using the remix api - useful for area-connecting portals (between doors / rooms)
 # Parameters ---------------------------------------------------------------------------------------------------------------------------------
 #
 # pair:         number of pair (0 to 1 - only two pairs are currently supported)
@@ -209,7 +212,7 @@
         ]}
     ]
 
-    # first portal in first pair will be moved to "2108 774 -18" when a certain '.vcd' finishes (because it would be randomly floating in the air otherwise)
+    # first portal in first pair will be moved to "2108 774 -18" when a certain '.vcd' finishes (because it would be floating in the air otherwise)
     sp_a4_finale2 = [
         { pair = 0, portals = [
             { position = [1780, 110, 1340], rotation = [-90, 180, 0], scale = [260, 130], square_mask = 1 },

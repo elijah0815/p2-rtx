@@ -41,6 +41,10 @@ namespace game
 		0.5f, 0.5f, 0.0f, 1.0f,	// translate back to the top left corner
 	};
 
+	view_id saved_view_id = VIEW_ILLEGAL;
+
+	// ----------
+
 	// adds a simple console command
 	void con_add_command(ConCommand* cmd, const char* name, void(__cdecl* callback)(), const char* desc)
 	{
@@ -77,6 +81,26 @@ namespace game
 
 	const char* get_map_name() {
 		return utils::hook::call<const char*(__cdecl)()>(CLIENT_BASE + USE_OFFSET(0x1F4040, 0x1EEEE0))();
+	}
+
+	void r_flow_through_area(const int area, const Vector* vec_vis_origin, const CPortalRect* clip_rect, const VisOverrideData_t* vis_data, float* reflection_water_height)
+	{
+		utils::hook::call<void(__cdecl)(int, const Vector*, const CPortalRect*, const VisOverrideData_t*, float*)>(ENGINE_BASE + USE_OFFSET(0x10FB70, 0x10EA00))
+			(area, vec_vis_origin, clip_rect, vis_data, reflection_water_height);
+	}
+
+	// Frustum_t::SetPlanes
+	void frustum_set_planes(Frustum_t* frustum, const VPlane* planes)
+	{
+		utils::hook::call<void(__fastcall)(Frustum_t*, void* null, const VPlane*)>(ENGINE_BASE + USE_OFFSET(0x270050, 0x26CED0))
+			(frustum, nullptr, planes);
+	}
+
+	// Frustum_t::CullBox
+	bool frustum_cull_box(Frustum_t* frustum, const Vector* mins, const Vector* maxs)
+	{
+		return utils::hook::call<bool(__fastcall)(void* this_ptr, void* null, const Vector*, const Vector*)>(ENGINE_BASE + USE_OFFSET(0x270100, 0x26CF80))
+			(frustum, nullptr, mins, maxs);
 	}
 
 	void cvar_uncheat(const char* name)

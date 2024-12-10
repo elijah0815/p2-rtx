@@ -36,8 +36,20 @@ namespace game
 
 	extern void cbaseentity_remove(void* cbaseentity_ptr);
 
-	extern const char* get_map_name();
 	extern int get_visframecount();
+	extern const char* get_map_name();
+
+	extern void r_flow_through_area(int area, const Vector* vec_vis_origin, const CPortalRect* clip_rect, const VisOverrideData_t* vis_data, float* reflection_water_height);
+	inline int* get_visible_areas_num() { return reinterpret_cast<int*>(ENGINE_BASE + USE_OFFSET(0x61ABE0, 0x615468)); }
+	inline std::uint16_t* get_visible_areas() { return reinterpret_cast<std::uint16_t*>(ENGINE_BASE + USE_OFFSET(0x61ABE8, 0x615470)); }
+	inline bool* get_viewer_in_solid_space() { return reinterpret_cast<bool*>(ENGINE_BASE + USE_OFFSET(0x61C228, 0x616AB0)); }
+	inline CPortalRect* get_area_rect() { return reinterpret_cast<CPortalRect*>(ENGINE_BASE + USE_OFFSET(0x61ADE8, 0x615670)); }
+	inline Frustum_t* get_area_frustum() { return reinterpret_cast<Frustum_t*>(*(DWORD*)(ENGINE_BASE + USE_OFFSET(0x61C35C, 0x616BE4))); } // + 0x10 to pElements
+
+	extern void frustum_set_planes(Frustum_t* frustum, const VPlane* planes);
+
+	extern bool frustum_cull_box(Frustum_t* frustum, const Vector* mins, const Vector* maxs);
+	inline Frustum_t* get_g_frustum() { return reinterpret_cast<Frustum_t*>(ENGINE_BASE + USE_OFFSET(0x615390, 0x60FC20)); }
 
 	extern void cvar_uncheat(const char* name);
 	extern void cvar_uncheat_and_set_int(const char* name, const int val);
@@ -54,8 +66,14 @@ namespace game
 	inline components::CGlobalVarsBase* get_global_vars() { return reinterpret_cast<components::CGlobalVarsBase*>(*(DWORD*)(CLIENT_BASE + USE_OFFSET(0x92A37C, 0x9220BC))); }
 	inline components::CCvar* get_icvar() { return reinterpret_cast<components::CCvar*>((VSTDLIB_BASE + USE_OFFSET(0x315B0, 0x31550))); }
 
-	inline const float* get_current_view_origin() { return reinterpret_cast<float*>(ENGINE_BASE + USE_OFFSET(0x513380, 0x50DB50)); }
-	inline Vector get_current_view_origin_as_vector() { return get_current_view_origin(); }
+	inline Vector* get_current_view_origin() { return reinterpret_cast<Vector*>(ENGINE_BASE + USE_OFFSET(0x513380, 0x50DB50)); }
+	inline Vector* get_current_view_forward() { return reinterpret_cast<Vector*>(ENGINE_BASE + USE_OFFSET(0x4351D0, 0x42FFE4)); }
+	inline Vector* get_current_view_right() { return reinterpret_cast<Vector*>(ENGINE_BASE + USE_OFFSET(0x4351DC, 0x42FFF0)); }
+	inline Vector* get_current_view_up() { return reinterpret_cast<Vector*>(ENGINE_BASE + USE_OFFSET(0x4351E8, 0x42FFFC)); }
+
+	// note: this might be ILLEGAL when within 'CBaseWorldView::DrawSetup' -> use 'game::saved_view_id' instead
+	inline view_id* get_current_view_id() { return reinterpret_cast<view_id*>(CLIENT_BASE + USE_OFFSET(0x937F40, 0x92FB00)); }
+	extern view_id saved_view_id;
 
 	inline bool is_puzzlemaker_active()
 	{
