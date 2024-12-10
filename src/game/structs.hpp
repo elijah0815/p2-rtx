@@ -196,6 +196,32 @@ namespace components
 		ADDDECAL_TO_ALL_LODS = 0xFFFFFFFF,
 	};
 
+	enum
+	{
+		FRUSTUM_RIGHT = 0,
+		FRUSTUM_LEFT = 1,
+		FRUSTUM_TOP = 2,
+		FRUSTUM_BOTTOM = 3,
+		FRUSTUM_NEARZ = 4,
+		FRUSTUM_FARZ = 5,
+		FRUSTUM_NUMPLANES = 6
+	};
+
+	enum view_id : __int32
+	{
+		VIEW_ILLEGAL = 0xFFFFFFFE,
+		VIEW_NONE = 0xFFFFFFFF,
+		VIEW_MAIN = 0x0,
+		VIEW_3DSKY = 0x1,
+		VIEW_MONITOR = 0x2,
+		VIEW_REFLECTION = 0x3,
+		VIEW_REFRACTION = 0x4,
+		VIEW_INTRO_PLAYER = 0x5,
+		VIEW_INTRO_CAMERA = 0x6,
+		VIEW_SHADOW_DEPTH_TEXTURE = 0x7,
+		VIEW_ID_COUNT = 0x8,
+	};
+
 	struct matrix3x4_t
 	{
 		float m_flMatVal[3][4];
@@ -222,11 +248,57 @@ namespace components
 		unsigned int a;
 	};
 
-	struct VPlane
+	/*struct VPlane
 	{
 		Vector m_Normal;
 		float m_Dist;
+	};*/
+
+	class VPlane
+	{
+	public:
+		VPlane();
+		VPlane(const Vector& vNormal, vec_t dist);
+
+		void		Init(const Vector& vNormal, vec_t dist);
+		vec_t		DistTo(const Vector& vVec) const;
+		VPlane& operator=(const VPlane& thePlane);
+		
+	public:
+		Vector		m_Normal;
+		vec_t		m_Dist;
 	};
+
+	inline VPlane::VPlane()
+	{
+	}
+
+	inline VPlane::VPlane(const Vector& vNormal, vec_t dist)
+	{
+		m_Normal = vNormal;
+		m_Dist = dist;
+	}
+
+	inline void	VPlane::Init(const Vector& vNormal, vec_t dist)
+	{
+		m_Normal = vNormal;
+		m_Dist = dist;
+	}
+
+	inline vec_t VPlane::DistTo(const Vector& vVec) const
+	{
+		return vVec.Dot(m_Normal) - m_Dist;
+	}
+
+	inline VPlane& VPlane::operator=(const VPlane& thePlane)
+	{
+		m_Normal = thePlane.m_Normal;
+		m_Dist = thePlane.m_Dist;
+		return *this;
+	}
+
+	// ------------------------------
+	// ------------------------------
 
 	struct QAngle
 	{
@@ -1369,6 +1441,16 @@ namespace components
 		bool(__thiscall* InLightmapUpdate)(IRender*);
 	};
 
+	struct __declspec(align(4)) ViewStack_t
+	{
+		CViewSetup m_View;
+		VMatrix m_matrixView;
+		VMatrix m_matrixProjection;
+		VMatrix m_matrixWorldToScreen;
+		bool m_bIs2DView;
+		bool m_bNoDraw;
+	};
+
 	struct CRender_vtbl;
 	struct __declspec(align(8)) CRender : IRender
 	{
@@ -1382,8 +1464,11 @@ namespace components
 		VMatrix m_matrixProjection;
 		VMatrix m_matrixWorldToScreen;
 		//CUtlStack<CRender::ViewStack_t, CUtlMemory<CRender::ViewStack_t, int> > m_ViewStack;
+		char pad_m_ViewStack_memory[0xC];
+		int m_ViewStack_size;
+		ViewStack_t* m_ViewStack_m_pElements;
 		//int m_iLightmapUpdateDepth;
-	};
+	}; STATIC_ASSERT_OFFSET(CRender, m_ViewStack_size, 0xDC + 0xC);
 
 	struct CRender_vtbl
 	{
@@ -2286,23 +2371,18 @@ namespace components
 		IMaterial* m_pMaterial;
 	};
 
-	struct m128_f
-	{
-		float m128_f32[4];
-	};
-
 	struct fourplanes_t
 	{
-		m128_f nX;
-		m128_f nY;
-		m128_f nZ;
-		m128_f dist;
-		m128_f xSign;
-		m128_f ySign;
-		m128_f zSign;
-		m128_f nXAbs;
-		m128_f nYAbs;
-		m128_f nZAbs;
+		__m128 nX;
+		__m128 nY;
+		__m128 nZ;
+		__m128 dist;
+		__m128 xSign;
+		__m128 ySign;
+		__m128 zSign;
+		__m128 nXAbs;
+		__m128 nYAbs;
+		__m128 nZAbs;
 	};
 
 	struct Frustum_t
@@ -2766,6 +2846,14 @@ namespace components
 		float m_flPixelMax;
 		float m_flWidth;
 		float m_flFadeDistScale;
+	};
+
+	struct CPortalRect
+	{
+		float left;
+		float top;
+		float right;
+		float bottom;
 	};
 
 }

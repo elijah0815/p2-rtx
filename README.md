@@ -71,11 +71,16 @@ If you want to support my work, consider buying me some coffee:
 
 <br>
 
-#### ⚠️ Info: 
+#### ✳️ Info: 
 - See the [Wiki](https://github.com/xoxor4d/p2-rtx/wiki/Compatibility-Mod-Feature-Guide) for in-depth guides on features that come with the compatibility mod 🍓
 - Current releases ship with a [custom build of the remix-dxvk runtime](https://github.com/xoxor4d/dxvk-remix/tree/combine/pairs_mask_rs) which includes necessary changes  
 for Portal 2 (`bin/.trex/d3d9.dll`)  
 - Releases also include [Ultimate-ASI-Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases) (`bin/winmm.dll`)  
+
+<br>
+
+#### ⚠️ Most Noteworthy Issues:
+- Some engine tweaks that are required to make the game compatible result in CPU bottlenecks on some maps (software skinning instead of HW skinning). This may or may not improve in future updates.
 
 <br>
 
@@ -89,7 +94,7 @@ Make sure that you installed the `_remix_mod.zip`. See [Issue #13](https://githu
 - Game is too dark, sunlight is leaking on certain maps, textures look flat:  
 This is not an issue with the compatibility mod itself. It's up to the people modding the game using the remix toolset to place proper lights and overhaul textures and meshes.
 
-- Look at [Closed Issues](https://github.com/xoxor4d/p2-rtx/issues?q=is%3Aissue+is%3Aclosed) to see if people had similar but now resolved issues.
+- Look at [Closed Issues](https://github.com/xoxor4d/p2-rtx/issues?q=is%3Aissue+is%3Aclosed) or [Discussions](https://github.com/xoxor4d/p2-rtx/discussions) to see if people had similar issues
 
 <br>
 

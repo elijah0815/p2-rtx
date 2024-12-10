@@ -3,33 +3,21 @@
 // + dxlevel 100 required
 
 // commandline args:
-// -novid -height 1060 -disable_d3d9_hacks -limitvsconst -softparticlesdefaultoff -disallowhwmorph -no_compressed_verts +sv_cheats 1 +developer 1 +r_ShowViewerArea 1 +cl_showpos 1 +r_PortalTestEnts 0 +portal_ghosts_disable 0 +r_portal_earlyz 0 +r_portal_use_complex_frustums 0 +r_portal_use_pvs_optimization 0 +r_portalstencildisable 1 +r_portal_stencil_depth 0 +portal_draw_ghosting 0 +r_staticprop_lod 0 +r_lod 0 +r_threaded_particles 0 +r_entityclips 0 +cl_brushfastpath 0 +cl_tlucfastpath 0 +cl_modelfastpath 0 +mat_fullbright 1 +mat_queue_mode 0 +mat_softwarelighting 0 +mat_softwareskin 1 +mat_phong 1 +mat_parallaxmap 0 +mat_frame_sync_enable 0 +mat_fastnobump 1 +mat_disable_bloom 1 +mat_dof_enabled 0 +mat_displacementmap 0 +mat_drawflat 0 +mat_normalmaps 0 +mat_normals 0 +r_3dsky 0 +sv_lan 1 +map sp_a1_wakeup
 // -novid -disable_d3d9_hacks -limitvsconst -disallowhwmorph -softparticlesdefaultoff -no_compressed_verts +mat_phong 1
 
-
-// *** Required cvars
-// r_PortalTestEnts					:: 0 = needed for anti culling of entities
-// portal_ghosts_disable			:: 0 = okay until virtual instances are working (see cportalghost_should_draw)			|| 1 = disable rendering of ghost models
-// r_portal_stencil_depth			:: 0 = don't let the game render the scene multiple times - portal vis now handled in 'viewdrawscene_custom_portal_vis'
-
 // *** Useful cvars
-// mat_leafvis 1					:: print current leaf and area index to console
-// r_ShowViewerArea 1				:: show current area on the HUD
-// xo_debug_toggle_node_vis (cmd)	:: toggle debug vis of the leaf/node the player is currently in
 // r_drawmodelstatsoverlay 1		:: show model names
-
-// *** Other cvars
-// r_novis							:: 1 = disable all visleaf/node checks (renders the entire map - same as 'xo_disable_all_culling' cmdline flag)
+// r_novis							:: 1 = disable all visleaf/node checks
 // cl_particles_show_bbox 1			:: can be used to see fx names
 
-
-// engine::Shader_WorldEnd interesting for sky
-// Shader_DrawChains:: mat_forcedynamic 1 || mat_drawflat 1 => Shader_DrawChainsDynamic (changes hashes but still unstable)
 
 namespace components
 {
 	int g_player_current_leaf = -1;
 	int g_player_current_area = -1;
+	int g_current_area_all_views = -1; // updated on each view-scene (eg. monitor + main)
+	bool g_player_leaf_update = false;
+	Vector g_player_view_org = {};
 
 	// contains overrides for the current area, nullptr if no overrides exist
 	map_settings::area_overrides_s* g_player_current_area_override = nullptr;
@@ -283,15 +271,19 @@ namespace components
 
 	struct portal_frustum_s
 	{
-		//VPlane frustum_planes[6];
-		VPlane* frustum_planes;
+		Frustum_t frustum;
+		float znear;
+		float zfar;
+		float fov_x;
+		float fov_y;
+		CPortalRenderable_FlatBasic* portal;
 	};
 
+	// holds info about open portals
 	std::vector<portal_frustum_s> portal_frustums;
 
-
 	/**
-	 * Called from CViewRender::RenderView
+	 * Called from CViewRender::RenderView (main scene rendering)
 	 * - Pass world, view, projection to D3D
 	 * - Other misc. that runs once per frame
 	 */
@@ -388,8 +380,7 @@ namespace components
 				ext.roughnessTexture = L"";
 				ext.metallicTexture = L"";
 				ext.heightTexture = L"";
-		}
-
+			}
 			info.pNext = &ext;
 
 			api::bridge.CreateMaterial(&info, &api::remix_debug_line_materials[0]);
@@ -462,15 +453,16 @@ namespace components
 		}
 	}
 
+	// #
+	// #
 
+	/**
+	 * Called from 'CViewRender::DrawOneMonitor' before calling 'CViewRender::RenderView'
+	 * - in use when game is rendering a scene to a monitor (different rendertarget)
+	 */
 	void cviewrenderer_drawonemonitor_hk()
 	{
 		auto enginerender = game::get_engine_renderer();
-
-		// old - works
-		//const VMatrix* view = call_virtual<12, const VMatrix*>((void*)enginerender);
-		//const VMatrix* pProjectionMatrix = view + 1; // Increment the pointer to get to the projectionMatrix
-
 		const auto dev = game::get_d3d_device();
 
 		float colView[4][4] = {};
@@ -500,8 +492,8 @@ namespace components
 		}
 	}
 
-
-	
+	// #
+	// #
 	
 #if 0
 	void on_cl_init_hk()
@@ -583,6 +575,7 @@ namespace components
 	 * Called from Host_Disconnect
 	 * on: disconnect, restart, killserver, stopdemo ...
 	 */
+#if 0
 	void on_host_disconnect_hk()
 	{
 		// #TODO: not called when traversing maps via the elevator ...
@@ -607,6 +600,7 @@ namespace components
 			jmp		on_host_disconnect_retn;
 		}
 	}
+#endif
 
 
 	// #
@@ -832,7 +826,8 @@ namespace components
 	// Trigger leaf/node forcing logic and updates 'g_player_current_area_override' when 'pre_recursive_world_node()' gets called
 	void main_module::trigger_vis_logic()
 	{
-		g_player_current_leaf = -1;
+		//g_player_current_leaf = -1;
+		g_player_leaf_update = true;
 		g_player_current_area_override = nullptr;
 	}
 
@@ -841,30 +836,15 @@ namespace components
 	void pre_recursive_world_node()
 	{
 		const auto world = game::get_hoststate_worldbrush_data();
-
-		// CM_PointLeafnum :: get current leaf
-		const auto current_leaf = game::get_leaf_from_position(game::get_current_view_origin());
-
-		// CM_LeafArea :: get current player area
-		const auto current_area = utils::hook::call<int(__cdecl)(int leafnum)>(ENGINE_BASE + USE_OFFSET(0x15ACE0, 0x159470))(current_leaf);
-
-		// only run logic when the leaf changes
-		const bool leaf_update = current_leaf != g_player_current_leaf;
-
-		// only run logic when the area changes
-		//const bool area_update = current_area != g_player_current_area;
-
-		g_player_current_leaf = current_leaf;
-		g_player_current_area = current_area;
 		auto& map_settings = map_settings::get_map_settings();
 
 		// show leaf index as 3D text
-		if (current_leaf < world->numleafs)
+		if (g_player_current_leaf < world->numleafs)
 		{
 			if (api::remix_debug_node_vis)
 			{
-				const auto curr_leaf = &world->leafs[current_leaf];
-				game::debug_add_text_overlay(&curr_leaf->m_vecCenter.x, 0.0f, utils::va("Leaf: %i", current_leaf));
+				const auto curr_leaf = &world->leafs[g_player_current_leaf];
+				game::debug_add_text_overlay(&curr_leaf->m_vecCenter.x, 0.0f, utils::va("Leaf: %i", g_player_current_leaf));
 				main_module::debug_draw_box(curr_leaf->m_vecCenter, curr_leaf->m_vecHalfDiagonal, 2.0f, api::DEBUG_REMIX_LINE_COLOR::GREEN);
 			}
 		}
@@ -879,10 +859,11 @@ namespace components
 		if (!map_settings.area_settings.empty())
 		{
 			//if (leaf_update)
+			//if (g_player_leaf_update)
 			{
 				g_player_current_area_override = nullptr;
 
-				if (const auto& t = map_settings.area_settings.find(current_area);
+				if (const auto& t = map_settings.area_settings.find(g_player_current_area);
 					t != map_settings.area_settings.end())
 				{
 					g_player_current_area_override = &t->second; // cache
@@ -964,7 +945,7 @@ namespace components
 		}
 
 		// leaf transitions
-		if (leaf_update && !map_settings.leaf_transitions.empty())
+		if (g_player_leaf_update && !map_settings.leaf_transitions.empty())
 		{
 			for (auto t = map_settings.leaf_transitions.begin(); t != map_settings.leaf_transitions.end();)
 			{
@@ -975,7 +956,7 @@ namespace components
 				const bool trigger_on_enter = t->mode == map_settings::ONCE_ON_ENTER || t->mode == map_settings::ALWAYS_ON_ENTER;
 				const bool trigger_on_leave = t->mode == map_settings::ONCE_ON_LEAVE || t->mode == map_settings::ALWAYS_ON_LEAVE;
 
-				if (t->leafs.contains(current_leaf))
+				if (t->leafs.contains(g_player_current_leaf))
 				{
 					if (!t->_state_enter) // first time we enter the leafset
 					{
@@ -1058,10 +1039,12 @@ namespace components
 
 
 	// stub in 'R_RecursiveWorldNode' right on 'while (xnode->visframe == r_visframecount ... )'
+	// return 0: exlude node & end while loop
+	// return 1: node is potententially visible but not a node we want to force (does not skip R_CullNode)
+	// return 2: force node - no vis checking
 	int node_visframe_check(const mnode_t* xnode)
 	{
-		// check if this node would be excluded from rendering
-		if (xnode->visframe != game::get_visframecount())
+		if (game_settings::get()->check_nodes_for_potential_lights.get_as<bool>())
 		{
 			// sort dimensions to identify height, width, and depth
 			float dims[3] = {
@@ -1075,13 +1058,22 @@ namespace components
 			const auto height = dims[2];
 			const auto depth = dims[0];
 
-			// try to find rectangular cuboids that could match emissive lights
+			// try to find rectangular nodes that could match emissive lights
 			if (height / width >= 2.0f && depth <= 35.0f) {
-				return 1;
+				return 2;
 			}
 
-			// exlude node
-			return 0;
+			// check if this node would be excluded from rendering
+			if (xnode->visframe != game::get_visframecount()) {
+				return 0; // exlude node
+			}
+		}
+
+		// # stock behaviour 
+		
+		// check if this node would be excluded from rendering
+		if (xnode->visframe != game::get_visframecount()) {
+			return 0; // exlude node
 		}
 
 		// node was marked as potentially visible by 'Map_VisSetup'
@@ -1089,7 +1081,8 @@ namespace components
 	}
 
 	HOOK_RETN_PLACE_DEF(while_recursive_world_node_og_retn);
-	HOOK_RETN_PLACE_DEF(while_recursive_world_node_skip_retn);
+	HOOK_RETN_PLACE_DEF(while_recursive_world_node_cullnode_retn);
+	HOOK_RETN_PLACE_DEF(while_recursive_world_node_force_retn);
 	__declspec(naked) void while_recursive_world_node_stub()
 	{
 		__asm
@@ -1099,33 +1092,108 @@ namespace components
 			call	node_visframe_check;
 			add		esp, 4;
 			cmp		eax, 1;
-			je		SKIP; // jump if eax = 1
+			je		CULLNODE; // node pot. vis. proceed with vis check if eax = 1
+			cmp		eax, 2;
+			je		FORCE; // force node if eax = 2
 			popad;
 
 			jmp		while_recursive_world_node_og_retn;
 
-		SKIP:
+		CULLNODE:
 			popad;
-			jmp		while_recursive_world_node_skip_retn;
+			jmp		while_recursive_world_node_cullnode_retn;
+
+		FORCE:
+			popad;
+			jmp		while_recursive_world_node_force_retn;
 
 		}
 	}
 
 
-	//Frustum_t frustum_pre_portal_vis = {};
-	//Vector vieworigin_pre_portal_vis = {};
+	bool is_portal_in_frustum(Frustum_t* frustum, const Vector portal_corners[4])
+	{
+		Vector mins = portal_corners[0];
+		Vector maxs = portal_corners[0];
 
-	// return 0 to not cull the node
+		// compute mins and maxs of the portal's bounding box
+		for (int i = 1; i < 4; ++i)
+		{
+			mins.x = std::min(mins.x, portal_corners[i].x);
+			mins.y = std::min(mins.y, portal_corners[i].y);
+			mins.z = std::min(mins.z, portal_corners[i].z);
+
+			maxs.x = std::max(maxs.x, portal_corners[i].x);
+			maxs.y = std::max(maxs.y, portal_corners[i].y);
+			maxs.z = std::max(maxs.z, portal_corners[i].z);
+		}
+
+		const auto result = game::frustum_cull_box(frustum, &mins, &maxs);
+		return !result;
+	}
+
+
+	void generate_perspective_frustum(const Vector& origin, const Vector& forward, const Vector& right, const Vector& up, const float z_near, const float z_far, const float fov_x, const float fov_y, VPlane* planes_out)
+	{
+		const float intercept = DotProduct(origin, forward);
+
+		planes_out[FRUSTUM_FARZ].Init(-forward, -z_far - intercept);
+		planes_out[FRUSTUM_NEARZ].Init(forward, z_near + intercept);
+
+		Vector normal_pos, normal_neg;
+
+		utils::vector::vector_ma(right, tan(DEG2RAD((fov_x * 0.5f))), forward, normal_pos);
+		utils::vector::vector_ma(normal_pos, -2.0f, right, normal_neg);
+
+		normal_pos.Normalize();
+		normal_neg.Normalize();
+
+		planes_out[FRUSTUM_LEFT].Init(normal_pos, normal_pos.Dot(origin));
+		planes_out[FRUSTUM_RIGHT].Init(normal_neg, normal_neg.Dot(origin));
+
+		utils::vector::vector_ma(up, tan(DEG2RAD((fov_y * 0.5f))), forward, normal_pos);
+		utils::vector::vector_ma(normal_pos, -2.0f, up, normal_neg);
+
+		normal_pos.Normalize();
+		normal_neg.Normalize();
+
+		planes_out[FRUSTUM_BOTTOM].Init(normal_pos, normal_pos.Dot(origin));
+		planes_out[FRUSTUM_TOP].Init(normal_neg, normal_neg.Dot(origin));
+	}
+
+
+	// Stub before calling 'R_CullNode' in 'R_RecursiveWorldNode'
+	// Return 0 to NOT cull the node
 	int r_cullnode_wrapper(mnode_t* node)
 	{
-		//auto& map_settings = map_settings::get_map_settings();
+		// default culling mode or no culling if cmd was used
 		map_settings::AREA_CULL_MODE cmode = g_cull_disable_frustum_culling ? map_settings::AREA_CULL_MODE_NO_FRUSTUM : map_settings::AREA_CULL_MODE_DEFAULT;
-
 		int node_index = 0;
 
-		// this should have been cached in 'pre_recursive_world_node' 
+		const auto view_id = game::get_current_view_id();
+		const bool is_monitor = *view_id == VIEW_MONITOR || (*view_id == VIEW_ILLEGAL && game::saved_view_id == VIEW_MONITOR);
+
+		// shortcut for monitor rendering
+		if (is_monitor)
+		{
+			// R_CullNode - uses area frustums if avail. and not in a solid - uses player frustum otherwise
+			if (!utils::hook::call<bool(__cdecl)(mnode_t*)>(ENGINE_BASE + USE_OFFSET(0x10F950, 0x10E7E0))(node)) {
+				return 0;
+			}
+
+			// force draw this node/leaf if it's within the area the camera is in
+			if ((int)node->area == g_current_area_all_views) {
+				return 0;
+			}
+
+			return 1;
+		}
+
+
+		// check if we have area overrides
 		if (g_player_current_area_override) 
 		{
+			// set area cull mode
 			cmode = g_player_current_area_override->cull_mode;
 
 			// calculate index of leaf/node
@@ -1150,38 +1218,72 @@ namespace components
 					}
 				}
 
-				// hidden leafs
+				// check if this leaf is set to be hidden
 				if (g_player_current_area_override->hide_leafs.contains(node_index)) {
 					return 1;
 				}
 			}
 		}
 
-		// no custom culling overrides for area - so skip everything else and render this node
+		// draw node if culling mode is set to 'no culling'
 		if (cmode == map_settings::AREA_CULL_MODE_NO_FRUSTUM) {
 			return 0;
 		}
 
 
-		// #
-		// stock culling check
-
-		// R_CullNode
+		// R_CullNode - uses area frustums if avail. and not in a solid - uses player frustum otherwise
 		if (!utils::hook::call<bool(__cdecl)(mnode_t*)>(ENGINE_BASE + USE_OFFSET(0x10F950, 0x10E7E0))(node)) {
 			return 0;
 		}
 
-
-		// MODE: force all leafs/nodes in current area
+		// ^ R_CullNode would cull the node if we reach this point
+		// MODE: force all leafs/nodes in CURRENT area
 		if (!g_player_current_area_override || cmode == map_settings::AREA_CULL_MODE_FRUSTUM_FORCE_AREA)
 		{
 			// force draw this node/leaf if it's within the forced area
-			if ((int)node->area == g_player_current_area) {
+			if ((int)node->area == g_current_area_all_views) {
 				return 0;
 			}
 		}
 
-		// this should have been cached in 'pre_recursive_world_node' 
+#if 0
+		// force area of linked portals - when portal is in view
+		for (auto& f : portal_frustums)
+		{
+			if (f.portal && f.portal->m_pLinkedPortal)
+			{
+				//const Vector mins = node->m_vecHalfDiagonal - node->m_vecCenter;
+				//const Vector maxs = node->m_vecHalfDiagonal + node->m_vecCenter;
+
+				// cullbox
+				/*const auto result = utils::hook::call<bool(__fastcall)(void* this_ptr, void* null, const Vector * _mins, const Vector * _maxs)>(ENGINE_BASE + USE_OFFSET(0xXX, 0x26CF80))
+					(&f.frustum, nullptr, &mins, &maxs);
+
+				if (!result)
+				{
+					return 0;
+				}*/
+
+
+				// CullNodeSIMD -> would render everything facing the portal direction, ignoring area visibility
+				// Frustum::CullBox -> ^ same, but waaay slower
+
+				// force nodes close to the portal
+				if ((node->m_vecCenter - f.portal->m_pLinkedPortal->m_ptOrigin).LenghtSqr() < (1000.0f * 1000.0f)) {
+					return 0;
+				}
+
+				const auto portal_area = (int)game::get_hoststate_worldbrush_data()->leafs[game::get_leaf_from_position(f.portal->m_ptOrigin)].area;
+
+				// TODO: make this tweakable via map settings?
+				if ((int)node->area == portal_area) {
+					return 0;
+				}
+			}
+		}
+#endif
+
+		// check if we have area overrides
 		if (g_player_current_area_override)
 		{
 			// check if this leaf/node is part of a forced area
@@ -1196,38 +1298,40 @@ namespace components
 		}
 
 		// #
-		// check if node is visible through portals if above check would cull node
-
-		// using the 'OverrideViewFrustum' function overrides the global 'g_Frustum' so we have to save & restore it when we are done
-		Frustum_t* g_frustum_ptr = reinterpret_cast<Frustum_t*>(ENGINE_BASE + USE_OFFSET(0x615390, 0x60FC20));
+		// check if node is visible through portals if above checks would cull the current node
+#if 0
+		// calling 'OverrideViewFrustum' overrides the global 'g_Frustum' var so we have to save & restore it when we are done
+		Frustum_t* g_frustum_ptr = game::get_g_frustum();
 
 		Frustum_t frustum_backup = {};
 		memcpy_s(&frustum_backup, sizeof(Frustum_t), g_frustum_ptr, sizeof(Frustum_t));
 
-#if 1
 		for (auto& f : portal_frustums)
 		{
+			if (f.portal)
+			{
+				if ((g_player_view_org - f.portal->m_ptOrigin).Dot(f.portal->m_vForward) < -0.1f)
+				{
+					// player is behind portal, ignore
+					continue;
+				}
+			}
+
 			// CRender::OverrideViewFrustum - writes to 'g_Frustum' (g_frustum_ptr)
 			utils::hook::call<void(__fastcall)(void* null_ptr1, void* null_ptr2, VPlane* custom)>(ENGINE_BASE + USE_OFFSET(0xDD270, 0xDC8F0))(nullptr, nullptr, f.frustum_planes);
 
-			// CullNodeSIMD
+			// CullNodeSIMD - frustum check
 			if (!utils::hook::call<bool(__cdecl)(const Frustum_t* , mnode_t*)>(ENGINE_BASE + USE_OFFSET(0xC0840, 0xC0260))(g_frustum_ptr, node))
 			{
-				// restore frustum before returning
+				// node visible - restore frustum before returning
 				memcpy_s(g_frustum_ptr, sizeof(Frustum_t), &frustum_backup, sizeof(Frustum_t));
 				return 0;
 			}
 		}
-#endif
 
 		// restore frustum
 		memcpy_s(g_frustum_ptr, sizeof(Frustum_t), &frustum_backup, sizeof(Frustum_t));
-
-
-		// #
-		// we are still about to cull this node from here on out
-
-		
+#endif
 
 		// cull node
 		return 1;
@@ -1268,10 +1372,8 @@ namespace components
 	// CViewRender* this
 	void viewdrawscene_custom_portal_vis(void* view_renderer, bool bDrew3dSkybox, int nSkyboxVisible, const CViewSetup* view, int nClearFlags, int viewID, bool bDrawViewModel, int baseDrawFlags, [[maybe_unused]] ViewCustomVisibility_t* pCustomVisibility)
 	{
-		//Frustum_t* g_frustum_ptr = reinterpret_cast<Frustum_t*>(ENGINE_BASE + USE_OFFSET(0xXXX, 0x60FC20));
-		//memcpy_s(&frustum_pre_portal_vis, sizeof(Frustum_t), g_frustum_ptr, sizeof(Frustum_t));
-		//vieworigin_pre_portal_vis = view->origin;
-
+		portal_frustums.clear();
+		g_player_view_org = view->origin;
 
 		ViewCustomVisibility_t customVisibility = {};
 		customVisibility.m_VisData.m_fDistToAreaPortalTolerance = FLT_MAX;
@@ -1295,17 +1397,45 @@ namespace components
 						vis->m_rgVisOrigins[vis->m_nNumVisOrigins++] = view->origin;
 						*set_view_org = true;
 					}
+					 
+					const auto portal_area = (int)game::get_hoststate_worldbrush_data()->leafs[game::get_leaf_from_position(p->portal->m_ptOrigin)].area;
+					const auto player_area = g_player_current_area;
 
+					// tweakable portal visibility check (culling area at exit portal might lead to light leaks or light deletion through the entry portal)
+					bool ignore_portal_vis_check = !game_settings::get()->portal_visibility_culling.get_as<bool>()
+						&& portal_area == player_area; // only disable vis check for the portal that is not in the player area
 
-					portal_frustums.push_back({ &p->portal->m_pLinkedPortal->m_InternallyMaintainedData.m_BoundingPlanes[0] });
+					// check if player is in-front of portal
+					if (ignore_portal_vis_check 
+						|| (g_player_view_org - p->portal->m_ptOrigin).Dot(p->portal->m_vForward) >= -0.1f)
+					{
+						// check if portal is in player frustum or very close (frustum check can fail when halfway in the portal)
+						if (ignore_portal_vis_check 
+							|| (g_player_view_org - p->portal->m_ptOrigin).LenghtSqr() < (330.0f) 
+							|| is_portal_in_frustum(game::get_g_frustum(), p->portal->m_InternallyMaintainedData.m_ptCorners))
+						{
+							Frustum_t frustum = {};
+							VPlane planes[FRUSTUM_NUMPLANES] = {};
 
-					// this probably changes 'g_RenderAreaBits' - save and restore
+							//const auto re = game::get_engine_renderer();
+							generate_perspective_frustum(p->portal->m_pLinkedPortal->m_ptOrigin, p->portal->m_pLinkedPortal->m_vForward, p->portal->m_pLinkedPortal->m_vRight, p->portal->m_pLinkedPortal->m_vUp,
+								0.001f /*view->zNear*/, 1.0f /*view->zFar*/, 179.99f /*view->fov*/, 179.99f /*re->m_yFOV*/, planes);
 
-					//CPortalRenderable_FlatBasic::AddToVisAsExitPortal(CPortalRenderable_FlatBasic * this, ViewCustomVisibility_t * pCustomVisibility)
-					utils::hook::call<void(__fastcall)(void* this_ptr, void* null, ViewCustomVisibility_t*)>(CLIENT_BASE + USE_OFFSET(0x2C2830, 0x2BBDA0))
-						(p->portal->m_pLinkedPortal, nullptr, vis);
+							game::frustum_set_planes(&frustum, planes);
 
-					return true;
+							portal_frustums.emplace_back(
+								std::move(frustum),
+								0.001f, 1.0f, 179.99f, 179.99f, // znear, zfar, fov x and y
+								p->portal->m_pLinkedPortal);
+
+							//CPortalRenderable_FlatBasic::AddToVisAsExitPortal(CPortalRenderable_FlatBasic * this, ViewCustomVisibility_t * pCustomVisibility)
+							// this affects 'g_RenderAreaBits' (custom vis argument)
+							utils::hook::call<void(__fastcall)(void* this_ptr, void* null, ViewCustomVisibility_t*)>(CLIENT_BASE + USE_OFFSET(0x2C2830, 0x2BBDA0))
+								(p->portal->m_pLinkedPortal, nullptr, vis);
+
+							return true;
+						}
+					}
 				}
 
 				return false;
@@ -1316,78 +1446,6 @@ namespace components
 		is_using_custom_vis = portal_vis(&model_render::game_portals[2], view, &customVisibility, &added_player_view_vis) ? true : is_using_custom_vis;
 		is_using_custom_vis = portal_vis(&model_render::game_portals[3], view, &customVisibility, &added_player_view_vis) ? true : is_using_custom_vis;
 
-		/*
-		auto* p = &model_render::game_portals[0];
-		//if (model_render::portal1_ptr && model_render::portal1_ptr->m_pLinkedPortal && model_render::portal1_ptr->m_fOpenAmount != 0.0f)
-		if (p->portal && p->portal->m_pLinkedPortal && p->portal->m_fOpenAmount != 0.0f)
-		{
-			// add the main scene view first if setting custom portal vis
-			customVisibility.m_rgVisOrigins[customVisibility.m_nNumVisOrigins++] = view->origin;
-			added_player_view_vis = true;
-
-			//CPortalRenderable_FlatBasic::AddToVisAsExitPortal(CPortalRenderable_FlatBasic * this, ViewCustomVisibility_t * pCustomVisibility)
-			utils::hook::call<void(__fastcall)(void* this_ptr, void* null, ViewCustomVisibility_t*)>(CLIENT_BASE + USE_OFFSET(0x2C2830, 0x2BBDA0))
-				(p->portal->m_pLinkedPortal, nullptr, &customVisibility);
-
-			is_using_custom_vis = true;
-		}
-
-		//if (model_render::portal2_ptr && model_render::portal2_ptr->m_pLinkedPortal && model_render::portal2_ptr->m_fOpenAmount != 0.0f)
-		p = &model_render::game_portals[1];
-		if (p->portal && p->portal->m_pLinkedPortal && p->portal->m_fOpenAmount != 0.0f)
-		{
-			// check if player view was added already
-			if (!added_player_view_vis)
-			{
-				// add the main scene view first if setting custom portal vis
-				customVisibility.m_rgVisOrigins[customVisibility.m_nNumVisOrigins++] = view->origin;
-				added_player_view_vis = true;
-			}
-
-			//CPortalRenderable_FlatBasic::AddToVisAsExitPortal(CPortalRenderable_FlatBasic * this, ViewCustomVisibility_t * pCustomVisibility)
-			utils::hook::call<void(__fastcall)(void* this_ptr, void* null, ViewCustomVisibility_t*)>(CLIENT_BASE + USE_OFFSET(0x2C2830, 0x2BBDA0))
-				(p->portal->m_pLinkedPortal, nullptr, &customVisibility);
-
-			is_using_custom_vis = true;
-		}
-
-		// second pair
-		p = &model_render::game_portals[2];
-		if (p->portal && p->portal->m_pLinkedPortal && p->portal->m_fOpenAmount != 0.0f)
-		{
-			// check if player view was added already
-			if (!added_player_view_vis)
-			{
-				// add the main scene view first if setting custom portal vis
-				customVisibility.m_rgVisOrigins[customVisibility.m_nNumVisOrigins++] = view->origin;
-				added_player_view_vis = true;
-			}
-
-			//CPortalRenderable_FlatBasic::AddToVisAsExitPortal(CPortalRenderable_FlatBasic * this, ViewCustomVisibility_t * pCustomVisibility)
-			utils::hook::call<void(__fastcall)(void* this_ptr, void* null, ViewCustomVisibility_t*)>(CLIENT_BASE + USE_OFFSET(0x2C2830, 0x2BBDA0))
-				(p->portal->m_pLinkedPortal, nullptr, &customVisibility);
-
-			is_using_custom_vis = true;
-		}
-
-		p = &model_render::game_portals[3];
-		if (p->portal && p->portal->m_pLinkedPortal && p->portal->m_fOpenAmount != 0.0f)
-		{
-			// check if player view was added already
-			if (!added_player_view_vis)
-			{
-				// add the main scene view first if setting custom portal vis
-				customVisibility.m_rgVisOrigins[customVisibility.m_nNumVisOrigins++] = view->origin;
-				added_player_view_vis = true;
-			}
-
-			//CPortalRenderable_FlatBasic::AddToVisAsExitPortal(CPortalRenderable_FlatBasic * this, ViewCustomVisibility_t * pCustomVisibility)
-			utils::hook::call<void(__fastcall)(void* this_ptr, void* null, ViewCustomVisibility_t*)>(CLIENT_BASE + USE_OFFSET(0x2C2830, 0x2BBDA0))
-				(p->portal->m_pLinkedPortal, nullptr, &customVisibility);
-
-			is_using_custom_vis = true;
-		}
-		*/
 
 		// custom vis for area portals that were added in the previous frame (portal views are rendered after the main scene)
 		// >> this can be kinda bad as it potentially makes the whole map visible when the area is on the other side of the map and thus
@@ -1413,83 +1471,7 @@ namespace components
 		// remove all area portals that were added in the previous frame
 		model_render::linked_area_portals.clear();  
 
-#if 0
-		//if (/*api::allow_api_portals &&*/ api::portal0_mesh && api::portal1_mesh)
-		if (!api::rayportal_ctx.empty())
-		{
-			auto& vis = customVisibility;
-
-			// check if player view was added already
-			if (!added_player_view_vis)
-			{
-				// add the main scene view first if setting custom portal vis
-				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = view->origin;
-				//added_player_view_vis = true;
-			}
-
-			for (auto it = api::rayportal_ctx.pairs.begin(); it != api::rayportal_ctx.pairs.end(); ++it)
-			{
-				const auto& p0_corner_points = it->second.get_portal0().get_corner_points();
-				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = p0_corner_points[0];	// 1
-				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = p0_corner_points[1];	// 2
-				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = p0_corner_points[2];	// 3
-				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = p0_corner_points[3];	// 4
-				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = it->second.get_portal0().m_pos; // 5
-
-				const auto& p1_corner_points = it->second.get_portal1().get_corner_points();
-				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = p1_corner_points[0];	// 6
-				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = p1_corner_points[1];	// 7
-				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = p1_corner_points[2];	// 8
-				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = p1_corner_points[3];	// 9
-				vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = it->second.get_portal1().m_pos;
-
-				vis.m_iForceViewLeaf = game::get_leaf_from_position(it->second.get_portal1().m_pos);
-				vis.m_VisData.m_vecVisOrigin = it->second.get_portal1().m_pos; // last m_rgVisOrigin
-				vis.m_VisData.m_fDistToAreaPortalTolerance = 64.0f;
-				vis.m_VisData.m_bTrimFrustumToPortalCorners = true;
-
-				vis.m_VisData.m_vPortalOrigin = it->second.get_portal1().m_pos; // vis org 10 : z -= 1
-				vis.m_VisData.m_vPortalOrigin.z -= 1; // ?
-
-				vis.m_VisData.m_vPortalForward = it->second.get_portal1().get_normal();
-				vis.m_VisData.m_flPortalRadius = 64.4980621f;
-				vis.m_VisData.m_vPortalCorners[0] = p1_corner_points[0]; // vis org 6
-				vis.m_VisData.m_vPortalCorners[1] = p1_corner_points[1]; // 7
-				vis.m_VisData.m_vPortalCorners[2] = p1_corner_points[2]; // 8
-				vis.m_VisData.m_vPortalCorners[3] = p1_corner_points[3]; // 9
-			}
-
-#if 0
-			//portal0 corners?
-			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6110.87109f, 3518.96875f, 1667.12109f };	// 1
-			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6174.87109f, 3518.96875f, 1667.12109f };	// 2
-			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6174.87109f, 3518.96875f, 1555.12109f };	// 3
-			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6110.87109f, 3518.96875f, 1555.12109f };	// 4
-			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 6142.87109f, 3518.96875f, 1611.12109f };	// 5 -- center
-			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 10460.3789f, 1225.95068f, 344.843750f };	// 6
-			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 10451.3281f, 1162.59399f, 344.843750f };	// 7
-			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 10451.3281f, 1162.59399f, 232.843750f };	// 8
-			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 10460.3789f, 1225.95068f, 232.843750f };	// 9
-			vis.m_rgVisOrigins[vis.m_nNumVisOrigins++] = { 10455.8535f, 1194.27234f, 288.843750f };	// 10 -- center
-
-			// last portal data
-			vis.m_iForceViewLeaf = 107;
-			vis.m_VisData.m_vecVisOrigin = { 10455.8535f, 1194.27234f, 288.843750f }; // last m_rgVisOrigin
-			vis.m_VisData.m_fDistToAreaPortalTolerance = 64.0f;
-			vis.m_VisData.m_bTrimFrustumToPortalCorners = true;
-			vis.m_VisData.m_vPortalOrigin = { 10456.8438f, 1194.13086f, 288.843750f }; // vis org 10 : z -= 1
-			vis.m_VisData.m_vPortalForward = { -0.989949524f, 0.141421184f, 0.00000000f };
-			vis.m_VisData.m_flPortalRadius = 64.4980621f;
-			vis.m_VisData.m_vPortalCorners[0] = { 10460.3789f, 1225.95068f, 344.843750 }; // vis org 6
-			vis.m_VisData.m_vPortalCorners[1] = { 10451.3281f, 1162.59399f, 344.843750 }; // 7
-			vis.m_VisData.m_vPortalCorners[2] = { 10451.3281f, 1162.59399f, 232.843750 }; // 8
-			vis.m_VisData.m_vPortalCorners[3] = { 10460.3789f, 1225.95068f, 232.843750 }; // 9
-#endif
-
-			is_using_custom_vis = true;
-		}
-#endif
-
+		// CViewRender::ViewDrawScene
 		utils::hook::call<void(__fastcall)(void* this_ptr, void* null, bool, int, const CViewSetup*, int, int, bool, int, ViewCustomVisibility_t*)>(CLIENT_BASE + USE_OFFSET(0x1EDAE0, 0x1E84E0))
 			(view_renderer, nullptr, bDrew3dSkybox, nSkyboxVisible, view, nClearFlags, viewID, bDrawViewModel, baseDrawFlags, is_using_custom_vis ? &customVisibility : nullptr);
 	}
@@ -1508,14 +1490,10 @@ namespace components
 	}
 
 
-
+#if 0
 	void pre_build_worldlists_hk(VisOverrideData_t* pVisData)
 	{
-		/*if (pVisData)
-		{
-			pVisData->m_vecVisOrigin = vieworigin_pre_portal_vis;
-		}*/
-		pVisData = nullptr;
+		//pVisData = nullptr;
 	}
 
 	HOOK_RETN_PLACE_DEF(pre_build_worldlists_retn);
@@ -1530,13 +1508,268 @@ namespace components
 			add		esp, 4;
 			popad;
 
-			mov     ecx, [ebp + 0x14] // og: pVisData
+			mov     ecx, [ebp + 0x14]; // og: pVisData
 			mov     edx, [ebp + 0x10]; // og
 			jmp		pre_build_worldlists_retn;
 		}
 	}
+#endif
+
+	/**
+	 * Slightly modified R_SetupVisibleAreaFrustums. Allows setting different frustum's for visible areas. \n
+	 * 1. Call: player pov vis -> save vis area count
+	 * 2. Call: other pov vis -> use previous area count to only update frustum's of new areas \n\n
+	 * Note: You need to override the global origin/direction vector variables (eg. g_CurrentViewOrigin, g_CurrentViewForward ..) \n
+	 * @param vis_areas_player_count	iterate g_VisibleAreas starting at this position
+	 */
+	void setup_visible_area_frustums(const int vis_areas_player_count = 0, const float custom_fov = 0.0f, const float custom_fov_y = 0.0f)
+	{
+		const auto re = game::get_engine_renderer();
+		const auto view_setup = re->vftable->ViewGetCurrent(re);
+
+		const auto g_CurrentViewOrigin = game::get_current_view_origin();
+		const auto g_CurrentViewForward = game::get_current_view_forward();
+		const auto g_CurrentViewRight = game::get_current_view_right();
+		const auto g_CurrentViewUp = game::get_current_view_up();
+
+		const auto g_nVisibleAreas = game::get_visible_areas_num();
+		const auto g_VisibleAreas = game::get_visible_areas();
+		const auto g_AreaRect = game::get_area_rect();
+		const auto g_AreaFrustum = game::get_area_frustum();
+
+		CPortalRect view_window;
+		{
+			const float fov = custom_fov > 0.0f ? custom_fov : re->vftable->GetFov(re);
+			const float fov_y = custom_fov_y > 0.0f ? custom_fov_y : re->vftable->GetFovY(re);
+
+			view_window.right = tan(DEG2RAD((fov * 0.5f)));
+			view_window.left = -view_window.right;
+			view_window.top = tan(DEG2RAD((fov_y * 0.5f)));
+			view_window.bottom = -view_window.top;
+		}
+
+		const Vector& view_origin = *g_CurrentViewOrigin;
+		const Vector& forward = *g_CurrentViewForward;
+		const Vector& right = *g_CurrentViewRight;
+		const Vector& up = *g_CurrentViewUp;
+		VPlane planes[FRUSTUM_NUMPLANES];
+
+		for (int i = vis_areas_player_count; i < *g_nVisibleAreas; i++)
+		{
+			CPortalRect* rect = &g_AreaRect[g_VisibleAreas[i]];
+			Frustum_t* frustum = &g_AreaFrustum[g_VisibleAreas[i]];
+
+			CPortalRect portal_window;
+			{
+				portal_window.left = utils::remap_val(rect->left, -1, 1, view_window.left, view_window.right);
+				portal_window.right = utils::remap_val(rect->right, -1, 1, view_window.left, view_window.right);
+				portal_window.top = utils::remap_val(rect->top, -1, 1, view_window.bottom, view_window.top);
+				portal_window.bottom = utils::remap_val(rect->bottom, -1, 1, view_window.bottom, view_window.top);
+			}
+
+			Vector normal;
+
+			// right side
+			normal = portal_window.right * forward - right;
+			normal.Normalize();
+			planes[FRUSTUM_RIGHT].Init(normal, utils::vector::dot_product(normal, view_origin));
+
+			// left side
+			normal = right - portal_window.left * forward;
+			normal.Normalize();
+			planes[FRUSTUM_LEFT].Init(normal, utils::vector::dot_product(normal, view_origin));
+
+			// top
+			normal = portal_window.top * forward - up;
+			normal.Normalize();
+			planes[FRUSTUM_TOP].Init(normal, utils::vector::dot_product(normal, view_origin));
+
+			// bottom
+			normal = up - portal_window.bottom * forward;
+			normal.Normalize();
+			planes[FRUSTUM_BOTTOM].Init(normal, utils::vector::dot_product(normal, view_origin));
+
+			// nearz
+			planes[FRUSTUM_NEARZ].Init(forward, utils::vector::dot_product(forward, view_origin) + view_setup->zNear);
+
+			// farz
+			planes[FRUSTUM_FARZ].Init(-forward, utils::vector::dot_product(-forward, view_origin) - view_setup->zFar);
+
+			game::frustum_set_planes(frustum, planes);
+		}
+	}
+
+	
+	// Hooked 'R_FlowThroughArea' call in 'R_SetupAreaBits'
+	// The 'R_SetupVisibleAreaFrustums' call afterwards is handled in here and nop'd in the og code
+	// area: arg is affected by placed portals -> manually get area for camera position
+	// vec_vis_origin: ^ same
+	void flow_through_area_wrapper([[maybe_unused]] int area, [[maybe_unused]] const Vector* vec_vis_origin, const CPortalRect* clip_rect, [[maybe_unused]] const VisOverrideData_t* vis_data, float* reflection_water_height)
+	{
+		const auto g_nVisibleAreas = game::get_visible_areas_num();
+		//const auto g_visibleAreas = game::get_visible_areas();
+		const auto g_bViewerInSolidSpace = game::get_viewer_in_solid_space();
+
+		// CM_PointLeafnum :: get current leaf
+		const auto current_leaf = game::get_leaf_from_position(*game::get_current_view_origin());
+
+		// CM_LeafArea :: get current area the camera is in
+		g_current_area_all_views = utils::hook::call<int(__cdecl)(int leafnum)>(ENGINE_BASE + USE_OFFSET(0x15ACE0, 0x159470))(current_leaf);
+
+		// we only calc vis for portals when we render the main view (ignore monitors etc.)
+		const auto view_id = game::get_current_view_id();
+		//const auto is_monitor = *view_id == VIEW_MONITOR || (*view_id == VIEW_ILLEGAL && game::saved_view_id == VIEW_MONITOR); 
+
+		game::r_flow_through_area(g_current_area_all_views, vec_vis_origin, clip_rect, nullptr /*vis_data*/, reflection_water_height);
+
+		if (!*g_bViewerInSolidSpace)
+		{
+			setup_visible_area_frustums(); // (player view)
+
+			if (*view_id == VIEW_MAIN // view_id is set to illegal in ' CBaseWorldView::DrawSetup' - use saved val (save_viewid_stub)
+				|| (*view_id == VIEW_ILLEGAL && game::saved_view_id == VIEW_MAIN))
+			{
+				// update globals
+				g_player_leaf_update = g_player_current_leaf != current_leaf;
+				g_player_current_leaf = current_leaf;
+				g_player_current_area = g_current_area_all_views;
+
+				// debug
+				/*std::uint16_t copy_visible_areas[256] = {};
+				memcpy(&copy_visible_areas, g_visibleAreas, *g_nVisibleAreas * sizeof(std::uint16_t));*/
+
+				if (!portal_frustums.empty())
+				{
+					// we need to save and restore these after we are done - needed for 'R_SetupVisibleAreaFrustums'
+					const auto g_CurrentViewOrigin = game::get_current_view_origin();
+					const auto g_CurrentViewForward = game::get_current_view_forward();
+					const auto g_CurrentViewRight = game::get_current_view_right();
+					const auto g_CurrentViewUp = game::get_current_view_up();
+
+					Vector g_CurrentViewOrigin_backup = *g_CurrentViewOrigin;
+					Vector g_CurrentViewForward_backup = *g_CurrentViewForward;
+					Vector g_CurrentViewRight_backup = *g_CurrentViewRight;
+					Vector g_CurrentViewUp_backup = *g_CurrentViewUp;
 
 
+					// + NOTE +
+					// - 'R_FlowThroughArea' is using the current player frustum (g_Frustum) -> override and restore afterwards
+					// - Subfunction 'GetPortalScreenExtents'->'ClipTransform' is using the WorldToScreen matrix -> calculate one for the portal, override and restore afterwards
+
+					Frustum_t* g_frustum_ptr = game::get_g_frustum();
+					Frustum_t frustum_backup = {}; // backup frustum
+					memcpy_s(&frustum_backup, sizeof(Frustum_t), g_frustum_ptr, sizeof(Frustum_t));
+
+					// 'portal_frustums' holds exit portal data of a visible entry portal (eg. looking at blue -> f = orange)
+					for (auto& f : portal_frustums)
+					{
+						if (const auto p = f.portal;
+							p && p->m_pLinkedPortal)
+						{
+							// save visible area count before checking which areas are visible from the portals POV
+							int visible_area_count_player = *g_nVisibleAreas;
+
+							// override frustum for 'R_FlowThroughArea'
+							*g_frustum_ptr = f.frustum;
+
+							const auto re = game::get_engine_renderer();
+							VMatrix backup_W2S; VMatrix* w2s_ptr = nullptr;
+
+							// backup og WorldToScreen matrix and grab pointer to matrix we need to override
+							if (re->m_ViewStack_size <= 1)
+							{
+								backup_W2S = re->m_matrixWorldToScreen;
+								w2s_ptr = &re->m_matrixWorldToScreen;
+							}
+							else
+							{
+								backup_W2S = re->m_ViewStack_m_pElements[re->m_ViewStack_size - 1].m_matrixWorldToScreen;
+								w2s_ptr = &re->m_ViewStack_m_pElements[re->m_ViewStack_size - 1].m_matrixWorldToScreen;
+							}
+
+							{
+								// create a copy of the current view setup and modify it for our portal
+								CViewSetup view_copy = *re->vftable->ViewGetCurrent(re);
+								view_copy.origin = p->m_ptOrigin;
+
+								// calculate portal angles
+								view_copy.angles.x = atan2(-p->m_vForward.z, sqrt(p->m_vForward.x * p->m_vForward.x + p->m_vForward.y * p->m_vForward.y)) * (180.0f / M_PI);
+								view_copy.angles.y = atan2(p->m_vForward.y, p->m_vForward.x) * (180.0f / M_PI);
+								view_copy.angles.z = atan2(p->m_vUp.z, p->m_vRight.z) * (180.0f / M_PI);
+
+								view_copy.zNear = f.znear;
+								view_copy.zFar = f.zfar;
+								view_copy.fov = f.fov_x;
+
+								// compute the world to screen matrix for the portal
+								VMatrix world2view = {};
+								VMatrix view2proj = {};
+								//VMatrix world2proj = {};
+
+								// ComputeViewMatrices - override w2s (w2s_ptr)
+								utils::hook::call<void(__cdecl)(VMatrix* pWorldToView, VMatrix* pViewToProjection, VMatrix* pWorldToProjection, const CViewSetup* viewSetup)>(ENGINE_BASE + USE_OFFSET(0xDDE10, 0xDD4A0))
+									(&world2view, &view2proj, w2s_ptr /*&world2proj*/, &view_copy);
+
+								// the w2s matrix is holding the WorldToProjection matrix .. 
+								// ComputeWorldToScreenMatrix
+								/*utils::hook::call<void(__cdecl)(VMatrix* pWorldToScreen, const VMatrix* worldToProjection, const CViewSetup* viewSetup)>(ENGINE_BASE + USE_OFFSET(0x0, 0xDCCA0))
+									(w2s_ptr, &world2proj, &view_copy); */
+							}
+
+							// get area or portal (starting area for R_FlowThroughArea)
+							const auto portal_area = (int)game::get_hoststate_worldbrush_data()->leafs[game::get_leaf_from_position(p->m_ptOrigin)].area;
+
+							// R_FlowThroughArea (portal view)
+							game::r_flow_through_area(portal_area, &p->m_ptOrigin, clip_rect, nullptr, reflection_water_height);
+
+							// restore og World2Screen matrix
+							*w2s_ptr = backup_W2S;
+
+							// overrides for 'setup_visible_area_frustums'
+							*g_CurrentViewOrigin = p->m_ptOrigin;
+							*g_CurrentViewForward = p->m_vForward;
+							*g_CurrentViewRight = p->m_vRight;
+							*g_CurrentViewUp = p->m_vUp;
+
+							// debug
+							/*memcpy(&copy_visible_areas, g_visibleAreas, *g_nVisibleAreas * sizeof(std::uint16_t));
+							if (visible_area_count_player != *g_nVisibleAreas) {
+								int break_me = 1;
+							}*/
+
+							// set frustums for areas that are only visible from the portals pov - use portal fov
+							setup_visible_area_frustums(visible_area_count_player, f.fov_x, f.fov_y);
+						}
+					}
+
+					// restore 'setup_visible_area_frustums' overrides
+					*g_CurrentViewOrigin = g_CurrentViewOrigin_backup;
+					*g_CurrentViewForward = g_CurrentViewForward_backup;
+					*g_CurrentViewRight = g_CurrentViewRight_backup;
+					*g_CurrentViewUp = g_CurrentViewUp_backup;
+
+					// restore frustum
+					memcpy_s(g_frustum_ptr, sizeof(Frustum_t), &frustum_backup, sizeof(Frustum_t));
+				}
+			}
+		}
+	}
+
+	HOOK_RETN_PLACE_DEF(save_viewid_retn);
+	__declspec(naked) void save_viewid_stub()
+	{
+		__asm
+		{
+			push    edi; // og
+			push    ecx; // og
+			mov		[ebp - 8], ebx; // og, ebx = g_CurrentViewID
+			mov		game::saved_view_id, ebx; // save to our global
+			jmp		save_viewid_retn;
+		}
+	}
+
+	// #
+	// #
 
 	int override_entity_vis(C_BaseEntity* ent)
 	{
@@ -1578,6 +1811,9 @@ namespace components
 		}
 	}
 
+
+	// #
+	// #
 
 	struct CViewRender
 	{
@@ -1685,7 +1921,7 @@ namespace components
 		game::cvar_uncheat_and_set_int("r_threaded_particles", 0);
 		game::cvar_uncheat_and_set_int("r_entityclips", 0);
 		game::cvar_uncheat_and_set_int("cl_brushfastpath", 0);
-		game::cvar_uncheat_and_set_int("cl_tlucfastpath", 0);
+		game::cvar_uncheat_and_set_int("cl_tlucfastpath", 0); // 
 		game::cvar_uncheat_and_set_int("cl_modelfastpath", 0); // gain 4-5 fps on some act 4 maps but FF rendering not implemented
 		game::cvar_uncheat_and_set_int("mat_queue_mode", 0); // does improve performance but breaks rendering
 		game::cvar_uncheat_and_set_int("mat_softwarelighting", 0);
@@ -1737,6 +1973,9 @@ namespace components
 		//bench.now(&ms);
 		//printf("[ %.3f ms ]\n", ms);
 	}
+
+	// #
+	// #
 
 	main_module::main_module()
 	{
@@ -1799,8 +2038,8 @@ namespace components
 		HOOK_RETN_PLACE(on_map_load_stub_retn, ENGINE_BASE + USE_OFFSET(0xFD901, 0xFCD61));
 
 		// Host_Disconnect :: called on map unload
-		utils::hook(ENGINE_BASE + USE_OFFSET(0x19A3E1, 0x197DF1), on_host_disconnect_stub).install()->quick();
-		HOOK_RETN_PLACE(on_host_disconnect_retn, ENGINE_BASE + USE_OFFSET(0x19A3E6, 0x197DF6));
+		//utils::hook(ENGINE_BASE + USE_OFFSET(0x19A3E1, 0x197DF1), on_host_disconnect_stub).install()->quick();
+		//HOOK_RETN_PLACE(on_host_disconnect_retn, ENGINE_BASE + USE_OFFSET(0x19A3E6, 0x197DF6));
 
 
 		// CViewRender::RenderView :: "start" of current frame (after CViewRender::DrawMonitors)
@@ -1813,20 +2052,8 @@ namespace components
 		HOOK_RETN_PLACE(cviewrenderer_drawonemonitor_retn, CLIENT_BASE + USE_OFFSET(0x1EE8F9, 0x1E92F9));
 
 
-		// #OFFSET - missing
-		// CL_Init :: Unused as asi injection happens after CL_Init
-		//utils::hook(ENGINE_BASE + 0x975E7, on_cl_init_stub).install()->quick();
-
 		// #
 		// culling
-
-		// same as r_novis 1
-		// def. needs 'r_portal_stencil_depth 1' if not enabled
-		//if (flags::has_flag("xo_disable_all_culling"))
-		//{
-		//	// R_RecursiveWorldNode :: while (node->visframe == r_visframecount .. ) -> renders the entire map if everything after this is enabled
-		//	utils::hook::nop(ENGINE_BASE + USE_OFFSET(0xE724F, 0xE68EF), 6);
-		//}
 
 		// stub before calling 'R_RecursiveWorldNode' to override node/leaf vis
 		utils::hook(ENGINE_BASE + USE_OFFSET(0xE76CD, 0xE6D6D), pre_recursive_world_node_stub, HOOK_JUMP).install()->quick();
@@ -1836,13 +2063,13 @@ namespace components
 		utils::hook::nop(ENGINE_BASE + USE_OFFSET(0xE7246, 0xE68E6), 9);
 		utils::hook(ENGINE_BASE + USE_OFFSET(0xE7246, 0xE68E6), while_recursive_world_node_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(while_recursive_world_node_og_retn, ENGINE_BASE + USE_OFFSET(0xE73A2, 0xE6A42));
-		HOOK_RETN_PLACE(while_recursive_world_node_skip_retn, ENGINE_BASE + USE_OFFSET(0xE7255, 0xE68F5));
+		HOOK_RETN_PLACE(while_recursive_world_node_cullnode_retn, ENGINE_BASE + USE_OFFSET(0xE7255, 0xE68F5));
+		HOOK_RETN_PLACE(while_recursive_world_node_force_retn, ENGINE_BASE + USE_OFFSET(0xE726B, 0xE690B));
 
 		// ^ :: while( ... node->contents < -1 .. ) -> jl to jle
 		utils::hook::set<BYTE>(ENGINE_BASE + USE_OFFSET(0xE7258, 0xE68F8), 0x7E);
 
-		// ^ :: while( ... !R_CullNode) - needed for displacements
-		//utils::hook::nop(ENGINE_BASE + USE_OFFSET(0xE7265, 0xE6905), 6); // heavy on performance
+		// ^ :: while( ... !R_CullNode) - wrapper function to impl. additional culling control (force areas/leafs + use frustum culling when needed)
 		utils::hook(ENGINE_BASE + USE_OFFSET(0xE725B, 0xE68FB), r_cullnode_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(r_cullnode_cull_retn, ENGINE_BASE + USE_OFFSET(0xE73A2, 0xE6A42));
 		HOOK_RETN_PLACE(r_cullnode_skip_retn, ENGINE_BASE + USE_OFFSET(0xE726B, 0xE690B));
@@ -1901,11 +2128,21 @@ namespace components
 		utils::hook(CLIENT_BASE + USE_OFFSET(0x1F2504, 0x1ECF04), viewdrawscene_push_args_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(viewdrawscene_push_args_retn, CLIENT_BASE + USE_OFFSET(0x1F2509, 0x1ECF09));
 
+		// not used rn
+		// ^ HACK: because 'AddToVisAsExitPortal' adds custom vis. we have to null the custom vis arg before the world list building func calculates area vis (R_SetupAreaBits)
+		// It would use the vieworg of the last-added portal otherwise and cause wrong frustum culling (from the players pov)
+		// TODO: rewrite 'R_SetupAreaBits' to support multiple vieworgs? (player + portals -> could get rid of portal frustum check which IS kinda bad for performance)
+		//utils::hook::nop(ENGINE_BASE + USE_OFFSET(0xDD549, 0xDCBC9), 6);
+		//utils::hook(ENGINE_BASE + USE_OFFSET(0xDD549, 0xDCBC9), pre_build_worldlists_stub, HOOK_JUMP).install()->quick();
+		//HOOK_RETN_PLACE(pre_build_worldlists_retn, ENGINE_BASE + USE_OFFSET(0xDD54F, 0xDCBCF));
 
-		utils::hook::nop(ENGINE_BASE + USE_OFFSET(0xDD549, 0xDCBC9), 6);
-		utils::hook(ENGINE_BASE + USE_OFFSET(0xDD549, 0xDCBC9), pre_build_worldlists_stub, HOOK_JUMP).install()->quick();
-		HOOK_RETN_PLACE(pre_build_worldlists_retn, ENGINE_BASE + USE_OFFSET(0xDD54F, 0xDCBCF));
+		// ^ Portal area vis hack
+		utils::hook(ENGINE_BASE + USE_OFFSET(0x11025C, 0x10F0EC), flow_through_area_wrapper, HOOK_CALL).install()->quick();
+		utils::hook::nop(ENGINE_BASE + USE_OFFSET(0x110296, 0x10F126), 5); // nop 'R_SetupVisibleAreaFrustums' call, handled in func above
 
+		// CBaseWorldView::DrawSetup :: save 'g_CurrentViewID' 
+		utils::hook(CLIENT_BASE + USE_OFFSET(0x1F0B9A, 0x1EB59A), save_viewid_stub, HOOK_JUMP).install()->quick();
+		HOOK_RETN_PLACE(save_viewid_retn, CLIENT_BASE + USE_OFFSET(0x1F0B9F, 0x1EB59F));
 
 
 		// C_BaseEntity::UpdateVisibility

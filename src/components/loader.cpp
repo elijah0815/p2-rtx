@@ -9,6 +9,7 @@ namespace components
 	{
 		mem_allocator_.clear();
 		_register(new flags());
+		_register(new game_settings());
 		_register(new choreo_events());
 		_register(new main_module());
 		_register(new model_render());

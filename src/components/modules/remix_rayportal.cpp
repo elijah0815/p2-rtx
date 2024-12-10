@@ -237,7 +237,7 @@ namespace components::api
 					const auto& normal = p.get_normal();
 
 					Vector debug_pos = p.m_pos;
-					float scaled_offset = debug_pos.DistTo(game::get_current_view_origin_as_vector()) * 0.025f;
+					float scaled_offset = debug_pos.DistTo(*game::get_current_view_origin()) * 0.025f;
 					game::debug_add_text_overlay(&debug_pos.x, 0.0f, utils::va("Pair: %d --- Rayportal Index: %d\n", this->get_pair_num(), p.get_index())); debug_pos.z -= scaled_offset;
 					game::debug_add_text_overlay(&debug_pos.x, 0.0f, utils::va("Position: %.2f %.2f %.2f", p.m_pos.x, p.m_pos.y, p.m_pos.z)); debug_pos.z -= scaled_offset;
 					game::debug_add_text_overlay(&debug_pos.x, 0.0f, utils::va("Normal: %.2f %.2f %.2f", normal.x, normal.y, normal.z));

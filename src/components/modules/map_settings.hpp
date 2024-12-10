@@ -87,12 +87,12 @@ namespace components
 			std::unordered_set<std::uint32_t> leafs;
 			std::unordered_set<std::uint32_t> areas;
 			std::unordered_set<std::uint32_t> hide_leafs;
-			//std::unordered_set<std::uint32_t> hide_areas;
 
 			// areas - when_not_in_leafs
-			//std::vector<std::unordered_set<std::uint32_t>, std::unordered_set<std::uint32_t>> hide_areas;
 			std::vector<hide_area_s> hide_areas;
 
+			// areas where portal views are allowed to get culled (when portals are not in view)
+			//std::unordered_set<std::uint32_t> portal_cull_area;
 
 			AREA_CULL_MODE cull_mode;
 			std::uint32_t area_index;

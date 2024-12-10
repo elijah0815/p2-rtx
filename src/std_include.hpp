@@ -33,6 +33,8 @@
 #include <map>
 #include <unordered_set>
 #include <fstream>
+#include <xmmintrin.h>
+#include <intrin.h>
 
 #pragma warning(push)
 #pragma warning(disable: 26495)

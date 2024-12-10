@@ -4,6 +4,8 @@ namespace components
 {
 	extern int g_player_current_leaf;
 	extern int g_player_current_area;
+	extern int g_current_area_all_views;
+	extern Vector g_player_view_org;
 	extern bool g_cull_disable_frustum_culling;
 
 	namespace api
