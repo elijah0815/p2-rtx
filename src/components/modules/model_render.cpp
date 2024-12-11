@@ -841,6 +841,8 @@ namespace components
 		const auto dev = game::get_d3d_device();
 
 		bool use_crop = false;
+		bool use_dualsequence = false;
+
 		if (const auto shaderapi = game::get_shaderapi();
 			shaderapi)
 		{
@@ -855,6 +857,23 @@ namespace components
 						use_crop = var_out->vftable->GetVecValueInternal1(var_out)[0] != 1.0f || var_out->vftable->GetVecValueInternal1(var_out)[1] != 1.0f;
 					}
 				}
+
+				if (has_materialvar(material, "$DUALSEQUENCE", &var_out))
+				{
+					if (var_out) {
+						use_dualsequence = var_out->vftable->GetIntValueInternal(var_out) != 0;
+					}
+				}
+			}
+		}
+
+		bool modulate_alpha = false;
+		{
+			DWORD dest_blend;
+			dev->GetRenderState(D3DRS_DESTBLEND, &dest_blend);
+
+			if ((D3DBLEND)dest_blend == D3DBLEND_ONE) {
+				modulate_alpha = true;
 			}
 		}
 
@@ -868,7 +887,7 @@ namespace components
 
 			//const auto src_vParms = reinterpret_cast<Vector*>(((DWORD)builder->m_VertexBuilder.m_pCurrPosition + v_pos_in_src_buffer));
 			//const auto dest_pos = reinterpret_cast<Vector*>(src_vParms);
-			//const auto src_vTint = reinterpret_cast<D3DCOLOR*>(((DWORD)builder->m_VertexBuilder.m_pCurrColor - v_pos_in_src_buffer));
+			const auto src_vTint = reinterpret_cast<D3DCOLOR*>(((DWORD)builder->m_VertexBuilder.m_pCurrColor - v_pos_in_src_buffer));
 
 			const auto src_tc0 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[0] - v_pos_in_src_buffer));
 			const auto dest_tc = reinterpret_cast<Vector2D*>(src_tc0);
@@ -877,8 +896,9 @@ namespace components
 			//const auto src_vParms = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[2] - v_pos_in_src_buffer));
 			const auto src_tc3 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[3] - v_pos_in_src_buffer));
 			//const auto src_tc4 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[4] + v_pos_in_src_buffer));
-			//const auto src_tc5 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[5] + v_pos_in_src_buffer));
-			//const auto src_vParms1 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[7] - v_pos_in_src_buffer));
+			const auto src_tc5 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[5] - v_pos_in_src_buffer));
+			const auto src_tc6 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[6] - v_pos_in_src_buffer));
+			const auto src_tc7 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[7] - v_pos_in_src_buffer));
 
 			if (use_crop) 
 			{
@@ -889,6 +909,55 @@ namespace components
 			{
 				dest_tc->x = std::lerp(src_tc0->z, src_tc0->x, src_tc3->x);
 				dest_tc->y = std::lerp(src_tc0->w, src_tc0->y, src_tc3->y);
+			}
+
+			if (use_dualsequence)
+			{
+#if 0
+				Vector2D lerpold = { src->tc3.x, src->tc3.y };
+				Vector2D lerpnew = { src->tc3.x, src->tc3.y };
+
+				if (bZoomSeq2)
+				{
+					lerpold.x = getlerpscaled(src->tc3.x, OLDFRM_SCALE_START, OLDFRM_SCALE_END, src->tc7.x);
+					lerpold.y = getlerpscaled(src->tc3.y, OLDFRM_SCALE_START, OLDFRM_SCALE_END, src->tc7.x);
+					lerpnew.x = getlerpscaled(src->tc3.x, 1.0f, OLDFRM_SCALE_START, src->tc7.x);
+					lerpnew.y = getlerpscaled(src->tc3.y, 1.0f, OLDFRM_SCALE_START, src->tc7.x);
+				}
+
+				// src->tc7.x = blendfactor between tc5 lerpold and tc6 lerpnew
+				if (src->tc7.x < 0.5f)
+				{
+					src->tc0.x = std::lerp(src->tc5.z, src->tc5.x, lerpold.x);
+					src->tc0.y = std::lerp(src->tc5.w, src->tc5.y, lerpold.y);
+				}
+				else
+				{
+					src->tc0.x = std::lerp(src->tc6.z, src->tc6.x, lerpnew.x);
+					src->tc0.y = std::lerp(src->tc6.w, src->tc6.y, lerpnew.y);
+				}
+#endif
+
+				if (src_tc7->x < 1.0f)
+				{
+					dest_tc->x = std::lerp(src_tc5->z, src_tc5->x, src_tc3->x);
+					dest_tc->y = std::lerp(src_tc5->w, src_tc5->y, src_tc3->y);
+				}
+				else
+				{
+					dest_tc->x = std::lerp(src_tc6->z, src_tc6->x, src_tc3->x);
+					dest_tc->y = std::lerp(src_tc6->w, src_tc6->y, src_tc3->y);
+				}
+			}
+
+			if (modulate_alpha)
+			{
+				//float r = static_cast<float>((src->color >> 16) & 0xFF) / 255.0f * 1.0f;
+				//float g = static_cast<float>((src->color >> 8) & 0xFF) / 255.0f * 1.0f;
+				//float b = static_cast<float>((src->color >> 0) & 0xFF) / 255.0f * 1.0f;
+				float a = static_cast<float>((*src_vTint >> 24) & 0xFF) / 255.0f * 0.05f;
+				//src->color = D3DCOLOR_COLORVALUE(r, g, b, a);
+				//*src_vTint = (*src_vTint & 0x00FFFFFF) | (static_cast<unsigned char>(a * 255.0f) << 24);
 			}
 
 			/*{
@@ -2685,232 +2754,21 @@ namespace components
 				//dev->SetTransform(D3DTS_PROJECTION, &buffer_state.m_Transform[2]);
 			}
 
-			// SpriteCard vista smoke 
-			else if (mesh->m_VertexFormat == 0x24914900005) // stride 144 ....
+			// SpriteCard vista smoke
+			// Client::C_OP_RenderSprites::Render - UV's handled in 'fix_sprite_card_texcoords_mid_hk'
+			else if (mesh->m_VertexFormat == 0x24914900005)
 			{
-				//ctx.modifiers.do_not_render = true;
-				// maybe edit vert texcoords directly within Client :: C_OP_RenderSprites::Render
-
-				float g_vCropFactor[4] = {};
-				dev->GetVertexShaderConstantF(15, g_vCropFactor, 1);
-				bool use_crop = false; //g_vCropFactor[0] != 1.0f || g_vCropFactor[1] != 1.0f; // not save
-
-				IMaterialVar* var_out = nullptr;
-				if (has_materialvar(ctx.info.material, "$CROPFACTOR", &var_out))
-				{
-					if (var_out) {
-						use_crop = var_out->vftable->GetVecValueInternal1(var_out)[0] != 1.0f || var_out->vftable->GetVecValueInternal1(var_out)[1] != 1.0f;
-					}
-				}
-
-				bool use_dualsequence = false;
-				if (has_materialvar(ctx.info.material, "$DUALSEQUENCE", &var_out))
-				{
-					if (var_out) {
-						use_dualsequence = var_out->vftable->GetIntValueInternal(var_out) != 0;
-					}
-				}
-
-				/*bool bZoomSeq2 = false;
-				if (has_materialvar(ctx.info.material, "$ZOOMANIMATESEQ2", &var_out))
-				{
-					if (var_out) {
-						bZoomSeq2 = var_out->vftable->GetFloatValueInternal(var_out) > 1.0f;
-					}
-				}*/
-
 				ctx.save_tss(dev, D3DTSS_ALPHAARG2);
 				ctx.save_tss(dev, D3DTSS_ALPHAOP);
 				dev->SetTextureStageState(0, D3DTSS_ALPHAARG2, D3DTA_DIFFUSE);
 				dev->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_MODULATE);
 
-				bool modulate_alpha = false;
+				if (ctx.info.material_name == "particle/vistasmokev1_add_nearcull")
 				{
-					DWORD dest_blend;
-					dev->GetRenderState(D3DRS_DESTBLEND, &dest_blend);
-
-					if ((D3DBLEND)dest_blend == D3DBLEND_ONE) {
-						modulate_alpha = true;
-					}
+					set_remix_emissive_intensity(dev, ctx, 0.01f);
 				}
-
-				// ---
-
-				float scale_parms[4] = {};
-				dev->GetVertexShaderConstantF(55, scale_parms, 1);
-#if 0
-				const float OLDFRM_SCALE_START = scale_parms[0];
-				const float OLDFRM_SCALE_END = scale_parms[1];
-
-				auto getlerpscaled = [](float l_in, float s0, float s1, float ts)
-					{
-						l_in = 2.0f * (l_in - 0.5f);
-						l_in *= std::lerp(s0, s1, ts);
-						return 0.5f + 0.5f * l_in;
-					};
-#endif
-
-#if 1
-				IDirect3DVertexBuffer9* vb = nullptr; UINT t_stride = 0u, t_offset = 0u; 
-				if (SUCCEEDED(dev->GetStreamSource(0, &vb, &t_offset, &t_stride)))
-				{
-					IDirect3DIndexBuffer9* ib = nullptr;
-					if (SUCCEEDED(dev->GetIndices(&ib)))
-					{
-						void* ib_data; // lock index buffer to retrieve the relevant vertex indices
-						if (SUCCEEDED(ib->Lock(0, 0, &ib_data, D3DLOCK_READONLY)))
-						{
-							// add relevant indices without duplicates
-							std::unordered_set<std::uint16_t> indices; indices.reserve(primlist->m_NumIndices);
-							for (auto i = 0u; i < (std::uint32_t)primlist->m_NumIndices; i++)
-							{
-								indices.insert(static_cast<std::uint16_t*>(ib_data)[primlist->m_FirstIndex + i]);
-							}
-							ib->Unlock();
-
-							// get the range of vertices that we are going to work with
-							UINT min_vert = 0u, max_vert = 0u;
-							{
-								auto [min_it, max_it] = std::minmax_element(indices.begin(), indices.end());
-								min_vert = *min_it; max_vert = *max_it;
-							}
-
-							void* src_buffer_data;
-
-							// lock vertex buffer from first used vertex (in total bytes) to X used vertices (in total bytes)
-							if (SUCCEEDED(vb->Lock(min_vert * t_stride, max_vert * t_stride, &src_buffer_data, 0)))
-							{
-								struct src_vert
-								{
-									Vector pos; D3DCOLOR color;
-									Vector4D tc0; Vector4D tc1; Vector4D tc2; Vector2D tc3;
-									Vector4D tc4; Vector4D tc5; Vector4D tc6; Vector4D tc7;
-								};
-
-								for (auto i : indices)
-								{
-									// we need to subtract min_vert because we locked @ min_vert which is the start of our lock
-									i -= static_cast<std::uint16_t>(min_vert);
-
-									const auto v_pos_in_src_buffer = i * t_stride;
-									const auto src = reinterpret_cast<src_vert*>(((DWORD)src_buffer_data + v_pos_in_src_buffer));
-
-									// float2 vCornerID : TEXCOORD3;
-									// o.texCoord0_1.xy = lerp( v.vTexCoord0.zw, v.vTexCoord0.xy, v.vCornerID.xy );
-									// o.texCoord0_1.wz = lerp( v.vTexCoord1.zw, v.vTexCoord1.xy, v.vCornerID.xy );
-
-									//src->tc0.x = std::lerp(src->tc0.z, src->tc0.x, src->tc3.x /** g_vCropFactor[0] + g_vCropFactor[2]*/);
-									//src->tc0.y = std::lerp(src->tc0.w, src->tc0.y, src->tc3.y /** g_vCropFactor[1] + g_vCropFactor[3]*/);
-
-									/*
-										float2 vCornerID        : TEXCOORD3;   // 0,0 1,0 1,1 0,1
-										float4 vTexCoord2		: TEXCOORD4;
-										#if DUALSEQUENCE
-										float4 vSeq2TexCoord0   : TEXCOORD5;
-										float4 vSeq2TexCoord1   : TEXCOORD6; 
-										float4 vParms1          : TEXCOORD7;  // second frame blend, ?,?,?
-
-										float2 lerpold = v.vCornerID.xy;
-										float2 lerpnew = v.vCornerID.xy;
-
-										#if ( ZOOM_ANIMATE_SEQ2 )
-										{
-											lerpold.x = getlerpscale_for_old_frame( v.vCornerID.x, v.vParms1.x );
-											lerpold.y = getlerpscale_for_old_frame( v.vCornerID.y, v.vParms1.x );
-											lerpnew.x = getlerpscale_for_new_frame( v.vCornerID.x, v.vParms1.x );
-											lerpnew.y = getlerpscale_for_new_frame( v.vCornerID.y, v.vParms1.x );
-										}
-										#endif
-
-										o.vSeq2TexCoord0_1.xy	= lerp( v.vSeq2TexCoord0.zw, v.vSeq2TexCoord0.xy, lerpold.xy );
-										o.vSeq2TexCoord0_1.wz	= lerp( v.vSeq2TexCoord1.zw, v.vSeq2TexCoord1.xy, lerpnew.xy );
-									 */
-
-									if (use_crop)
-									{
-										src->tc0.x = std::lerp(src->tc0.z, src->tc0.x, src->tc3.x * g_vCropFactor[0] + g_vCropFactor[2]);
-										src->tc0.y = std::lerp(src->tc0.w, src->tc0.y, src->tc3.y * g_vCropFactor[1] + g_vCropFactor[3]);
-									}
-									else
-									{
-										src->tc0.x = std::lerp(src->tc0.z, src->tc0.x, src->tc3.x);
-										src->tc0.y = std::lerp(src->tc0.w, src->tc0.y, src->tc3.y);
-									}
-
-									if (use_dualsequence)
-									{
-#if 0
-										Vector2D lerpold = { src->tc3.x, src->tc3.y };
-										Vector2D lerpnew = { src->tc3.x, src->tc3.y };
-
-										if (bZoomSeq2)
-										{
-											lerpold.x = getlerpscaled(src->tc3.x, OLDFRM_SCALE_START, OLDFRM_SCALE_END, src->tc7.x);
-											lerpold.y = getlerpscaled(src->tc3.y, OLDFRM_SCALE_START, OLDFRM_SCALE_END, src->tc7.x);
-											lerpnew.x = getlerpscaled(src->tc3.x, 1.0f, OLDFRM_SCALE_START, src->tc7.x);
-											lerpnew.y = getlerpscaled(src->tc3.y, 1.0f, OLDFRM_SCALE_START, src->tc7.x);
-										}
-
-										// src->tc7.x = blendfactor between tc5 lerpold and tc6 lerpnew
-										if (src->tc7.x < 0.5f)
-										{
-											src->tc0.x = std::lerp(src->tc5.z, src->tc5.x, lerpold.x);
-											src->tc0.y = std::lerp(src->tc5.w, src->tc5.y, lerpold.y);
-										}
-										else
-										{
-											src->tc0.x = std::lerp(src->tc6.z, src->tc6.x, lerpnew.x);
-											src->tc0.y = std::lerp(src->tc6.w, src->tc6.y, lerpnew.y);
-										}
-#endif
-
-										if (src->tc7.x < 1.0f)
-										{
-											src->tc0.x = std::lerp(src->tc5.z, src->tc5.x, src->tc3.x);
-											src->tc0.y = std::lerp(src->tc5.w, src->tc5.y, src->tc3.y);
-										}
-										else
-										{
-											src->tc0.x = std::lerp(src->tc6.z, src->tc6.x, src->tc3.x);
-											src->tc0.y = std::lerp(src->tc6.w, src->tc6.y, src->tc3.y);
-										}
-									}
-									/*else
-									{
-										int x = 1;
-									}*/
-
-									//src->tc0.x = std::lerp(src->tc5.z, src->tc5.x, src->tc3.x);
-									//src->tc0.y = std::lerp(src->tc5.w, src->tc5.y, src->tc3.y);
-
-									// 2nd tex
-									//src->tc0.x = std::lerp(src->tc6.z, src->tc6.x, src->tc3.x); 
-									//src->tc0.y = std::lerp(src->tc6.w, src->tc6.y, src->tc3.y);
-
-									if (modulate_alpha)
-									{
-										//float r = static_cast<float>((src->color >> 16) & 0xFF) / 255.0f * 1.0f;
-										//float g = static_cast<float>((src->color >> 8) & 0xFF) / 255.0f * 1.0f;
-										//float b = static_cast<float>((src->color >> 0) & 0xFF) / 255.0f * 1.0f;
-										float a = static_cast<float>((src->color >> 24) & 0xFF) / 255.0f * 0.05f;
-										//src->color = D3DCOLOR_COLORVALUE(r, g, b, a);
-										src->color = (src->color & 0x00FFFFFF) | (static_cast<unsigned char>(a * 255.0f) << 24);
-									}
-								}
-
-								vb->Unlock();
-							}
-						}
-					}
-				}
-#endif
-				/*ctx.save_vs(dev);
-				dev->SetVertexShader(nullptr);
-				dev->SetFVF(D3DFVF_XYZ | D3DFVF_DIFFUSE | D3DFVF_TEX2);
-				dev->SetTransform(D3DTS_WORLD, &ctx.info.buffer_state.m_Transform[0]);
-				dev->SetTransform(D3DTS_VIEW, &ctx.info.buffer_state.m_Transform[1]);
-				dev->SetTransform(D3DTS_PROJECTION, &ctx.info.buffer_state.m_Transform[2]);*/
 			}
+			
 
 			// paint blobs (blob only, not the painted surfs)
 			// maybe use r_paintblob_wireframe to force wireframe mode later
