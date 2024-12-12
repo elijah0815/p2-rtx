@@ -867,7 +867,7 @@ namespace components
 			}
 		}
 
-		bool modulate_alpha = false;
+		/*bool modulate_alpha = false;
 		{
 			DWORD dest_blend;
 			dev->GetRenderState(D3DRS_DESTBLEND, &dest_blend);
@@ -875,7 +875,7 @@ namespace components
 			if ((D3DBLEND)dest_blend == D3DBLEND_ONE) {
 				modulate_alpha = true;
 			}
-		}
+		}*/
 
 		float g_vCropFactor[4] = {};
 		dev->GetVertexShaderConstantF(15, g_vCropFactor, 1);
@@ -887,7 +887,7 @@ namespace components
 
 			//const auto src_vParms = reinterpret_cast<Vector*>(((DWORD)builder->m_VertexBuilder.m_pCurrPosition + v_pos_in_src_buffer));
 			//const auto dest_pos = reinterpret_cast<Vector*>(src_vParms);
-			const auto src_vTint = reinterpret_cast<D3DCOLOR*>(((DWORD)builder->m_VertexBuilder.m_pCurrColor - v_pos_in_src_buffer));
+			//const auto src_vTint = reinterpret_cast<D3DCOLOR*>(((DWORD)builder->m_VertexBuilder.m_pCurrColor - v_pos_in_src_buffer));
 
 			const auto src_tc0 = reinterpret_cast<Vector4D*>(((DWORD)builder->m_VertexBuilder.m_pCurrTexCoord[0] - v_pos_in_src_buffer));
 			const auto dest_tc = reinterpret_cast<Vector2D*>(src_tc0);
@@ -950,25 +950,15 @@ namespace components
 				}
 			}
 
-			if (modulate_alpha)
-			{
-				//float r = static_cast<float>((src->color >> 16) & 0xFF) / 255.0f * 1.0f;
-				//float g = static_cast<float>((src->color >> 8) & 0xFF) / 255.0f * 1.0f;
-				//float b = static_cast<float>((src->color >> 0) & 0xFF) / 255.0f * 1.0f;
-				float a = static_cast<float>((*src_vTint >> 24) & 0xFF) / 255.0f * 0.05f;
-				//src->color = D3DCOLOR_COLORVALUE(r, g, b, a);
-				//*src_vTint = (*src_vTint & 0x00FFFFFF) | (static_cast<unsigned char>(a * 255.0f) << 24);
-			}
-
-			/*{
-				Vector4D color;
-				color.x = static_cast<float>((*src_vTint >> 16) & 0xFF) / 255.0f * 1.0f;
-				color.y = static_cast<float>((*src_vTint >> 8) & 0xFF) / 255.0f * 1.0f;
-				color.z = static_cast<float>((*src_vTint >> 0) & 0xFF) / 255.0f * 1.0f;
-				color.w = static_cast<float>((*src_vTint >> 24) & 0xFF) / 255.0f * 1.0f;
-
-				*src_vTint = D3DCOLOR_COLORVALUE(color.x, color.y, color.z, color.w);
-			}*/
+			//if (modulate_alpha)
+			//{
+			//	//float r = static_cast<float>((src->color >> 16) & 0xFF) / 255.0f * 1.0f;
+			//	//float g = static_cast<float>((src->color >> 8) & 0xFF) / 255.0f * 1.0f;
+			//	//float b = static_cast<float>((src->color >> 0) & 0xFF) / 255.0f * 1.0f;
+			//	float a = static_cast<float>((*src_vTint >> 24) & 0xFF) / 255.0f * 0.05f;
+			//	//src->color = D3DCOLOR_COLORVALUE(r, g, b, a);
+			//	*src_vTint = (*src_vTint & 0x00FFFFFF) | (static_cast<unsigned char>(a * 255.0f) << 24);
+			//}
 		}
 	}
 
