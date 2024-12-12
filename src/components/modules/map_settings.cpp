@@ -121,7 +121,7 @@ namespace components
 			auto config = toml::parse("portal2-rtx\\map_settings.toml");
 
 			// #
-			auto to_float = [](const toml::value& entry)
+			auto to_float = [](const toml::value& entry, const float default_val = 0.0f)
 				{
 					if (entry.is_floating()) {
 						return static_cast<float>(entry.as_floating());
@@ -138,11 +138,11 @@ namespace components
 						game::console(); printf("%s\n", err.what());
 					}
 
-					return 0.0f;
+					return default_val;
 				};
 
 			// #
-			auto to_int = [](const toml::value& entry)
+			auto to_int = [](const toml::value& entry, const int default_val = 0)
 				{
 					if (entry.is_floating()) {
 						return static_cast<int>(entry.as_floating());
@@ -159,12 +159,13 @@ namespace components
 						game::console(); printf("%s\n", err.what());
 					}
 
-					return 0;
+					return default_val;
 				};
 
 
 			// ####################
 			// parse 'FOG' table
+			if (config.contains("FOG"))
 			{
 				auto& fog_table = config["FOG"];
 
@@ -195,6 +196,7 @@ namespace components
 
 			// ####################
 			// parse 'CULL' table
+			if (config.contains("CULL"))
 			{
 				auto& cull_table = config["CULL"];
 
@@ -313,7 +315,54 @@ namespace components
 
 
 			// ####################
+			// parse 'HIDEMODEL' table
+			if (config.contains("HIDEMODEL"))
+			{
+				// try to find the loaded map
+				if (auto& hidemdl_table = config["HIDEMODEL"]; 
+					hidemdl_table.contains(m_map_settings.mapname))
+				{
+					if (const auto map = hidemdl_table[m_map_settings.mapname];
+						!map.is_empty())
+					{
+						if (map.contains("name"))
+						{
+							if (auto& names = map.at("name");
+								!names.is_empty())
+							{
+								if (const auto& narray = map.at("name").as_array();
+									!narray.empty())
+								{
+									for (auto& str : narray) {
+										m_map_settings.hide_models.substrings.insert(str.as_string());
+									}
+								}
+							}
+						}
+
+						if (map.contains("radius"))
+						{
+							if (auto& radii = map.at("radius");
+								!radii.is_empty())
+							{
+								if (const auto& rarray = map.at("radius").as_array();
+									!rarray.empty())
+								{
+									for (auto& r : rarray) {
+										m_map_settings.hide_models.radii.insert(to_float(r, -1.0f));
+									}
+								}
+							}
+						}
+						
+					}
+				}
+			} // end 'HIDEMODEL'
+
+
+			// ####################
 			// parse 'MARKER' table
+			if (config.contains("MARKER"))
 			{
 				auto& marker_table = config["MARKER"];
 
@@ -496,6 +545,7 @@ namespace components
 
 			// ####################
 			// parse 'PORTALS' table
+			if (config.contains("PORTALS"))
 			{
 				auto& portal_table = config["PORTALS"];
 

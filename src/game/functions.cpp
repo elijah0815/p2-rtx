@@ -65,6 +65,22 @@ namespace game
 			(pos, duration, text);
 	}
 
+	/**
+	 * Calls CDebugOverlay::AddTextOverlay
+	 * @param pos			Position of text in 3D Space
+	 * @param text			The text
+	 * @param line_offset	Offset text position
+	 * @param r				red (0-1)
+	 * @param g				green (0-1)
+	 * @param b				blue (0-1)
+	 * @param a				alpha (0-1)
+	 */
+	void debug_add_text_overlay(const float* pos, const char* text, const int line_offset, const float r, const float g, const float b, const float a)
+	{
+		utils::hook::call<void(__cdecl)(const float*, int, float, float, float, float, float, const char*)>(ENGINE_BASE + USE_OFFSET(0xC4B30, 0xC4460))
+			(pos, line_offset, 0.0f, r, g, b, a, text);
+	}
+
 	// remove/destroy a given CBaseEntity
 	void cbaseentity_remove(void* cbaseentity_ptr)
 	{

@@ -8,6 +8,11 @@ namespace components
 	int	 is_rendering_paint = false;
 	int	 is_rendering_bmodel_paint = false;
 
+	namespace cmd
+	{
+		bool model_info_vis = false;
+	}
+
 	namespace ff_model
 	{
 		IDirect3DVertexShader9* s_shader = nullptr;
@@ -377,8 +382,59 @@ namespace components
 
 			dev->SetTransform(D3DTS_WORLD, reinterpret_cast<D3DMATRIX*>(&mat.m)); 
 		}
-		
-		tbl_hk::model_renderer::table.original<FN>(Index)(ecx, edx, oo, state, pInfo, pCustomBoneToWorld);
+
+
+		bool ignore = false;
+		const auto& hmsettings = map_settings::get_map_settings().hide_models;
+
+		for (const auto& hide_mdl_with_radius : hmsettings.radii)
+		{
+			if (pInfo.pModel->radius == hide_mdl_with_radius) 
+			{
+				ignore = true;
+				break;
+			}
+		}
+
+		if (!ignore)
+		{
+			const auto mdl_string = std::string_view(pInfo.pModel->szPathName);
+			for (const auto& hide_mdl_with_substr : hmsettings.substrings)
+			{
+				if (mdl_string.contains(hide_mdl_with_substr)) 
+				{
+					ignore = true;
+					break;
+				}
+			}
+		}
+
+		if (!ignore) 
+		{
+			// draw the model
+			tbl_hk::model_renderer::table.original<FN>(Index)(ecx, edx, oo, state, pInfo, pCustomBoneToWorld);
+
+			if (cmd::model_info_vis)
+			{
+				if (g_player_view_org.DistToSqr(pInfo.origin) < 1000.0f * 1000.0f)
+				{
+					game::debug_add_text_overlay(&pInfo.origin.x, pInfo.pModel->szPathName, 0);
+					game::debug_add_text_overlay(&pInfo.origin.x, utils::va("Radius: %.7f", pInfo.pModel->radius), 1);
+				}
+			}
+		}
+		else
+		{
+			if (cmd::model_info_vis) 
+			{
+				if (g_player_view_org.DistToSqr(pInfo.origin) < 1000.0f * 1000.0f)
+				{
+					game::debug_add_text_overlay(&pInfo.origin.x, "#IGNORED#", 0, 1.0f, 0.6f, 0.6f, 0.6f);
+					game::debug_add_text_overlay(&pInfo.origin.x, pInfo.pModel->szPathName, 1, 1.0f, 0.6f, 0.6f, 0.6f);
+					game::debug_add_text_overlay(&pInfo.origin.x, utils::va("Radius: %.7f", pInfo.pModel->radius), 2, 1.0f, 0.6f, 0.6f, 0.6f);
+				}
+			}
+		}
 
 		dev->SetTransform(D3DTS_WORLD, &game::IDENTITY);
 		dev->SetFVF(NULL);
@@ -3377,6 +3433,15 @@ namespace components
 
 
 	// #
+	// Commands
+
+	ConCommand xo_debug_toggle_model_info_cmd{};
+	void xo_debug_toggle_model_info_fn()
+	{
+		cmd::model_info_vis = !cmd::model_info_vis;
+	}
+
+	// #
 	// #
 
 	model_render::model_render()
@@ -3468,6 +3533,11 @@ namespace components
 		utils::hook::nop(CLIENT_BASE + USE_OFFSET(0x622030, 0x619BA0), 6);
 		utils::hook(CLIENT_BASE + USE_OFFSET(0x622030, 0x619BA0), RenderSpriteCardNew_stub, HOOK_JUMP).install()->quick();
 		HOOK_RETN_PLACE(RenderSpriteCardNew_retn_addr, CLIENT_BASE + USE_OFFSET(0x622036, 0x619BA6));
+
+		// #
+		// commands
+
+		game::con_add_command(&xo_debug_toggle_model_info_cmd, "xo_debug_toggle_model_info", xo_debug_toggle_model_info_fn, "Toggle model name and radius visualizations");
 	}
 }
 

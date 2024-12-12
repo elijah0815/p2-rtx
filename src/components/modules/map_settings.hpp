@@ -98,6 +98,12 @@ namespace components
 			std::uint32_t area_index;
 		};
 
+		struct hide_models_s
+		{
+			std::unordered_set<std::string> substrings;
+			std::unordered_set<float> radii;
+		};
+
 		struct map_settings_s
 		{
 			std::string	mapname;
@@ -105,6 +111,7 @@ namespace components
 			DWORD fog_color = 0xFFFFFFFF;
 			//std::unordered_map<std::uint32_t, std::unordered_set<std::uint32_t>> area_settings;
 			std::unordered_map<std::uint32_t, area_overrides_s> area_settings;
+			hide_models_s hide_models;
 			std::vector<leaf_transition_s> leaf_transitions;
 			std::vector<choreo_transition_s> choreo_transitions;
 			std::vector<marker_settings_s> map_markers;
