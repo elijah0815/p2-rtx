@@ -14,21 +14,32 @@
     sp_a4_finale2 = { distance = 150000, color = [180, 140, 100] }
 
 
+# Water UV Scale
+# Parameters ---------------------------------------------------------------------------------------------------------------------------------
+#
+# Small values reduce repetition while larger values will increase tiling (default = 1.0)
+
+[WATER]
+    sp_a1_wakeup = 5.0
+    sp_a2_column_blocker = 2.0
+
+
+
 # Override culling per game area
 # Parameters ---------------------------------------------------------------------------------------------------------------------------------
 #
 # area:         the area the player has to be in
-# leafs:        leaf/s with forced visibility [array]
-# areas:        area/s with forced visibility [array]
+# leafs:        leaf/s with forced visibility [int array]
+# areas:        area/s with forced visibility [int array]
 # cull:         [0] disable frustum culling
 #               [1] frustum culling (still forces leaf/s)
 #               [2] frustum culling (still forces leaf/s + forces all leafs in current area) (default, even when parameter 'cull' is not used) 
 #
-# hide_leafs:   force hide leaf/s   [array]
+# hide_leafs:   force hide leaf/s   [int array]
 #
-# hide_areas:   force hide area/s   [array]
-# |>   areas:   area/s to hide      [array]
-# |> N_leafs:   only hide area/s when NOT in specified leaf/s [array]
+# hide_areas:   force hide area/s   [int array]
+# |>   areas:   area/s to hide      [int array]
+# |> N_leafs:   only hide area/s when NOT in specified leaf/s [int array]
 
 [CULL]
     sp_a1_intro1 = [
@@ -86,6 +97,10 @@
         { area = 1, leafs = [432] }
     ]
 
+    sp_a3_01 = [
+        { area = 3, cull = 1, leafs = [768, 846, 1360, 1675] }
+    ]
+
     sp_a4_laser_platform = [
         { area = 1, cull = 1, leafs = [133] },
         { area = 2, hide_leafs = [89, 99, 100, 158, 171, 178, 901], hide_areas = [
@@ -127,11 +142,28 @@
 ]
 
 
+
+# Can be used to hide models (eg. when a certain model is used a lot, it can make sense to hide them and manually re-add the models by adding them as references to map markers (toolkit) - will help with cpu bottlenecks)
+# Useful console command: 'xo_debug_toggle_model_info'
+# Parameters ---------------------------------------------------------------------------------------------------------------------------------
+#
+# name   :   force hide models containing the specified substring [string array]
+# radius :   force hide models with this radius (checking for radii is generally faster and the preferred way to filter models) [float array]
+
+[HIDEMODEL]
+    #sp_a4_finale2 = { name = [
+    #        "tube", "arm"
+    #    ], radius = [
+    #        896.805298, #models/a4_destruction/arm_ext_halfres_rows_4x1.mdl
+    #    ]}
+
+
+
 # Spawn unique markers that can be used as anchor meshes - You can spawn duplicates
 # Parameters ---------------------------------------------------------------------------------------------------------------------------------
 #
 # marker:       number of unique marker mesh (the same marker can be spawned multiple times per map)
-# position:     X Y Z position of the marker mesh [3D array]
+# position:     X Y Z position of the marker mesh [3D Vector]
 
 [MARKER]
     sp_a1_intro1 = [
@@ -157,13 +189,14 @@
     ]
 
 
+
 # Remix variable configs
 # Parameters ---------------------------------------------------------------------------------------------------------------------------------
 #
 # startup:      configs that will be loaded on map-load, conf matching the map name will be loaded automatically and does not need to be specified
 # conf:         name of config containing remix options (goal values)
 #
-# leafs:    ]   THIS OR:    leaf's that will trigger the transition [array] (moving from one leaf to another connected & defined leaf will not trigger the transition)
+# leafs:    ]   THIS OR:    leaf's that will trigger the transition [array] (moving from one leaf to another connected & defined leaf will not trigger the transition) [int array]
 # choreo:   ]   THAT:       name of choreography (.vcd) that will trigger the transition (can be a substring - keep as short as possible) (has prio. over leafs param)
 #
 # mode:         [0] ONCE: On Enter/Start ---- [1] ONCE: On Leave/End    // transition will only be activated once (until map reload or map_settings reload)
@@ -174,9 +207,9 @@
 #               [4] CUBIC_IN -- [5] CUBIC_OUT -- [6] CUBIC_INOUT
 #               [7] EXPO_IN --- [8] EXPO_OUT --- [9] EXPO_INOUT
 #
-# duration:     transition time (in seconds)
-# delay_in:     delay start of transition (in seconds)
-# delay_out:    delay between end of transition and transition back to the initial starting value (in seconds) - only active if value > 0
+# duration:     transition time (in seconds) [float]
+# delay_in:     delay start of transition (in seconds) [float]
+# delay_out:    delay between end of transition and transition back to the initial starting value (in seconds) - only active if value > 0 [float]
 
 [CONFIGVARS]
     # Hello Migraine
@@ -195,14 +228,15 @@
     ]}
 
 
+
 # Spawn portals using the remix api - useful for area-connecting portals (between doors / rooms)
 # Parameters ---------------------------------------------------------------------------------------------------------------------------------
 #
 # pair:         number of pair (0 to 1 - only two pairs are currently supported)
-# position:     X Y Z coordinates of portal center [3D array]
-# rotation:     X Y Z rotation of portal [3D array] 
-# scale:        scale of portal [2D array]
-# square_mask:  0 = ellipse, 1 = square
+# position:     X Y Z coordinates of portal center [3D Vector]
+# rotation:     X Y Z rotation of portal [3D Vector] 
+# scale:        scale of portal [2D Vector]
+# square_mask:  0 = ellipse, 1 = square [bool]
 
 [PORTALS]
     sp_a1_wakeup = [

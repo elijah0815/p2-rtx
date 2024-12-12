@@ -1558,9 +1558,11 @@ namespace components
 				// scale water uv's
 				if (ctx.modifiers.as_water)  
 				{
+					const auto& scale_setting = map_settings::get_map_settings().water_uv_scale;
+
 					// create a scaling matrix
 					D3DXMATRIX scaleMatrix;
-					D3DXMatrixScaling(&scaleMatrix, 1.5f, 1.5f, 1.0f);
+					D3DXMatrixScaling(&scaleMatrix, 1.5f * scale_setting, 1.5f * scale_setting, 1.0f);
 
 					ctx.save_ss(dev, D3DSAMP_ADDRESSU);
 					ctx.save_ss(dev, D3DSAMP_ADDRESSV);

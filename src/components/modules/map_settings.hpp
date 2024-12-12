@@ -109,7 +109,7 @@ namespace components
 			std::string	mapname;
 			float fog_dist = 0.0f;
 			DWORD fog_color = 0xFFFFFFFF;
-			//std::unordered_map<std::uint32_t, std::unordered_set<std::uint32_t>> area_settings;
+			float water_uv_scale = 1.0f;
 			std::unordered_map<std::uint32_t, area_overrides_s> area_settings;
 			hide_models_s hide_models;
 			std::vector<leaf_transition_s> leaf_transitions;

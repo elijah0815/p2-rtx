@@ -195,6 +195,24 @@ namespace components
 
 
 			// ####################
+			// parse 'WATER' table
+			if (config.contains("WATER"))
+			{
+				auto& water_table = config["WATER"];
+
+				// try to find the loaded map
+				if (water_table.contains(m_map_settings.mapname))
+				{
+					if (const auto map = water_table[m_map_settings.mapname];
+						!map.is_empty())
+					{
+						m_map_settings.water_uv_scale = to_float(map, 1.0f);
+					}
+				}
+			} // end 'WATER'
+
+
+			// ####################
 			// parse 'CULL' table
 			if (config.contains("CULL"))
 			{
