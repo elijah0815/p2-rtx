@@ -79,4 +79,4 @@ jobs:
           embed-author-url: "https://github.com/xoxor4d/p2-rtx"
           embed-title: "Successful build (release)"
           embed-color: 0x119bcf
-          embed-description: "${{ env.GIT_TAG }} [nightly link](https://nightly.link/xoxor4d/p2-rtx/workflows/build-release/develop/Release-binaries-p2-rtx.zip)"
+          embed-description: "${{ env.GIT_TAG }} - [Workflow Link](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})"
