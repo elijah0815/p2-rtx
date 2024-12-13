@@ -2189,6 +2189,7 @@ namespace components
 
 	main_module::~main_module()
 	{
+#if 0
 		// release textures
 		components::model_render::init_texture_addons(true);
 
@@ -2196,5 +2197,6 @@ namespace components
 		if (d3d_font) {
 			d3d_font->Release();
 		}
+#endif
 	}
 }

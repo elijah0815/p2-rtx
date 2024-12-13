@@ -23,7 +23,7 @@ Please keep that in mind.
 
 <div align="center" markdown="1">
 
-<img src="img/logo.png" alt="Description" width="80%">
+<img src=".github/img/logo.png" alt="Description" width="80%">
 </div>
 
 <div align="center" markdown="1">
@@ -49,18 +49,19 @@ If you want to support my work, consider buying me some coffee:
 
 <div align="center" markdown="1">
 
-![img](img/01.png)
-![img](img/04.png)
+![img](.github/img/01.png)
+![img](.github/img/04.png)
 </div>
 
 <br>
 
 # Usage / Installation
 - Download the latest [release](https://github.com/xoxor4d/p2-rtx/releases) and follow instructions found there.
-- The `.zip` with the commit hash contains the compatibility mod and the `_remix_mod.zip` contains a base remix-mod required to get portals to work (and a few emissive textures etc.)
+> - The `.zip` with the commit hash contains the files to make the game compatibile with RTX Remix  
+> - The `_remix_mod.zip` contains a base remix-mod required to get portals to work (and a few emissive textures etc.)
 - To avoid rebuilding the sound cache on first startup, copy `_master.cache` from  
 `root/portal2/maps/soundcache` to `root/portal2_dlc3/maps/soundcache`
-- Start the game by executing `_start_portal2_rtx.bat`
+- Start the game by executing `p2-rtx-launcher.exe`
 - The window title should change to `Portal 2 - RTX` followed by the GitHub commit number if successful
 
 - [Set graphic options](#graphic-settings) ⚠️ 
@@ -75,7 +76,6 @@ If you want to support my work, consider buying me some coffee:
 - See the [Wiki](https://github.com/xoxor4d/p2-rtx/wiki/Compatibility-Mod-Feature-Guide) for in-depth guides on features that come with the compatibility mod 🍓
 - Current releases ship with a [custom build of the remix-dxvk runtime](https://github.com/xoxor4d/dxvk-remix/tree/combine/pairs_mask_rs) which includes necessary changes  
 for Portal 2 (`bin/.trex/d3d9.dll`)  
-- Releases also include [Ultimate-ASI-Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases) (`bin/winmm.dll`)  
 
 <br>
 
@@ -85,16 +85,24 @@ for Portal 2 (`bin/.trex/d3d9.dll`)
 <br>
 
 #### ⚠️ Troubleshooting:
-- Unable to load `_rtx.asi`:  
-Download and install [DirectX End-User Runtimes (June 2010)](https://www.microsoft.com/en-ie/download/details.aspx?id=8109)
+- Launcher not working? - Try a different way of loading:
+> - Download [Ultimate-ASI-Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases) (32 bit), rename `dinput8.dll` to `winmm.dll` and place it into the bin folder (`Path-To-Portal2/bin/winmm.dll`)
+> - Rename `p2-rtx.dll` to `p2-rtx.asi` and place it into the bin folder mentioned above 
+> - Right click Portal 2 on Steam and open settings - add the following start-up options:  
+> `-novid -disable_d3d9_hacks -limitvsconst -disallowhwmorph -softparticlesdefaultoff -no_compressed_verts +mat_phong 1`
+> - Start the game from Steam
+
+- Missing dependencies or similar error:  
+> - Download and install [DirectX End-User Runtimes (June 2010)](https://www.microsoft.com/en-ie/download/details.aspx?id=8109)
 
 - Portals not showing up or looking incorrect:  
-Make sure that you installed the `_remix_mod.zip`. See [Issue #13](https://github.com/xoxor4d/p2-rtx/issues/13)
+> - Make sure that you installed the `_remix_mod.zip`. See [Issue #13](https://github.com/xoxor4d/p2-rtx/issues/13)
 
 - Game is too dark, sunlight is leaking on certain maps, textures look flat:  
-This is not an issue with the compatibility mod itself. It's up to the people modding the game using the remix toolset to place proper lights and overhaul textures and meshes.
+> - This is not an issue with the compatibility mod itself. It's up to the people modding the game using the remix toolset to place proper lights and overhaul textures and meshes.
 
-- Look at [Closed Issues](https://github.com/xoxor4d/p2-rtx/issues?q=is%3Aissue+is%3Aclosed) or [Discussions](https://github.com/xoxor4d/p2-rtx/discussions) to see if people had similar issues
+- Other Issue?
+> - Look at [Closed Issues](https://github.com/xoxor4d/p2-rtx/issues?q=is%3Aissue+is%3Aclosed) or [Discussions](https://github.com/xoxor4d/p2-rtx/discussions) to see if people had similar issues
 
 <br>
 
@@ -111,9 +119,9 @@ This is not an issue with the compatibility mod itself. It's up to the people mo
 
 <div align="center" markdown="1">
 
-![img](img/02.png)
-![img](img/03.png)
-![img](img/05.png)
+![img](.github/img/02.png)
+![img](.github/img/03.png)
+![img](.github/img/05.png)
 </div>
 
 
@@ -125,5 +133,5 @@ This is not an issue with the compatibility mod itself. It's up to the people mo
 
 <div align="center" markdown="1">
 
-<img src="img/settings.png" alt="Description" width="70%">
+<img src=".github/img/settings.png" alt="Description" width="70%">
 </div>

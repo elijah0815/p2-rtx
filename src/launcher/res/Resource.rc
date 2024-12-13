@@ -13,6 +13,8 @@
 //
 #include "windows.h"
 
+IDR_MAINICON ICON DISCARDABLE "icon.ico"
+
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
 
@@ -66,9 +68,9 @@ BEGIN
         BEGIN
             VALUE "FileDescription", "Portal 2 RTX Remix Compatibility Mod"
             VALUE "FileVersion", VERSION_FILE
-            VALUE "InternalName", "p2-rtx"
+            VALUE "InternalName", "p2-rtx-launcher"
             VALUE "LegalCopyright", "xoxor4d.github.io"
-            VALUE "OriginalFilename", "p2-rtx.dll"
+            VALUE "OriginalFilename", "p2-rtx-launcher.exe"
             VALUE "ProductName", "p2-rtx"
             VALUE "ProductVersion", VERSION_PRODUCT
         END

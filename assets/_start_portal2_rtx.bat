@@ -1,1 +1,0 @@
-start /b portal2.exe -novid -disable_d3d9_hacks -limitvsconst -softparticlesdefaultoff -disallowhwmorph -no_compressed_verts +cpu_level 0 +gpu_level 0 +mem_level 2 +gpu_mem_level 2 +mat_phong 1

@@ -153,9 +153,9 @@ newaction {
 			versionHeader:write("\n")
 			versionHeader:write("// Version transformed for RC files\n")
 			versionHeader:write("#define VERSION_PRODUCT_RC " .. table.concat(vertonumarr(tagName, revNumber, 3), ",") .. "\n")
-			versionHeader:write("#define VERSION_PRODUCT " .. cstrquote(table.concat(vertonumarr(tagName, revNumber, 3), ".")) .. "\n")
-			versionHeader:write("#define VERSION_FILE_RC " .. table.concat(vertonumarr(tagName, revNumber, 4), ",") .. "\n")
-			versionHeader:write("#define VERSION_FILE " .. cstrquote(table.concat(vertonumarr(tagName, revNumber, 4), ".")) .. "\n")
+			versionHeader:write("#define VERSION_PRODUCT " .. gitDescribeOutputQuoted .. "\n")
+			versionHeader:write("#define VERSION_FILE_RC " .. table.concat(vertonumarr(tagName, revNumber, 3), ",") .. "\n")
+			versionHeader:write("#define VERSION_FILE " .. gitDescribeOutputQuoted .. "\n")
 			versionHeader:write("\n")
 			versionHeader:write("// Alias definitions\n")
 			versionHeader:write("#define VERSION GIT_DESCRIBE\n")
@@ -214,7 +214,7 @@ dependencies.load()
 
 workspace "p2-rtx"
 
-	startproject "p2-rtx"
+	startproject "p2-rtx-launcher"
 	location "./build"
 	objdir "%{wks.location}/obj"
 	targetdir "%{wks.location}/bin/%{cfg.buildcfg}"
@@ -331,6 +331,8 @@ workspace "p2-rtx"
 			"./src/**.cpp",
 		}
 
+		removefiles { "./src/launcher/**" }
+
 		includedirs {
 			"%{prj.location}/src",
 			"./src",
@@ -344,23 +346,23 @@ workspace "p2-rtx"
             "/Zm100 -Zm100" 
         }
 
-		debugargs { "-novid -disable_d3d9_hacks -limitvsconst -disallowhwmorph -softparticlesdefaultoff -no_compressed_verts +mat_phong 1" }
+		-- debugargs { "-novid -disable_d3d9_hacks -limitvsconst -disallowhwmorph -softparticlesdefaultoff -no_compressed_verts +mat_phong 1" }
 
 		filter "configurations:Debug or configurations:Release"
 			if(os.getenv("PORTAL2_ROOT")) then
 				print ("Setup paths using environment variable 'PORTAL2_ROOT' :: '" .. os.getenv("PORTAL2_ROOT") .. "'")
-				targetdir(os.getenv("PORTAL2_ROOT") .. "/" .. "bin")
+				targetdir(os.getenv("PORTAL2_ROOT"))
 				debugdir (os.getenv("PORTAL2_ROOT"))
-				debugcommand (os.getenv("PORTAL2_ROOT") .. "/" .. "portal2.exe")
+				debugcommand (os.getenv("PORTAL2_ROOT") .. "/" .. "p2-rtx-launcher.exe")
 			end
 		filter {}
 
 		filter "configurations:Dev"
 			if(os.getenv("PORTAL2_SEC_ROOT")) then
 				print ("Setup paths using environment variable 'PORTAL2_SEC_ROOT' :: '" .. os.getenv("PORTAL2_SEC_ROOT") .. "'")
-				targetdir(os.getenv("PORTAL2_SEC_ROOT") .. "/" .. "bin")
+				targetdir(os.getenv("PORTAL2_SEC_ROOT"))
 				debugdir (os.getenv("PORTAL2_SEC_ROOT"))
-				debugcommand (os.getenv("PORTAL2_SEC_ROOT") .. "/" .. "portal2.exe")
+				debugcommand (os.getenv("PORTAL2_SEC_ROOT") .. "/" .. "p2-rtx-launcher.exe")
 			end
 		filter {}
 		
@@ -378,16 +380,60 @@ workspace "p2-rtx"
 			"popd",
 		}
 
-		-- Post-build
-		postbuildcommands {
-			"echo ----------------------------",
-			"echo Rename \"p2-rtx.dll\" to \"_rtx.asi\"",
-			"MOVE /Y \"$(TargetDir)p2-rtx.dll\" \"$(TargetDir)_rtx.asi\"",
-		}
-
 		dependencies.imports()
 
         group "Dependencies"
             dependencies.projects()
 		group ""
+	
 
+	project "p2-rtx-launcher"
+		kind "ConsoleApp"
+        language "C++"
+
+		dependson { "p2-rtx" }
+
+        files { "src/launcher/**"}
+		flags { "NoPCH" }
+
+		linkoptions {
+			"/PDBCompress"
+		}
+		
+		resincludedirs {
+			"$(ProjectDir)src/launcher/res"
+		}
+
+		includedirs {
+			"%{prj.location}/src"
+		}
+		
+		filter "configurations:Debug or configurations:Release"
+			if(os.getenv("PORTAL2_ROOT")) then
+				print ("Setup paths using environment variable 'PORTAL2_ROOT' :: '" .. os.getenv("PORTAL2_ROOT") .. "'")
+				targetdir(os.getenv("PORTAL2_ROOT"))
+				debugdir (os.getenv("PORTAL2_ROOT"))
+				debugcommand (os.getenv("PORTAL2_ROOT") .. "/" .. "p2-rtx-launcher.exe")
+			end
+		filter {}
+
+		filter "configurations:Dev"
+			if(os.getenv("PORTAL2_SEC_ROOT")) then
+				print ("Setup paths using environment variable 'PORTAL2_SEC_ROOT' :: '" .. os.getenv("PORTAL2_SEC_ROOT") .. "'")
+				targetdir(os.getenv("PORTAL2_SEC_ROOT"))
+				debugdir (os.getenv("PORTAL2_SEC_ROOT"))
+				debugcommand (os.getenv("PORTAL2_SEC_ROOT") .. "/" .. "p2-rtx-launcher.exe")
+			end
+		filter {}
+
+		-- Pre-build
+		prebuildcommands {
+			"pushd %{_MAIN_SCRIPT_DIR}",
+			"tools\\premake5 generate-buildinfo",
+			"popd",
+		}
+
+		-- Post-build
+		postbuildcommands {
+			"MOVE /Y \"$(TargetDir)p2-rtx-launcher.exe\" \"$(TargetDir)p2-rtx-launcher.exe\"",
+		}
