@@ -55,7 +55,13 @@ If you want to support my work, consider buying me some coffee:
 
 <br>
 
+
 # Usage / Installation
+⛔ Breaking Change __IF you used earlier versions__ of the Compatibility Mod:
+> - Go to `Path-to-Portal2/bin` and remove `winmm.dll` + `_rtx.asi` before proceeding
+
+<br>
+
 - Download the latest [release](https://github.com/xoxor4d/p2-rtx/releases) and follow instructions found there.
 > - The `.zip` with the commit hash contains the files to make the game compatibile with RTX Remix  
 > - The `_remix_mod.zip` contains a base remix-mod required to get portals to work (and a few emissive textures etc.)
@@ -79,12 +85,10 @@ for Portal 2 (`bin/.trex/d3d9.dll`)
 
 <br>
 
-#### ⚠️ Most Noteworthy Issues:
+#### ⚠️ Most Noteworthy Issues / Troubleshooting:
 - Some engine tweaks that are required to make the game compatible result in CPU bottlenecks on some maps (software skinning instead of HW skinning). This may or may not improve in future updates.
 
-<br>
-
-#### ⚠️ Troubleshooting:
+---
 - Launcher not working? - Try a different way of loading:
 > - Download [Ultimate-ASI-Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases) (32 bit), rename `dinput8.dll` to `winmm.dll` and place it into the bin folder (`Path-To-Portal2/bin/winmm.dll`)
 > - Rename `p2-rtx.dll` to `p2-rtx.asi` and place it into the bin folder mentioned above 
