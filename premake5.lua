@@ -212,6 +212,42 @@ end
 
 dependencies.load()
 
+-- 
+-- launcher deps
+
+dependencies_launcher = {
+	basePath = "./deps"
+}
+
+function dependencies_launcher.load()
+	dir = path.join(dependencies_launcher.basePath, "premake_launcher/*.lua")
+	deps = os.matchfiles(dir)
+
+	for i, dep in pairs(deps) do
+		dep = dep:gsub(".lua", "")
+		require(dep)
+	end
+end
+
+function dependencies_launcher.imports()
+	for i, proj in pairs(dependencies_launcher) do
+		if type(i) == 'number' then
+			proj.import()
+		end
+	end
+end
+
+function dependencies_launcher.projects()
+	for i, proj in pairs(dependencies_launcher) do
+		if type(i) == 'number' then
+			proj.project()
+		end
+	end
+end
+
+dependencies_launcher.load()
+
+
 workspace "p2-rtx"
 
 	startproject "p2-rtx-launcher"
@@ -437,3 +473,8 @@ workspace "p2-rtx"
 		postbuildcommands {
 			"MOVE /Y \"$(TargetDir)p2-rtx-launcher.exe\" \"$(TargetDir)p2-rtx-launcher.exe\"",
 		}
+
+		dependencies_launcher.imports()
+		group "Dependencies"
+			dependencies_launcher.projects()
+		group ""

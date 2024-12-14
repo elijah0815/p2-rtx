@@ -4,6 +4,9 @@
 #include <filesystem>
 #include <version.hpp> // git version
 
+#include "detours.h" 
+#pragma comment(lib, "detours.lib")
+
 # define ENDL "\n"
 
 bool find_window_by_process_id(const DWORD proc_id)
@@ -27,26 +30,34 @@ bool find_window_by_process_id(const DWORD proc_id)
 int wmain(int argc, wchar_t* argv[])
 {
 	std::filesystem::path game_path = std::filesystem::current_path();
+
+	std::filesystem::path exe_path = game_path;
+	exe_path.append("portal2.exe");
+
 	std::filesystem::path dll_path = game_path;
 	dll_path.append("p2-rtx.dll");
-	game_path.append("portal2.exe");
 
-	if (!exists(game_path))
+	if (!exists(exe_path))
 	{
-		std::cout << "[Main] Could not find 'portal2.exe'. Path was: " << game_path.generic_string().c_str() << ENDL;
+		std::cout << "[!] Could not find 'portal2.exe'. Path was: " << exe_path.generic_string().c_str() << ENDL;
 		system("pause");
 		return -1;
 	}
 
 	if (!exists(dll_path))
 	{
-		std::cout << "[Main] Could not find 'p2-rtx.dll'. Path was: " << dll_path.generic_string().c_str() << ENDL;
+		std::cout << "[!] Could not find 'p2-rtx.dll'. Path was: " << dll_path.generic_string().c_str() << ENDL;
 		system("pause");
 		return -1;
 	}
 
-	STARTUPINFOW si = { sizeof(STARTUPINFOW) };
-	PROCESS_INFORMATION pi = {};
+	STARTUPINFOW si;
+	PROCESS_INFORMATION pi;
+	ZeroMemory(&si, sizeof(si));
+	ZeroMemory(&pi, sizeof(pi));
+	si.cb = sizeof(si);
+
+	const DWORD flags = CREATE_DEFAULT_ERROR_MODE | CREATE_SUSPENDED;
 
 	// first arg has to be the executable name
 	std::wstring command_line = L"portal2.exe -novid -disable_d3d9_hacks -limitvsconst -softparticlesdefaultoff -disallowhwmorph -no_compressed_verts +mat_phong 1";
@@ -58,107 +69,55 @@ int wmain(int argc, wchar_t* argv[])
 		command_line += argv[i];
 	}
 
-	// create game process in a suspended state
-	if (!CreateProcessW(game_path.c_str(), &command_line[0], nullptr, nullptr, FALSE, CREATE_SUSPENDED, nullptr, nullptr, &si, &pi))
+	const std::string narrow_dll_path = dll_path.string();
+	LPCSTR dll_str = narrow_dll_path.c_str();
+
+	if (!DetourCreateProcessWithDllsW(exe_path.c_str(), command_line.data(), nullptr, nullptr, NULL, flags, nullptr, game_path.c_str(), &si, &pi, 1, &dll_str, nullptr))
 	{
-		std::cout << "[Main] !CreateProcessW - Failed to launch portal2.exe" << ENDL;
-		std::cout << "[Main] Paths:" << ENDL;
-		std::cout << "[Main] > Game: " << game_path.generic_string().c_str() << ENDL;
-		std::cout << "[Main] > DLL: " << dll_path.generic_string().c_str() << ENDL;
+		DWORD err = GetLastError();
+		std::cout << "[!] !DetourCreateProcessWithDllsW - Failed to launch portal2.exe" << ENDL;
+		std::cout << "[!] Error:" << err << ENDL;
+		std::cout << "[!] |> Game: " << game_path.generic_string().c_str() << ENDL;
+		std::cout << "[!] |> DLL: " << dll_path.generic_string().c_str() << ENDL;
 		system("pause");
 		return -1;
 	}
 
+	ResumeThread(pi.hThread);
 	bool error = false;
 
-	{	// inject dll
-		const auto path = dll_path.generic_string();
+	// check if we want to debug the child process
+	// can not use WaitForObject as that would cause a deadlock with child process debugging
+	if (IsDebuggerPresent())
+	{
+		Sleep(50);
+		std::uint32_t time = 0;
 
-		if (LPVOID remote_memory = VirtualAllocEx(pi.hProcess, nullptr, path.size() + 1, MEM_COMMIT, PAGE_READWRITE);
-			remote_memory)
+		bool process_spawned = false;
+		while (!process_spawned)
 		{
-			// write the dll path into the allocated memory
-			if (WriteProcessMemory(pi.hProcess, remote_memory, path.c_str(), path.size() + 1, nullptr))
+			process_spawned = find_window_by_process_id(pi.dwProcessId);
+			if (!process_spawned)
 			{
-				// get the address of LoadLibraryA
-				if (const auto loadlib_addr = (LPTHREAD_START_ROUTINE)GetProcAddress(GetModuleHandleA("kernel32.dll"), "LoadLibraryA");
-					loadlib_addr)
-				{
-					// create a remote thread to call LoadLibraryA with the DLL path
-					if (const auto thread = CreateRemoteThread(pi.hProcess, nullptr, 0, loadlib_addr, remote_memory, 0, nullptr);
-						thread)
-					{
-						ResumeThread(pi.hThread);
+				Sleep(50);
+				time += 50;
 
-						// Check if we want to debug the child process
-						// Can not use WaitForObject as that would cause a deadlock with child process debugging
-						if (IsDebuggerPresent())
-						{
-							Sleep(50);
-							std::uint32_t time = 0;
-
-							bool process_spawned = false;
-							while (!process_spawned)
-							{
-								process_spawned = find_window_by_process_id(pi.dwProcessId);
-								if (!process_spawned)
-								{
-									Sleep(50);
-									time += 50;
-
-									if (time >= 30000)
-									{
-										error = true;
-										std::cout << "[Debug] Failed to find spawned process!" << ENDL;
-										break;
-									}
-								}
-							}
-						}
-						else { // normal startup
-							WaitForSingleObject(thread, INFINITE);
-						}
-
-						CloseHandle(thread);
-					}
-					else
-					{
-						error = true;
-						std::cout << "[Inject] !thread" << ENDL;
-						std::cout << "[Inject] Path was: " << path.c_str() << ENDL;
-					}
-				}
-				else
+				if (time >= 30000)
 				{
 					error = true;
-					std::cout << "[Inject] !loadlib_addr" << ENDL;
-					std::cout << "[Inject] Path was: " << path.c_str() << ENDL;
+					std::cout << "[Debug] Failed to find spawned process!" << ENDL;
+					break;
 				}
 			}
-			else
-			{
-				error = true;
-				std::cout << "[Inject] !WriteProcessMemory" << ENDL;
-				std::cout << "[Inject] Path was: " << path.c_str() << ENDL;
-			}
-
-			VirtualFreeEx(pi.hProcess, remote_memory, 0, MEM_RELEASE);
-		}
-		else
-		{
-			error = true;
-			std::cout << "[Inject] !remote_memory" << ENDL;
-			std::cout << "[Inject] Path was: " << path.c_str() << ENDL;
 		}
 	}
-
-	// clean-up
-	CloseHandle(pi.hThread);
-	CloseHandle(pi.hProcess);
+	else { // normal startup
+		WaitForSingleObject(pi.hThread, INFINITE);
+	}
 
 	if (error) {
 		system("pause");
 	}
-	
+
 	return 0;
 }
