@@ -30,7 +30,7 @@ Please keep that in mind.
 
 ### __[ Remix Compatibility Features ]__   
 🔹Most things are rendered using the fixed-function pipeline🔹  
-🔹Remix friendly culling and the ability to manually override culling per visleaf🔹  
+🔹Remix friendly culling and the ability to manually override culling🔹  
 🔹Per map loading of remix config files to set remix variables🔹  
 🔹Ability to animate remix variables on events🔹  
 🔹Spawning of unique anchor meshes🔹  
@@ -56,11 +56,12 @@ If you want to support my work, consider buying me some coffee:
 <br>
 
 
-# Usage / Installation
-⛔ Breaking Change __IF you used earlier versions__ of the Compatibility Mod:
+## Usage / Installation
+> [!CAUTION]
+> Breaking Change __IF you used earlier versions__ of the Compatibility Mod:
 > - Go to `Path-to-Portal2/bin` and remove `winmm.dll` + `_rtx.asi` before proceeding
 
-<br>
+----
 
 - Download the latest [release](https://github.com/xoxor4d/p2-rtx/releases) and follow instructions found there.
 > - The `.zip` with the commit hash contains the files to make the game compatibile with RTX Remix  
@@ -80,37 +81,61 @@ If you want to support my work, consider buying me some coffee:
 
 #### ✳️ Info: 
 - See the [Wiki](https://github.com/xoxor4d/p2-rtx/wiki/Compatibility-Mod-Feature-Guide) for in-depth guides on features that come with the compatibility mod 🍓
+  
 - Current releases ship with a [custom build of the remix-dxvk runtime](https://github.com/xoxor4d/dxvk-remix/tree/combine/pairs_mask_rs) which includes necessary changes  
-for Portal 2 (`bin/.trex/d3d9.dll`)  
+for Portal 2 (`bin/.trex/d3d9.dll`)
+
+- Some engine tweaks that are required to make the game compatible result in CPU bottlenecks on some maps (software skinning instead of HW skinning). This may or may not improve in future updates.
 
 <br>
 
-#### ⚠️ Most Noteworthy Issues / Troubleshooting:
-- Some engine tweaks that are required to make the game compatible result in CPU bottlenecks on some maps (software skinning instead of HW skinning). This may or may not improve in future updates.
+#### ⚠️ Troubleshooting (click to expand):
 
----
-- Launcher not working? - Try a different way of loading:
-> - Download [Ultimate-ASI-Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases) (32 bit), rename `dinput8.dll` to `winmm.dll` and place it into the bin folder (`Path-To-Portal2/bin/winmm.dll`)
-> - Rename `p2-rtx.dll` to `p2-rtx.asi` and place it into the bin folder mentioned above 
-> - Right click Portal 2 on Steam and open settings - add the following start-up options:  
-> `-novid -disable_d3d9_hacks -limitvsconst -disallowhwmorph -softparticlesdefaultoff -no_compressed_verts +mat_phong 1`
-> - Start the game from Steam
+<details><summary>Launcher not working? - Try a different way of loading</summary>
 
-- Missing dependencies or similar error:  
-> - Download and install [DirectX End-User Runtimes (June 2010)](https://www.microsoft.com/en-ie/download/details.aspx?id=8109)
+1. Download [Ultimate-ASI-Loader](https://github.com/ThirteenAG/Ultimate-ASI-Loader/releases) (32 bit), rename `dinput8.dll` to `winmm.dll` and place it into  
+   the bin folder (`Path-To-Portal2/bin/winmm.dll`)
+   
+2.  Rename `p2-rtx.dll` to `p2-rtx.asi` and place it into the bin folder mentioned above
 
-- Portals not showing up or looking incorrect:  
-> - Make sure that you installed the `_remix_mod.zip`. See [Issue #13](https://github.com/xoxor4d/p2-rtx/issues/13)
+3.   Right click Portal 2 on Steam and open settings - add the following start-up options:  
+     -novid -disable_d3d9_hacks -limitvsconst -disallowhwmorph -softparticlesdefaultoff -no_compressed_verts +mat_phong 1`
+     
+4.  Sart the game from Steam
 
-- Game is too dark, sunlight is leaking on certain maps, textures look flat:  
-> - This is not an issue with the compatibility mod itself. It's up to the people modding the game using the remix toolset to place proper lights and overhaul textures and meshes.
+<br></details>
+
+
+<details><summary>Missing dependencies or similar error</summary>
+<br>
+
+- Download and install [DirectX End-User Runtimes (June 2010)](https://www.microsoft.com/en-ie/download/details.aspx?id=8109)
+
+<br></details>
+
+
+<details><summary>Portals not showing up or looking incorrect</summary>
+<br>
+
+- Make sure that you installed the `_remix_mod.zip`. See [Issue #13](https://github.com/xoxor4d/p2-rtx/issues/13)
+
+<br></details>
+
+
+<details><summary>Game is too dark, sunlight is leaking on certain maps, textures look flat</summary>
+<br>
+
+- This is not an issue with the compatibility mod itself. It's up to the people modding the game using the remix toolset to place proper lights and overhaul textures and meshes.
+
+<br></details>
+
 
 - Other Issue?
 > - Look at [Closed Issues](https://github.com/xoxor4d/p2-rtx/issues?q=is%3Aissue+is%3Aclosed) or [Discussions](https://github.com/xoxor4d/p2-rtx/discussions) to see if people had similar issues
 
 <br>
 
-#  Credits
+##  Credits
 - [Nvidia - RTX Remix](https://github.com/NVIDIAGameWorks/rtx-remix)
 - [People of the showcase discord](https://discord.gg/j6sh7JD3v9) - especially the nvidia engineers ✌️
 - All early access people for testing/bug reporting and for covering my electricity bill ⚡
